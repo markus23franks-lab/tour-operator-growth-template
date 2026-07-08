@@ -1,6 +1,5 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <title>Growth Operator Score</title>
     <link rel="stylesheet" href="../styles.css">
@@ -9,35 +8,25 @@
 <body>
 
 <section class="hero">
-
     <div class="hero-content">
 
-        <p class="eyebrow">
-            FREE TOUR OPERATOR GROWTH SCORE
-        </p>
+        <p class="eyebrow">FREE TOUR OPERATOR GROWTH SCORE</p>
 
-        <h1>
-            Discover How Many Direct Bookings You're Missing
-        </h1>
+        <h1>Find Out What’s Costing You Direct Bookings</h1>
 
         <p class="hero-text">
-            Answer a few simple questions and receive your personalized Growth Score in under 3 minutes.
+            Get a personalized growth report across your website, reviews, SEO, booking flow, and automation.
         </p>
 
-        <div class="progress">
-            Step 1 of 6
-        </div>
-
-        <form>
-
+        <form id="growth-form">
             <label>Business Name</label>
-            <input type="text">
+            <input type="text" id="business-name" placeholder="Example: Blue River Rafting">
 
             <label>Website URL</label>
-            <input type="text">
+            <input type="text" id="website-url" placeholder="https://yourwebsite.com">
 
             <label>Booking Software</label>
-            <select>
+            <select id="booking-software">
                 <option>Peek Pro</option>
                 <option>FareHarbor</option>
                 <option>Rezdy</option>
@@ -45,30 +34,55 @@
                 <option>Other</option>
             </select>
 
-            <button type="submit">
-                Continue →
-            </button>
-
+            <button type="submit">Analyze My Business →</button>
         </form>
 
-        <div id="results" style="display:none; margin-top:40px;">
+        <div id="loading-screen" style="display:none;">
+            <p class="eyebrow">ANALYZING YOUR BUSINESS</p>
+            <h2>Building Your Growth Report...</h2>
 
-            <h2>Your Growth Score</h2>
+            <p>✅ Website Structure</p>
+            <p>✅ Booking Platform</p>
+            <p>✅ Review Opportunities</p>
+            <p>✅ SEO Signals</p>
+            <p>✅ Direct Booking Potential</p>
+        </div>
 
-            <h1 id="score-number">85</h1>
+        <div id="results" style="display:none;">
+            <p class="eyebrow">YOUR GROWTH REPORT</p>
 
-            <p id="score-message">
-                You're missing opportunities to generate more direct bookings.
-            </p>
+            <h2>Growth Score</h2>
+            <h1 id="score-number">0 / 100</h1>
 
+            <p id="score-message"></p>
+
+            <hr>
+
+            <h3>Module Scores</h3>
+
+            <p><strong>Website:</strong> <span id="website-score">0</span>/20</p>
+            <p><strong>Reviews:</strong> <span id="reviews-score">0</span>/20</p>
+            <p><strong>SEO:</strong> <span id="seo-score">0</span>/20</p>
+            <p><strong>Booking Experience:</strong> <span id="booking-score">0</span>/20</p>
+            <p><strong>Automation:</strong> <span id="automation-score">0</span>/20</p>
+
+            <hr>
+
+            <h3>Top Opportunity</h3>
+            <p id="top-opportunity"></p>
+
+            <h3>Estimated Revenue Opportunity</h3>
+            <p id="revenue-opportunity"></p>
+
+            <div id="growth-roadmap"></div>
+
+            <button>Book Free Growth Blueprint</button>
         </div>
 
     </div>
-
 </section>
 
 <script src="../js/assessment.js"></script>
 
 </body>
-
 </html>

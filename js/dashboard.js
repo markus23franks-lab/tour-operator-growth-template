@@ -1,6 +1,6 @@
 const growthModules = {
     Visibility: {
-        score: "63%",
+        score: "65%",
         status: "Needs Attention",
         confidence: 91,
         difficulty: "Easy",
@@ -8,7 +8,7 @@ const growthModules = {
         successLikelihood: "Very High",
         headline: "More high-intent customers should be finding your business.",
         explanation:
-            "Your website has a solid foundation, but nearby competitors currently appear more often for important local searches.",
+            "Your visibility improved this week, but nearby competitors still appear more often for important local searches.",
         impactLabel: "Estimated annual opportunity",
         impact: "+$14,800",
         actions: [
@@ -43,84 +43,84 @@ const growthModules = {
         difficulty: "Easy",
         timeRequired: "1–2 hours",
         successLikelihood: "Very High",
-        headline: "Your reputation is one of your strongest growth assets.",
+        headline: "Your reputation is strong, but competitor momentum is increasing.",
         explanation:
-            "Your rating and recent review momentum build trust, but competitors are continuing to add reviews every week.",
-        impactLabel: "Reviews gained this month",
-        impact: "+12",
+            "Your rating and recent review momentum build trust. However, River Adventures is currently adding reviews more than twice as quickly.",
+        impactLabel: "Estimated annual opportunity",
+        impact: "+$8,700",
         actions: [
             {
-                title: "Automate post-tour review requests",
+                title: "Activate automated review requests",
                 description:
-                    "Send review requests by text shortly after each completed experience.",
+                    "Send every completed guest a review request by text shortly after their experience.",
                 time: "30 minutes",
                 impact: "+18 reviews/month"
             },
             {
-                title: "Track competitor review velocity",
+                title: "Verify your Google review destination",
                 description:
-                    "Compare weekly review growth against nearby operators.",
-                time: "15 minutes",
-                impact: "Protect local ranking"
+                    "Confirm guests are being sent directly to the correct Google review page.",
+                time: "10 minutes",
+                impact: "Higher completion rate"
             },
             {
-                title: "Add reviews to key booking pages",
+                title: "Launch competitor review tracking",
                 description:
-                    "Feature high-quality customer feedback beside major booking calls-to-action.",
-                time: "30 minutes",
-                impact: "+2–4% conversion"
+                    "Monitor weekly review velocity against River Adventures and nearby operators.",
+                time: "20 minutes",
+                impact: "Protect local visibility"
             }
         ]
     },
 
     Website: {
-        score: "71%",
-        status: "Needs Attention",
+        score: "82%",
+        status: "Improved",
         confidence: 88,
         difficulty: "Moderate",
         timeRequired: "3–5 hours",
         successLikelihood: "High",
-        headline: "Your website is clear, but mobile visitors experience friction.",
+        headline: "Your completed website improvements strengthened mobile performance.",
         explanation:
-            "Most visitors arrive from a phone. Improvements to speed, clarity, and booking calls-to-action could increase conversion.",
-        impactLabel: "Estimated annual opportunity",
-        impact: "+$8,700",
+            "The clearer mobile booking path and improved calls-to-action have made it easier for visitors to complete reservations.",
+        impactLabel: "Recovered annual opportunity",
+        impact: "+$18,200",
         actions: [
             {
-                title: "Strengthen the mobile call-to-action",
+                title: "Monitor mobile conversion",
                 description:
-                    "Keep a clear booking button visible throughout the mobile experience.",
-                time: "30 minutes",
-                impact: "+$2,100/year"
+                    "Compare mobile conversion before and after your completed changes.",
+                time: "20 minutes",
+                impact: "Validate improvement"
             },
             {
-                title: "Simplify the path to checkout",
+                title: "Review mobile page speed",
                 description:
-                    "Remove unnecessary steps between the tour page and booking flow.",
-                time: "1–2 hours",
-                impact: "+$3,800/year"
+                    "Confirm major tour pages continue loading quickly on mobile devices.",
+                time: "20 minutes",
+                impact: "Protect conversion"
             },
             {
-                title: "Improve mobile page speed",
+                title: "Test the booking call-to-action",
                 description:
-                    "Compress large images and reduce unnecessary scripts.",
-                time: "2 hours",
-                impact: "+$2,800/year"
+                    "Run one additional button and headline test on your highest-traffic page.",
+                time: "45 minutes",
+                impact: "+1–3% conversion"
             }
         ]
     },
 
     Conversion: {
-        score: "58%",
-        status: "Priority",
+        score: "76%",
+        status: "Improved",
         confidence: 93,
         difficulty: "Moderate",
         timeRequired: "4–6 hours",
         successLikelihood: "Very High",
-        headline: "Mobile booking conversion is your largest immediate opportunity.",
+        headline: "Your mobile booking action plan is complete.",
         explanation:
-            "Mobile visitors account for most traffic but complete reservations less often than desktop visitors.",
-        impactLabel: "Estimated annual opportunity",
+            "The completed mobile conversion work reduced friction and recovered a meaningful portion of your original revenue opportunity.",
+        impactLabel: "Recovered annual opportunity",
         impact: "+$18,200",
         actions: [
             {
@@ -193,7 +193,7 @@ const growthModules = {
         successLikelihood: "High",
         headline: "Your reporting foundation is strong and becoming more useful.",
         explanation:
-            "You track most important channels, but several customer acquisition and competitor signals remain disconnected.",
+            "You track most important channels, but several acquisition and competitor signals remain disconnected.",
         impactLabel: "Marketing channels tracked",
         impact: "6 of 8",
         actions: [
@@ -228,14 +228,140 @@ let activeModuleName = null;
 let completedActions = loadCompletedActions();
 
 document.addEventListener("DOMContentLoaded", function () {
+    createIntelligenceSection();
     createModuleDrawer();
     activateHealthCards();
     activateNavigation();
-    activateAdvisorButton();
-    activateJourneyButton();
+    activateBriefingButtons();
+    activateIntelligenceButtons();
     updateJourneyProgress();
     animateDashboard();
 });
+
+function createIntelligenceSection() {
+    const briefingGrid = document.querySelector(".go-briefing-grid");
+
+    if (!briefingGrid || document.querySelector(".go-intelligence-section")) {
+        return;
+    }
+
+    const section = document.createElement("section");
+
+    section.className = "go-intelligence-section";
+
+    section.innerHTML = `
+        <div class="go-intelligence-heading">
+            <div>
+                <p class="go-kicker">GROWTH OPERATOR'S ANALYSIS</p>
+                <h2>Why This Matters</h2>
+            </div>
+
+            <span class="go-intelligence-badge">
+                94% AI Confidence
+            </span>
+        </div>
+
+        <div class="go-intelligence-layout">
+
+            <article class="go-intelligence-analysis">
+
+                <div class="go-intelligence-icon">
+                    AI
+                </div>
+
+                <div class="go-intelligence-copy">
+
+                    <span>WHAT I FOUND</span>
+
+                    <h3>
+                        Your competitor's review momentum could begin affecting
+                        your local visibility.
+                    </h3>
+
+                    <p>
+                        River Adventures gained 14 reviews this week while your
+                        business gained 5. Their current review velocity is more
+                        than twice yours.
+                    </p>
+
+                    <p>
+                        Based on your completed booking volume, Growth Operator
+                        estimates that your business should generate approximately
+                        18–22 new Google reviews each month.
+                    </p>
+
+                </div>
+
+            </article>
+
+            <article class="go-intelligence-forecast">
+
+                <span class="go-intelligence-label">
+                    IF NOTHING CHANGES
+                </span>
+
+                <strong>6–8 weeks</strong>
+
+                <p>
+                    before your local visibility may begin weakening relative
+                    to this competitor.
+                </p>
+
+                <div class="go-intelligence-meter">
+
+                    <div class="go-intelligence-meter-row">
+                        <span>Your review pace</span>
+                        <strong>5 / week</strong>
+                    </div>
+
+                    <div class="go-intelligence-bar">
+                        <span style="width: 36%;"></span>
+                    </div>
+
+                    <div class="go-intelligence-meter-row competitor">
+                        <span>River Adventures</span>
+                        <strong>14 / week</strong>
+                    </div>
+
+                    <div class="go-intelligence-bar competitor">
+                        <span style="width: 88%;"></span>
+                    </div>
+
+                </div>
+
+            </article>
+
+            <article class="go-intelligence-decision">
+
+                <div class="go-intelligence-priority">
+                    <span>RECOMMENDED PRIORITY</span>
+                    <strong>High</strong>
+                </div>
+
+                <div class="go-intelligence-value">
+                    <span>POTENTIAL ANNUAL IMPACT</span>
+                    <strong>+$8,700</strong>
+                </div>
+
+                <p>
+                    Activate automated requests now to increase review velocity,
+                    protect Google momentum, and close the competitor gap.
+                </p>
+
+                <button
+                    class="go-primary-button go-intelligence-action"
+                    type="button"
+                >
+                    Open Review Engine →
+                </button>
+
+            </article>
+
+        </div>
+    `;
+
+    briefingGrid.insertAdjacentElement("afterend", section);
+}
 
 function loadCompletedActions() {
     try {
@@ -291,20 +417,20 @@ function createModuleDrawer() {
 
             <div class="go-drawer-heading">
                 <div>
-                    <h2 id="go-drawer-title">Visibility</h2>
+                    <h2 id="go-drawer-title">Reputation</h2>
                     <p id="go-drawer-headline"></p>
                 </div>
 
                 <div class="go-drawer-score">
-                    <strong id="go-drawer-score">63%</strong>
-                    <span id="go-drawer-status">Needs Attention</span>
+                    <strong id="go-drawer-score">87%</strong>
+                    <span id="go-drawer-status">Healthy</span>
                 </div>
             </div>
 
             <div class="go-ai-summary-grid">
                 <div class="go-ai-summary-card">
                     <span>AI CONFIDENCE</span>
-                    <strong id="go-confidence-value">91%</strong>
+                    <strong id="go-confidence-value">94%</strong>
 
                     <div class="go-confidence-track">
                         <div id="go-confidence-fill"></div>
@@ -318,7 +444,7 @@ function createModuleDrawer() {
 
                 <div class="go-ai-summary-card">
                     <span>TIME REQUIRED</span>
-                    <strong id="go-time-value">2–3 hours</strong>
+                    <strong id="go-time-value">1–2 hours</strong>
                 </div>
 
                 <div class="go-ai-summary-card">
@@ -393,10 +519,7 @@ function activateHealthCards() {
 
         card.setAttribute("tabindex", "0");
         card.setAttribute("role", "button");
-        card.setAttribute(
-            "aria-label",
-            `Open ${moduleName} analysis`
-        );
+        card.setAttribute("aria-label", `Open ${moduleName} analysis`);
 
         if (!card.querySelector(".go-card-prompt")) {
             const prompt = document.createElement("span");
@@ -420,31 +543,49 @@ function activateHealthCards() {
     });
 }
 
-function activateAdvisorButton() {
-    const advisorButton = document.querySelector(
+function activateBriefingButtons() {
+    const priorityButton = document.querySelector(
         ".go-advisor-card .go-primary-button"
     );
 
-    if (!advisorButton) {
-        return;
+    if (priorityButton) {
+        priorityButton.addEventListener("click", function () {
+            openModuleDrawer("Reputation");
+        });
     }
 
-    advisorButton.addEventListener("click", function () {
-        openModuleDrawer("Conversion");
-    });
-}
-
-function activateJourneyButton() {
     const journeyButton = document.querySelector(
         ".go-journey-now .go-primary-button"
     );
 
-    if (!journeyButton) {
+    if (journeyButton) {
+        journeyButton.addEventListener("click", function () {
+            openModuleDrawer("Reputation");
+        });
+    }
+
+    const competitorButton = document.querySelector(
+        ".go-briefing-change-card.warning .go-text-button"
+    );
+
+    if (competitorButton) {
+        competitorButton.addEventListener("click", function () {
+            openModuleDrawer("Reputation");
+        });
+    }
+}
+
+function activateIntelligenceButtons() {
+    const intelligenceButton = document.querySelector(
+        ".go-intelligence-action"
+    );
+
+    if (!intelligenceButton) {
         return;
     }
 
-    journeyButton.addEventListener("click", function () {
-        openModuleDrawer("Conversion");
+    intelligenceButton.addEventListener("click", function () {
+        openModuleDrawer("Reputation");
     });
 }
 
@@ -632,30 +773,30 @@ function handleStartPlan() {
 }
 
 function updateJourneyProgress() {
-    const conversionCompleted =
-        completedActions.Conversion || [];
+    const reputationCompleted =
+        completedActions.Reputation || [];
 
-    const completedCount = conversionCompleted.length;
+    const completedCount = reputationCompleted.length;
     const totalActions =
-        growthModules.Conversion.actions.length;
+        growthModules.Reputation.actions.length;
 
-    const conversionPercent = Math.round(
+    const reputationPercent = Math.round(
         (completedCount / totalActions) * 100
     );
 
-    const baseJourneyPercent = 42;
+    const baseJourneyPercent = 58;
     const addedJourneyPercent = Math.round(
-        conversionPercent * 0.16
+        reputationPercent * 0.17
     );
 
     const journeyPercent = Math.min(
-        58,
+        75,
         baseJourneyPercent + addedJourneyPercent
     );
 
     const journeyDay = Math.min(
-        52,
-        38 + Math.round(completedCount * 4.5)
+        68,
+        52 + Math.round(completedCount * 5.3)
     );
 
     const progressLabel = document.querySelector(
@@ -701,115 +842,73 @@ function updateJourneyProgress() {
     ) {
         if (currentStageTitle) {
             currentStageTitle.textContent =
-                "Website Improvements Complete";
+                "Review Engine Complete";
         }
 
         if (currentStageDescription) {
             currentStageDescription.textContent =
-                "Your mobile conversion action plan is complete. Growth Operator is ready to remeasure results and move you into the next growth stage.";
+                "Your review automation and competitor monitoring foundation is complete. Growth Operator is ready to begin measuring ongoing results.";
         }
 
         if (nextStepTitle) {
             nextStepTitle.textContent =
-                "Unlock the Review Engine.";
+                "Unlock Growth Tracking.";
         }
 
         if (nextStepDescription) {
             nextStepDescription.textContent =
-                "Growth Operator will now shift focus toward review velocity, reputation growth, and stronger customer follow-up.";
+                "Growth Operator will now track score movement, review velocity, ranking gains, and estimated revenue created by your completed actions.";
         }
 
         if (journeyButton) {
             journeyButton.textContent =
-                "Open Review Engine →";
+                "Open Growth Tracking →";
+
+            journeyButton.onclick = function () {
+                openModuleDrawer("Intelligence");
+            };
+        }
+
+        updateReviewJourneyStep(true);
+        updateTrackingJourneyStep(true);
+    } else {
+        if (currentStageTitle) {
+            currentStageTitle.textContent =
+                "Review Engine";
+        }
+
+        if (currentStageDescription) {
+            currentStageDescription.textContent =
+                "Your website improvement stage is complete. Growth Operator is now focused on increasing review velocity and strengthening your local reputation.";
+        }
+
+        if (nextStepTitle) {
+            nextStepTitle.textContent =
+                "Activate your Review Engine.";
+        }
+
+        if (nextStepDescription) {
+            nextStepDescription.textContent =
+                "Complete the three reputation actions to increase review volume, protect your rating, and unlock Growth Tracking.";
+        }
+
+        if (journeyButton) {
+            journeyButton.textContent =
+                completedCount > 0
+                    ? "Continue Review Engine →"
+                    : "Open Review Engine →";
 
             journeyButton.onclick = function () {
                 openModuleDrawer("Reputation");
             };
         }
 
-        updateJourneyStepThree(true);
-        updateJourneyStepFour(true);
-    } else {
-        if (currentStageTitle) {
-            currentStageTitle.textContent =
-                "Website Improvements";
-        }
-
-        if (currentStageDescription) {
-            currentStageDescription.textContent =
-                "Your foundation is complete. The next phase focuses on improving the customer experience and increasing booking conversion.";
-        }
-
-        if (nextStepTitle) {
-            nextStepTitle.textContent =
-                "Complete your mobile conversion improvements.";
-        }
-
-        if (nextStepDescription) {
-            nextStepDescription.textContent =
-                "Finish the three recommended fixes, then Growth Operator will remeasure your score and unlock the Review Engine stage.";
-        }
-
-        if (journeyButton) {
-            journeyButton.textContent =
-                completedCount > 0
-                    ? "Continue My Plan →"
-                    : "Start My Plan →";
-
-            journeyButton.onclick = function () {
-                openModuleDrawer("Conversion");
-            };
-        }
-
-        updateJourneyStepThree(false);
-        updateJourneyStepFour(false);
+        updateReviewJourneyStep(false);
+        updateTrackingJourneyStep(false);
     }
 }
 
-function updateJourneyStepThree(isComplete) {
-    const steps = document.querySelectorAll(
-        ".go-journey-step"
-    );
-
-    const websiteStep = steps[2];
-
-    if (!websiteStep) {
-        return;
-    }
-
-    const marker = websiteStep.querySelector(
-        ".go-step-marker"
-    );
-
-    const status = websiteStep.querySelector("small");
-
-    if (isComplete) {
-        websiteStep.classList.remove("current");
-        websiteStep.classList.add("complete");
-
-        if (marker) {
-            marker.textContent = "✓";
-        }
-
-        if (status) {
-            status.textContent = "Complete";
-        }
-    } else {
-        websiteStep.classList.remove("complete");
-        websiteStep.classList.add("current");
-
-        if (marker) {
-            marker.textContent = "3";
-        }
-
-        if (status) {
-            status.textContent = "In Progress";
-        }
-    }
-}
-
-function updateJourneyStepFour(isCurrent) {
+function updateReviewJourneyStep(isComplete) {
     const steps = document.querySelectorAll(
         ".go-journey-step"
     );
@@ -826,7 +925,19 @@ function updateJourneyStepFour(isCurrent) {
 
     const status = reviewStep.querySelector("small");
 
-    if (isCurrent) {
+    if (isComplete) {
+        reviewStep.classList.remove("current");
+        reviewStep.classList.add("complete");
+
+        if (marker) {
+            marker.textContent = "✓";
+        }
+
+        if (status) {
+            status.textContent = "Complete";
+        }
+    } else {
+        reviewStep.classList.remove("complete");
         reviewStep.classList.add("current");
 
         if (marker) {
@@ -834,17 +945,50 @@ function updateJourneyStepFour(isCurrent) {
         }
 
         if (status) {
-            status.textContent = "Ready";
+            status.textContent =
+                (completedActions.Reputation || []).length > 0
+                    ? "In Progress"
+                    : "Ready";
         }
-    } else {
-        reviewStep.classList.remove("current");
+    }
+}
+
+function updateTrackingJourneyStep(isCurrent) {
+    const steps = document.querySelectorAll(
+        ".go-journey-step"
+    );
+
+    const trackingStep = steps[4];
+
+    if (!trackingStep) {
+        return;
+    }
+
+    const marker = trackingStep.querySelector(
+        ".go-step-marker"
+    );
+
+    const status = trackingStep.querySelector("small");
+
+    if (isCurrent) {
+        trackingStep.classList.add("current");
 
         if (marker) {
-            marker.textContent = "4";
+            marker.textContent = "5";
         }
 
         if (status) {
-            status.textContent = "Up Next";
+            status.textContent = "Ready";
+        }
+    } else {
+        trackingStep.classList.remove("current");
+
+        if (marker) {
+            marker.textContent = "5";
+        }
+
+        if (status) {
+            status.textContent = "Not Started";
         }
     }
 }
@@ -884,13 +1028,13 @@ function activateNavigation() {
 
 function animateDashboard() {
     const animatedElements = document.querySelectorAll(
-        ".go-advisor-card, .go-score-card, .go-revenue-card, .go-health-card, .go-journey-card, .go-feed-card"
+        ".go-briefing-card, .go-briefing-change-card, .go-intelligence-section, .go-advisor-card, .go-weekly-win-card, .go-score-card, .go-revenue-card, .go-health-card, .go-journey-card, .go-feed-card"
     );
 
     animatedElements.forEach(function (element, index) {
         element.style.setProperty(
             "--go-animation-delay",
-            `${index * 55}ms`
+            `${index * 45}ms`
         );
 
         element.classList.add("go-reveal");

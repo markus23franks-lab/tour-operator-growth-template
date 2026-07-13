@@ -1,35 +1,754 @@
-<div class="health-card" onclick="toggleCard(this)">
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-    <div class="health-header">
-        <h4>👀 Visibility</h4>
-        <strong>63%</strong>
+    <title>Growth Operator Dashboard</title>
+
+    <link rel="stylesheet" href="../styles.css">
+</head>
+
+<body class="go-dashboard-body">
+
+    <div class="go-app">
+
+        <aside class="go-sidebar">
+
+            <div class="go-brand">
+
+                <div class="go-logo-mark" aria-hidden="true">
+                    <span class="go-logo-ring"></span>
+                    <span class="go-logo-arrow"></span>
+                </div>
+
+                <div class="go-brand-copy">
+                    <strong>GROWTH</strong>
+                    <span>OPERATOR</span>
+                </div>
+
+            </div>
+
+            <nav class="go-nav">
+
+                <a href="#" class="go-nav-link active">
+                    <span class="go-nav-icon">⌂</span>
+                    Overview
+                </a>
+
+                <a href="#" class="go-nav-link">
+                    <span class="go-nav-icon">◎</span>
+                    Growth Score
+                </a>
+
+                <a href="#" class="go-nav-link">
+                    <span class="go-nav-icon">↗</span>
+                    Visibility
+                </a>
+
+                <a href="#" class="go-nav-link">
+                    <span class="go-nav-icon">★</span>
+                    Reputation
+                </a>
+
+                <a href="#" class="go-nav-link">
+                    <span class="go-nav-icon">◈</span>
+                    Website
+                </a>
+
+                <a href="#" class="go-nav-link">
+                    <span class="go-nav-icon">◉</span>
+                    Competitors
+                </a>
+
+                <a href="#" class="go-nav-link">
+                    <span class="go-nav-icon">⚡</span>
+                    Growth Plan
+                </a>
+
+            </nav>
+
+            <div class="go-sidebar-footer">
+                <p>BLUE RIVER RAFTING</p>
+                <span>Scaling Operator</span>
+            </div>
+
+        </aside>
+
+        <main class="go-main">
+
+            <header class="go-topbar">
+
+                <div>
+                    <p class="go-kicker">BUSINESS OVERVIEW</p>
+
+                    <h1>Good evening, Markus.</h1>
+
+                    <p class="go-topbar-copy">
+                        Here is what I would focus on if I were running your business this week.
+                    </p>
+                </div>
+
+                <div class="go-topbar-actions">
+
+                    <button class="go-date-button" type="button">
+                        Last 30 Days⌄
+                    </button>
+
+                    <button class="go-avatar" type="button" aria-label="Open profile">
+                        MF
+                    </button>
+
+                </div>
+
+            </header>
+
+            <section class="go-advisor-card">
+
+                <div class="go-advisor-label">
+                    <span class="go-pulse-dot"></span>
+                    AI GROWTH ADVISOR
+                </div>
+
+                <div class="go-advisor-grid">
+
+                    <div class="go-advisor-message">
+
+                        <h2>
+                            Your biggest opportunity is improving mobile booking conversion.
+                        </h2>
+
+                        <p>
+                            Mobile visitors account for 68% of website traffic, but they complete
+                            bookings 19% less often than desktop visitors.
+                        </p>
+
+                        <button class="go-primary-button" type="button">
+                            Show Me What To Fix →
+                        </button>
+
+                    </div>
+
+                    <div class="go-impact-box">
+
+                        <span>ESTIMATED ANNUAL IMPACT</span>
+
+                        <strong>+$18,200</strong>
+
+                        <p>Potential recovered revenue</p>
+
+                    </div>
+
+                </div>
+
+            </section>
+
+            <section class="go-overview-grid">
+
+                <article class="go-score-card">
+
+                    <div class="go-card-heading">
+
+                        <div>
+                            <p class="go-kicker">BUSINESS HEALTH</p>
+                            <h2>Growth Score</h2>
+                        </div>
+
+                        <span class="go-status-pill healthy">
+                            Healthy
+                        </span>
+
+                    </div>
+
+                    <div class="go-score-content">
+
+                        <div class="go-score-ring">
+
+                            <div class="go-score-ring-inner">
+                                <strong>82</strong>
+                                <span>out of 100</span>
+                            </div>
+
+                        </div>
+
+                        <div class="go-score-summary">
+
+                            <span class="go-score-change">
+                                ▲ 4 points this month
+                            </span>
+
+                            <h3>Scaling Operator</h3>
+
+                            <p>
+                                Your foundation is strong. Improving visibility and conversion
+                                could unlock your next stage of growth.
+                            </p>
+
+                        </div>
+
+                    </div>
+
+                </article>
+
+                <article class="go-revenue-card">
+
+                    <div class="go-card-heading">
+
+                        <div>
+                            <p class="go-kicker">REVENUE OPPORTUNITY</p>
+                            <h2>Growth Potential</h2>
+                        </div>
+
+                        <span class="go-status-pill opportunity">
+                            Opportunity
+                        </span>
+
+                    </div>
+
+                    <div class="go-revenue-value">
+
+                        <strong>$46,300</strong>
+
+                        <span>
+                            estimated annual opportunity
+                        </span>
+
+                    </div>
+
+                    <div class="go-revenue-breakdown">
+
+                        <div>
+                            <span>Conversion</span>
+                            <strong>$18.2K</strong>
+                        </div>
+
+                        <div>
+                            <span>Visibility</span>
+                            <strong>$14.8K</strong>
+                        </div>
+
+                        <div>
+                            <span>Reviews</span>
+                            <strong>$8.7K</strong>
+                        </div>
+
+                        <div>
+                            <span>Automation</span>
+                            <strong>$4.6K</strong>
+                        </div>
+
+                    </div>
+
+                </article>
+
+            </section>
+
+            <section class="go-section">
+
+                <div class="go-section-heading">
+
+                    <div>
+                        <p class="go-kicker">KEY GROWTH FACTORS</p>
+                        <h2>Business Health</h2>
+                    </div>
+
+                    <button class="go-text-button" type="button">
+                        View Full Analysis →
+                    </button>
+
+                </div>
+
+                <div class="go-health-grid">
+
+                    <article class="go-health-card">
+
+                        <div class="go-health-card-top">
+
+                            <div class="go-health-icon blue">
+                                ↗
+                            </div>
+
+                            <span class="go-status-pill attention">
+                                Needs Attention
+                            </span>
+
+                        </div>
+
+                        <div class="go-health-title">
+                            <h3>Visibility</h3>
+                            <strong>63%</strong>
+                        </div>
+
+                        <div class="go-progress">
+                            <span style="width: 63%;"></span>
+                        </div>
+
+                        <p>
+                            Customers are not finding you as often as nearby competitors.
+                        </p>
+
+                        <div class="go-card-opportunity">
+
+                            <span>Potential impact</span>
+
+                            <strong>+$14,800</strong>
+
+                        </div>
+
+                    </article>
+
+                    <article class="go-health-card">
+
+                        <div class="go-health-card-top">
+
+                            <div class="go-health-icon green">
+                                ★
+                            </div>
+
+                            <span class="go-status-pill healthy">
+                                Healthy
+                            </span>
+
+                        </div>
+
+                        <div class="go-health-title">
+                            <h3>Reputation</h3>
+                            <strong>87%</strong>
+                        </div>
+
+                        <div class="go-progress">
+                            <span style="width: 87%;"></span>
+                        </div>
+
+                        <p>
+                            Strong ratings are helping customers trust your business.
+                        </p>
+
+                        <div class="go-card-opportunity">
+
+                            <span>Reviews this month</span>
+
+                            <strong>+12</strong>
+
+                        </div>
+
+                    </article>
+
+                    <article class="go-health-card">
+
+                        <div class="go-health-card-top">
+
+                            <div class="go-health-icon amber">
+                                ◈
+                            </div>
+
+                            <span class="go-status-pill attention">
+                                Needs Attention
+                            </span>
+
+                        </div>
+
+                        <div class="go-health-title">
+                            <h3>Website</h3>
+                            <strong>71%</strong>
+                        </div>
+
+                        <div class="go-progress">
+                            <span style="width: 71%;"></span>
+                        </div>
+
+                        <p>
+                            Your website is clear, but the mobile experience is costing bookings.
+                        </p>
+
+                        <div class="go-card-opportunity">
+
+                            <span>Potential impact</span>
+
+                            <strong>+$8,700</strong>
+
+                        </div>
+
+                    </article>
+
+                    <article class="go-health-card">
+
+                        <div class="go-health-card-top">
+
+                            <div class="go-health-icon red">
+                                ◎
+                            </div>
+
+                            <span class="go-status-pill priority">
+                                Priority
+                            </span>
+
+                        </div>
+
+                        <div class="go-health-title">
+                            <h3>Conversion</h3>
+                            <strong>58%</strong>
+                        </div>
+
+                        <div class="go-progress">
+                            <span style="width: 58%;"></span>
+                        </div>
+
+                        <p>
+                            Mobile visitors are abandoning before completing their reservation.
+                        </p>
+
+                        <div class="go-card-opportunity">
+
+                            <span>Potential impact</span>
+
+                            <strong>+$18,200</strong>
+
+                        </div>
+
+                    </article>
+
+                    <article class="go-health-card">
+
+                        <div class="go-health-card-top">
+
+                            <div class="go-health-icon purple">
+                                ⚡
+                            </div>
+
+                            <span class="go-status-pill attention">
+                                Needs Attention
+                            </span>
+
+                        </div>
+
+                        <div class="go-health-title">
+                            <h3>Automation</h3>
+                            <strong>54%</strong>
+                        </div>
+
+                        <div class="go-progress">
+                            <span style="width: 54%;"></span>
+                        </div>
+
+                        <p>
+                            Several repetitive growth tasks still require manual follow-up.
+                        </p>
+
+                        <div class="go-card-opportunity">
+
+                            <span>Hours saved monthly</span>
+
+                            <strong>18 hrs</strong>
+
+                        </div>
+
+                    </article>
+
+                    <article class="go-health-card">
+
+                        <div class="go-health-card-top">
+
+                            <div class="go-health-icon cyan">
+                                ◉
+                            </div>
+
+                            <span class="go-status-pill healthy">
+                                Healthy
+                            </span>
+
+                        </div>
+
+                        <div class="go-health-title">
+                            <h3>Intelligence</h3>
+                            <strong>79%</strong>
+                        </div>
+
+                        <div class="go-progress">
+                            <span style="width: 79%;"></span>
+                        </div>
+
+                        <p>
+                            Your reporting foundation is strong and improving.
+                        </p>
+
+                        <div class="go-card-opportunity">
+
+                            <span>Channels tracked</span>
+
+                            <strong>6 of 8</strong>
+
+                        </div>
+
+                    </article>
+
+                </div>
+
+            </section>
+
+            <section class="go-bottom-grid">
+
+                <article class="go-journey-card">
+
+                    <div class="go-card-heading">
+
+                        <div>
+                            <p class="go-kicker">YOUR GROWTH JOURNEY</p>
+                            <h2>90-Day Growth Plan</h2>
+                        </div>
+
+                        <span class="go-plan-progress">
+                            42% Complete
+                        </span>
+
+                    </div>
+
+                    <div class="go-journey-summary">
+
+                        <div>
+
+                            <span class="go-journey-summary-label">
+                                CURRENT STAGE
+                            </span>
+
+                            <strong>
+                                Website Improvements
+                            </strong>
+
+                            <p>
+                                Your foundation is complete. The next phase focuses on improving
+                                the customer experience and increasing booking conversion.
+                            </p>
+
+                        </div>
+
+                        <div class="go-journey-summary-score">
+
+                            <span>DAY</span>
+
+                            <strong>38</strong>
+
+                            <small>of 90</small>
+
+                        </div>
+
+                    </div>
+
+                    <div class="go-journey-line">
+
+                        <div class="go-journey-step complete">
+
+                            <div class="go-step-marker">
+                                ✓
+                            </div>
+
+                            <span>
+                                Assessment
+                            </span>
+
+                            <small>
+                                Complete
+                            </small>
+
+                        </div>
+
+                        <div class="go-journey-step complete">
+
+                            <div class="go-step-marker">
+                                ✓
+                            </div>
+
+                            <span>
+                                Growth Plan
+                            </span>
+
+                            <small>
+                                Complete
+                            </small>
+
+                        </div>
+
+                        <div class="go-journey-step current">
+
+                            <div class="go-step-marker">
+                                3
+                            </div>
+
+                            <span>
+                                Website Fixes
+                            </span>
+
+                            <small>
+                                In Progress
+                            </small>
+
+                        </div>
+
+                        <div class="go-journey-step">
+
+                            <div class="go-step-marker">
+                                4
+                            </div>
+
+                            <span>
+                                Review Engine
+                            </span>
+
+                            <small>
+                                Up Next
+                            </small>
+
+                        </div>
+
+                        <div class="go-journey-step">
+
+                            <div class="go-step-marker">
+                                5
+                            </div>
+
+                            <span>
+                                Growth Tracking
+                            </span>
+
+                            <small>
+                                Not Started
+                            </small>
+
+                        </div>
+
+                    </div>
+
+                    <div class="go-journey-now">
+
+                        <div class="go-journey-now-icon">
+                            ⚡
+                        </div>
+
+                        <div>
+
+                            <span>
+                                WHAT HAPPENS NEXT
+                            </span>
+
+                            <strong>
+                                Complete your mobile conversion improvements.
+                            </strong>
+
+                            <p>
+                                Finish the three recommended fixes, then Growth Operator will
+                                remeasure your score and unlock the Review Engine stage.
+                            </p>
+
+                        </div>
+
+                        <button class="go-primary-button" type="button">
+                            Continue My Plan →
+                        </button>
+
+                    </div>
+
+                </article>
+
+                <article class="go-feed-card">
+
+                    <div class="go-card-heading">
+
+                        <div>
+                            <p class="go-kicker">GROWTH FEED</p>
+                            <h2>What Changed</h2>
+                        </div>
+
+                        <button class="go-text-button" type="button">
+                            View All
+                        </button>
+
+                    </div>
+
+                    <div class="go-feed-list">
+
+                        <div class="go-feed-item">
+
+                            <div class="go-feed-icon positive">
+                                ↗
+                            </div>
+
+                            <div>
+
+                                <strong>
+                                    Google ranking improved
+                                </strong>
+
+                                <p>
+                                    “Rafting near me” moved from #6 to #4.
+                                </p>
+
+                            </div>
+
+                            <span>
+                                Today
+                            </span>
+
+                        </div>
+
+                        <div class="go-feed-item">
+
+                            <div class="go-feed-icon positive">
+                                ★
+                            </div>
+
+                            <div>
+
+                                <strong>
+                                    8 new reviews added
+                                </strong>
+
+                                <p>
+                                    Your average rating remains at 4.9.
+                                </p>
+
+                            </div>
+
+                            <span>
+                                Yesterday
+                            </span>
+
+                        </div>
+
+                        <div class="go-feed-item">
+
+                            <div class="go-feed-icon warning">
+                                !
+                            </div>
+
+                            <div>
+
+                                <strong>
+                                    Competitor activity detected
+                                </strong>
+
+                                <p>
+                                    River Adventures gained 14 reviews this week.
+                                </p>
+
+                            </div>
+
+                            <span>
+                                2 days ago
+                            </span>
+
+                        </div>
+
+                    </div>
+
+                </article>
+
+            </section>
+
+        </main>
+
     </div>
 
-    <div class="progress-bar">
-        <div class="progress-fill" style="width:63%;"></div>
-    </div>
+    <script src="../js/dashboard.js"></script>
 
-    <p>Customers are not finding you as often as they should.</p>
-
-    <div class="card-details">
-
-        <h4>Why this matters</h4>
-
-        <p>
-            Your website can only convert visitors who actually find it.
-            Increasing visibility often creates the biggest revenue gains.
-        </p>
-
-        <h4>Potential Impact</h4>
-
-        <p class="money">
-            +$22,000 annually
-        </p>
-
-        <button class="small-button">
-            Learn How →
-        </button>
-
-    </div>
-
-</div><script src="../js/dashboard.js"></script>
+</body>
+</html>

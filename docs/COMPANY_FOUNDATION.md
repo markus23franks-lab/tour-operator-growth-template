@@ -1,0 +1,1 @@
+growth-operator-brand-v1.png

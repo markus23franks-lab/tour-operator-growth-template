@@ -228,13 +228,16 @@ let activeModuleName = null;
 let completedActions = loadCompletedActions();
 
 document.addEventListener("DOMContentLoaded", function () {
-    createIntelligenceSection();
     createModuleDrawer();
+    createExecutionOverlay();
     activateHealthCards();
     activateNavigation();
     activateBriefingButtons();
     activateIntelligenceButtons();
+    activateExecutionButtons();
     updateJourneyProgress();
+    syncExecutionStateToDashboard();
+    activateOperatorExperience();
     animateDashboard();
 });
 
@@ -413,7 +416,7 @@ function createModuleDrawer() {
                 ×
             </button>
 
-            <div class="go-drawer-eyebrow">AI GROWTH ADVISOR</div>
+            <div class="go-drawer-eyebrow">GROWTH OPERATOR ANALYSIS</div>
 
             <div class="go-drawer-heading">
                 <div>
@@ -483,7 +486,7 @@ function createModuleDrawer() {
                 class="go-primary-button go-drawer-action-button"
                 type="button"
             >
-                Start Fixing This →
+                Build This With Me →
             </button>
         </aside>
     `;
@@ -745,10 +748,10 @@ function updateDrawerProgress() {
         button.textContent = "Action Plan Complete ✓";
         button.classList.add("complete");
     } else if (percent > 0) {
-        button.textContent = "Continue My Action Plan →";
+        button.textContent = "Continue Building →";
         button.classList.remove("complete");
     } else {
-        button.textContent = "Start Fixing This →";
+        button.textContent = "Build This With Me →";
         button.classList.remove("complete");
     }
 }
@@ -1039,4 +1042,984 @@ function animateDashboard() {
 
         element.classList.add("go-reveal");
     });
+}
+/* =========================================================
+   GROWTH OPERATOR BUILD 003 — GUIDED EXECUTION
+   ========================================================= */
+
+const EXECUTION_STORAGE_KEY = "growthOperatorReviewEngineExecution";
+
+const defaultExecutionState = {
+    currentStep: 0,
+    timing: "30 minutes after the tour",
+    message:
+        "Thanks for joining Blue River Rafting today! If you had a great experience, would you mind leaving us a quick Google review? It really helps our local team. {{review_link}}",
+    reviewLink: "https://g.page/r/blue-river-rafting/review",
+    completed: false,
+    activatedAt: null
+};
+
+let executionState = loadExecutionState();
+
+const executionSteps = [
+    {
+        eyebrow: "STEP 1 OF 5 · SEND TIMING",
+        title: "When should guests receive the review request?",
+        description:
+            "I recommend sending it while the experience is still fresh, but after guests have had a moment to settle in.",
+        render: renderExecutionTimingStep
+    },
+    {
+        eyebrow: "STEP 2 OF 5 · REVIEW MESSAGE",
+        title: "Here is the message I would send.",
+        description:
+            "It is short, personal, and makes the request feel helpful instead of promotional.",
+        render: renderExecutionMessageStep
+    },
+    {
+        eyebrow: "STEP 3 OF 5 · REVIEW DESTINATION",
+        title: "Where should the button send guests?",
+        description:
+            "The fewest possible clicks usually produce the strongest completion rate.",
+        render: renderExecutionLinkStep
+    },
+    {
+        eyebrow: "STEP 4 OF 5 · TEST THE EXPERIENCE",
+        title: "Let’s test the full customer journey.",
+        description:
+            "I checked the trigger, timing, message, and review destination before activation.",
+        render: renderExecutionTestStep
+    },
+    {
+        eyebrow: "STEP 5 OF 5 · ACTIVATE",
+        title: "Your Review Engine is ready.",
+        description:
+            "Once activated, Growth Operator will remember this decision and begin monitoring the result.",
+        render: renderExecutionActivationStep
+    }
+];
+
+function loadExecutionState() {
+    try {
+        const stored = localStorage.getItem(EXECUTION_STORAGE_KEY);
+
+        if (!stored) {
+            return { ...defaultExecutionState };
+        }
+
+        const parsed = JSON.parse(stored);
+
+        return {
+            ...defaultExecutionState,
+            ...(parsed && typeof parsed === "object" ? parsed : {})
+        };
+    } catch (error) {
+        console.warn("Growth Operator could not load execution progress.", error);
+        return { ...defaultExecutionState };
+    }
+}
+
+function saveExecutionState() {
+    try {
+        localStorage.setItem(
+            EXECUTION_STORAGE_KEY,
+            JSON.stringify(executionState)
+        );
+    } catch (error) {
+        console.warn("Growth Operator could not save execution progress.", error);
+    }
+}
+
+function createExecutionOverlay() {
+    if (document.getElementById("go-execution-overlay")) {
+        return;
+    }
+
+    const overlay = document.createElement("div");
+
+    overlay.id = "go-execution-overlay";
+    overlay.className = "go-execution-overlay";
+    overlay.setAttribute("aria-hidden", "true");
+
+    overlay.innerHTML = `
+        <div class="go-execution-shell" role="dialog" aria-modal="true" aria-labelledby="go-execution-title">
+            <header class="go-execution-topbar">
+                <div class="go-execution-brand">
+                    <div class="go-logo-mark" aria-hidden="true">
+                        <span class="go-logo-ring"></span>
+                        <span class="go-logo-arrow"></span>
+                    </div>
+
+                    <div>
+                        <strong>GROWTH OPERATOR</strong>
+                        <span>GUIDED EXECUTION</span>
+                    </div>
+                </div>
+
+                <button
+                    class="go-execution-close"
+                    type="button"
+                    aria-label="Close guided execution"
+                    data-close-execution
+                >
+                    ×
+                </button>
+            </header>
+
+            <div class="go-execution-progress-wrap">
+                <div class="go-execution-progress-copy">
+                    <span id="go-execution-progress-label">Review Engine Setup</span>
+                    <strong id="go-execution-progress-percent">20%</strong>
+                </div>
+
+                <div class="go-execution-progress-track">
+                    <span id="go-execution-progress-fill"></span>
+                </div>
+            </div>
+
+            <main class="go-execution-main">
+                <section class="go-execution-stage">
+                    <div class="go-execution-step-copy">
+                        <p id="go-execution-eyebrow" class="go-execution-eyebrow"></p>
+                        <h2 id="go-execution-title"></h2>
+                        <p id="go-execution-description" class="go-execution-description"></p>
+                    </div>
+
+                    <div id="go-execution-content" class="go-execution-content"></div>
+
+                    <div class="go-execution-footer">
+                        <button
+                            id="go-execution-back"
+                            class="go-execution-secondary-button"
+                            type="button"
+                        >
+                            ← Back
+                        </button>
+
+                        <div class="go-execution-footer-right">
+                            <span id="go-execution-save-status">Progress saves automatically</span>
+
+                            <button
+                                id="go-execution-next"
+                                class="go-primary-button go-execution-next-button"
+                                type="button"
+                            >
+                                Continue →
+                            </button>
+                        </div>
+                    </div>
+                </section>
+
+                <aside class="go-execution-advisor">
+                    <div class="go-execution-advisor-head">
+                        <span class="go-pulse-dot"></span>
+                        <div>
+                            <strong>GROWTH OPERATOR'S RECOMMENDATION</strong>
+                            <small>I’ll explain the decision as we build.</small>
+                        </div>
+                    </div>
+
+                    <div id="go-execution-advisor-content"></div>
+
+                    <div class="go-execution-trust">
+                        <span>WHY YOU CAN TRUST THIS</span>
+                        <ul>
+                            <li>37 comparable operators analyzed</li>
+                            <li>Current review velocity compared</li>
+                            <li>Your 4.9 rating already validated</li>
+                            <li>Recommendation confidence: 94%</li>
+                        </ul>
+                    </div>
+                </aside>
+            </main>
+        </div>
+    `;
+
+    document.body.appendChild(overlay);
+
+    overlay
+        .querySelectorAll("[data-close-execution]")
+        .forEach(function (button) {
+            button.addEventListener("click", closeExecution);
+        });
+
+    document
+        .getElementById("go-execution-back")
+        .addEventListener("click", previousExecutionStep);
+
+    document
+        .getElementById("go-execution-next")
+        .addEventListener("click", nextExecutionStep);
+
+    document.addEventListener("keydown", function (event) {
+        if (
+            event.key === "Escape" &&
+            document
+                .getElementById("go-execution-overlay")
+                ?.classList.contains("open")
+        ) {
+            closeExecution();
+        }
+    });
+}
+
+function activateExecutionButtons() {
+    const directActionButton = document.querySelector(
+        ".go-ai-action-cta .go-primary-button"
+    );
+
+    if (directActionButton) {
+        directActionButton.addEventListener("click", function () {
+            if (executionState.completed) {
+                openModuleDrawer("Visibility");
+                return;
+            }
+
+            openExecution();
+        });
+    }
+
+    const journeyButton = document.querySelector(
+        ".go-journey-now .go-primary-button"
+    );
+
+    if (journeyButton) {
+        journeyButton.addEventListener("click", function (event) {
+            if (!executionState.completed) {
+                event.preventDefault();
+                event.stopImmediatePropagation();
+                openExecution();
+            }
+        });
+    }
+}
+
+function openExecution() {
+    closeModuleDrawer();
+
+    const overlay = document.getElementById("go-execution-overlay");
+
+    if (!overlay) {
+        return;
+    }
+
+    if (executionState.completed) {
+        executionState.currentStep = 4;
+    }
+
+    overlay.classList.add("open");
+    overlay.setAttribute("aria-hidden", "false");
+    document.body.classList.add("go-execution-open");
+
+    renderExecutionStep();
+}
+
+function closeExecution() {
+    const overlay = document.getElementById("go-execution-overlay");
+
+    if (!overlay) {
+        return;
+    }
+
+    overlay.classList.remove("open");
+    overlay.setAttribute("aria-hidden", "true");
+    document.body.classList.remove("go-execution-open");
+
+    saveExecutionState();
+    syncExecutionStateToDashboard();
+}
+
+function renderExecutionStep() {
+    const stepIndex = Math.max(
+        0,
+        Math.min(executionState.currentStep, executionSteps.length - 1)
+    );
+
+    executionState.currentStep = stepIndex;
+
+    const step = executionSteps[stepIndex];
+    const percent = Math.round(
+        ((stepIndex + 1) / executionSteps.length) * 100
+    );
+
+    document.getElementById("go-execution-eyebrow").textContent =
+        step.eyebrow;
+
+    document.getElementById("go-execution-title").textContent =
+        step.title;
+
+    document.getElementById("go-execution-description").textContent =
+        step.description;
+
+    document.getElementById(
+        "go-execution-progress-percent"
+    ).textContent = `${percent}%`;
+
+    document.getElementById(
+        "go-execution-progress-fill"
+    ).style.width = `${percent}%`;
+
+    const backButton = document.getElementById("go-execution-back");
+    const nextButton = document.getElementById("go-execution-next");
+
+    backButton.disabled = stepIndex === 0;
+    backButton.style.visibility = stepIndex === 0 ? "hidden" : "visible";
+
+    if (stepIndex === executionSteps.length - 1) {
+        nextButton.textContent = executionState.completed
+            ? "Return to Dashboard →"
+            : "Activate Review Engine →";
+    } else {
+        nextButton.textContent = "Continue →";
+    }
+
+    step.render();
+
+    saveExecutionState();
+
+    const stage = document.querySelector(".go-execution-stage");
+
+    if (stage) {
+        stage.classList.remove("step-enter");
+
+        requestAnimationFrame(function () {
+            stage.classList.add("step-enter");
+        });
+    }
+}
+
+function nextExecutionStep() {
+    captureExecutionInputs();
+
+    if (executionState.currentStep < executionSteps.length - 1) {
+        executionState.currentStep += 1;
+        renderExecutionStep();
+        return;
+    }
+
+    if (!executionState.completed) {
+        finishExecution();
+        return;
+    }
+
+    closeExecution();
+}
+
+function previousExecutionStep() {
+    captureExecutionInputs();
+
+    if (executionState.currentStep <= 0) {
+        return;
+    }
+
+    executionState.currentStep -= 1;
+    renderExecutionStep();
+}
+
+function captureExecutionInputs() {
+    const selectedTiming = document.querySelector(
+        'input[name="go-review-timing"]:checked'
+    );
+
+    if (selectedTiming) {
+        executionState.timing = selectedTiming.value;
+    }
+
+    const messageInput = document.getElementById(
+        "go-review-message-input"
+    );
+
+    if (messageInput) {
+        executionState.message = messageInput.value.trim();
+    }
+
+    const linkInput = document.getElementById(
+        "go-review-link-input"
+    );
+
+    if (linkInput) {
+        executionState.reviewLink = linkInput.value.trim();
+    }
+
+    saveExecutionState();
+}
+
+function renderExecutionTimingStep() {
+    const content = document.getElementById("go-execution-content");
+    const advisor = document.getElementById(
+        "go-execution-advisor-content"
+    );
+
+    const timingOptions = [
+        {
+            value: "Immediately after the tour",
+            title: "Immediately after the tour",
+            detail: "Fastest send, but guests may still be gathering belongings."
+        },
+        {
+            value: "30 minutes after the tour",
+            title: "30 minutes after the tour",
+            detail: "Recommended · The experience is fresh and the guest has settled in."
+        },
+        {
+            value: "2 hours after the tour",
+            title: "2 hours after the tour",
+            detail: "Useful for longer transfers or post-tour meals."
+        },
+        {
+            value: "The next morning",
+            title: "The next morning",
+            detail: "Lower urgency, but less likely to interrupt the guest."
+        }
+    ];
+
+    content.innerHTML = `
+        <div class="go-execution-options">
+            ${timingOptions
+                .map(function (option) {
+                    const selected =
+                        executionState.timing === option.value;
+
+                    return `
+                        <label class="go-execution-option ${
+                            selected ? "selected" : ""
+                        }">
+                            <input
+                                type="radio"
+                                name="go-review-timing"
+                                value="${option.value}"
+                                ${selected ? "checked" : ""}
+                            >
+
+                            <span class="go-execution-radio"></span>
+
+                            <span class="go-execution-option-copy">
+                                <strong>${option.title}</strong>
+                                <small>${option.detail}</small>
+                            </span>
+
+                            ${
+                                option.value === "30 minutes after the tour"
+                                    ? '<span class="go-execution-recommended">RECOMMENDED</span>'
+                                    : ""
+                            }
+                        </label>
+                    `;
+                })
+                .join("")}
+        </div>
+    `;
+
+    content
+        .querySelectorAll('input[name="go-review-timing"]')
+        .forEach(function (input) {
+            input.addEventListener("change", function () {
+                executionState.timing = input.value;
+                saveExecutionState();
+
+                content
+                    .querySelectorAll(".go-execution-option")
+                    .forEach(function (option) {
+                        option.classList.toggle(
+                            "selected",
+                            option.contains(input)
+                        );
+                    });
+            });
+        });
+
+    advisor.innerHTML = `
+        <h3>Use the 30-minute window.</h3>
+        <p>
+            Guests are usually transitioning home, to their hotel, or to their next activity.
+            The experience is still emotionally fresh without the request feeling rushed.
+        </p>
+
+        <div class="go-execution-advisor-stat">
+            <span>EXPECTED RESULT</span>
+            <strong>Higher completion rate</strong>
+            <small>with less customer friction</small>
+        </div>
+    `;
+}
+
+function renderExecutionMessageStep() {
+    const content = document.getElementById("go-execution-content");
+    const advisor = document.getElementById(
+        "go-execution-advisor-content"
+    );
+
+    content.innerHTML = `
+        <div class="go-execution-editor-layout">
+            <div class="go-execution-editor">
+                <label for="go-review-message-input">
+                    TEXT MESSAGE
+                </label>
+
+                <textarea
+                    id="go-review-message-input"
+                    rows="8"
+                    maxlength="320"
+                >${escapeHtml(executionState.message)}</textarea>
+
+                <div class="go-execution-editor-meta">
+                    <span>Personalized with your business name</span>
+                    <span id="go-message-character-count">
+                        ${executionState.message.length}/320
+                    </span>
+                </div>
+            </div>
+
+            <div class="go-execution-phone">
+                <span class="go-execution-phone-label">CUSTOMER PREVIEW</span>
+
+                <div class="go-execution-phone-screen">
+                    <div class="go-execution-phone-contact">
+                        <span>BR</span>
+                        <div>
+                            <strong>Blue River Rafting</strong>
+                            <small>Text Message</small>
+                        </div>
+                    </div>
+
+                    <div id="go-review-message-preview" class="go-execution-message-bubble">
+                        ${formatPreviewMessage(executionState.message)}
+                    </div>
+
+                    <div class="go-execution-review-button">
+                        Leave a Google Review
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+
+    const textarea = document.getElementById(
+        "go-review-message-input"
+    );
+
+    textarea.addEventListener("input", function () {
+        executionState.message = textarea.value;
+        saveExecutionState();
+
+        document.getElementById(
+            "go-review-message-preview"
+        ).innerHTML = formatPreviewMessage(textarea.value);
+
+        document.getElementById(
+            "go-message-character-count"
+        ).textContent = `${textarea.value.length}/320`;
+    });
+
+    advisor.innerHTML = `
+        <h3>Keep it human and brief.</h3>
+        <p>
+            The strongest request sounds like it came from the operator—not a marketing platform.
+            I removed unnecessary language and kept the favor clear.
+        </p>
+
+        <div class="go-execution-advisor-stat">
+            <span>MESSAGE QUALITY</span>
+            <strong>Strong</strong>
+            <small>clear request · low friction · personal tone</small>
+        </div>
+    `;
+}
+
+function renderExecutionLinkStep() {
+    const content = document.getElementById("go-execution-content");
+    const advisor = document.getElementById(
+        "go-execution-advisor-content"
+    );
+
+    content.innerHTML = `
+        <div class="go-execution-link-card">
+            <div class="go-execution-link-icon">G</div>
+
+            <div class="go-execution-link-copy">
+                <label for="go-review-link-input">
+                    GOOGLE REVIEW LINK
+                </label>
+
+                <input
+                    id="go-review-link-input"
+                    type="url"
+                    value="${escapeAttribute(executionState.reviewLink)}"
+                    placeholder="https://g.page/r/your-business/review"
+                >
+
+                <p>
+                    Guests should land directly on the Google review screen—not your homepage
+                    or general Business Profile.
+                </p>
+            </div>
+
+            <span class="go-execution-verified">✓ VERIFIED FORMAT</span>
+        </div>
+
+        <div class="go-execution-path">
+            <div>
+                <span>1</span>
+                <strong>Text arrives</strong>
+            </div>
+            <i>→</i>
+            <div>
+                <span>2</span>
+                <strong>Guest taps once</strong>
+            </div>
+            <i>→</i>
+            <div>
+                <span>3</span>
+                <strong>Google review opens</strong>
+            </div>
+        </div>
+    `;
+
+    const input = document.getElementById("go-review-link-input");
+
+    input.addEventListener("input", function () {
+        executionState.reviewLink = input.value;
+        saveExecutionState();
+    });
+
+    advisor.innerHTML = `
+        <h3>Remove every unnecessary click.</h3>
+        <p>
+            Sending guests straight to the review composer is one of the simplest ways to
+            increase completion without changing the message.
+        </p>
+
+        <div class="go-execution-advisor-stat">
+            <span>CUSTOMER PATH</span>
+            <strong>1 tap</strong>
+            <small>from text message to review screen</small>
+        </div>
+    `;
+}
+
+function renderExecutionTestStep() {
+    const content = document.getElementById("go-execution-content");
+    const advisor = document.getElementById(
+        "go-execution-advisor-content"
+    );
+
+    content.innerHTML = `
+        <div class="go-execution-test">
+            <div class="go-execution-test-line"></div>
+
+            <article class="complete">
+                <span>✓</span>
+                <div>
+                    <strong>Tour marked complete</strong>
+                    <small>Booking system sends the completion trigger.</small>
+                </div>
+            </article>
+
+            <article class="complete">
+                <span>✓</span>
+                <div>
+                    <strong>Wait ${escapeHtml(executionState.timing.toLowerCase())}</strong>
+                    <small>The timing rule is applied automatically.</small>
+                </div>
+            </article>
+
+            <article class="complete">
+                <span>✓</span>
+                <div>
+                    <strong>Personalized message sends</strong>
+                    <small>Blue River Rafting appears as the sender.</small>
+                </div>
+            </article>
+
+            <article class="complete">
+                <span>✓</span>
+                <div>
+                    <strong>Review link opens correctly</strong>
+                    <small>The guest lands on the Google review screen.</small>
+                </div>
+            </article>
+        </div>
+
+        <div class="go-execution-test-result">
+            <span class="go-pulse-dot"></span>
+            <div>
+                <strong>TEST PASSED</strong>
+                <p>The complete customer experience is ready for activation.</p>
+            </div>
+        </div>
+    `;
+
+    advisor.innerHTML = `
+        <h3>Everything is working as intended.</h3>
+        <p>
+            I verified the complete sequence from finished tour to Google review destination.
+            No broken steps were detected in this prototype.
+        </p>
+
+        <div class="go-execution-advisor-stat positive">
+            <span>READINESS</span>
+            <strong>100%</strong>
+            <small>ready to activate</small>
+        </div>
+    `;
+}
+
+function renderExecutionActivationStep() {
+    const content = document.getElementById("go-execution-content");
+    const advisor = document.getElementById(
+        "go-execution-advisor-content"
+    );
+
+    const activatedDate = executionState.activatedAt
+        ? new Date(executionState.activatedAt).toLocaleString([], {
+              month: "short",
+              day: "numeric",
+              hour: "numeric",
+              minute: "2-digit"
+          })
+        : "";
+
+    content.innerHTML = `
+        <div class="go-execution-activation ${
+            executionState.completed ? "active" : ""
+        }">
+            <div class="go-execution-activation-icon">
+                ${executionState.completed ? "✓" : "⚡"}
+            </div>
+
+            <p class="go-execution-activation-kicker">
+                ${
+                    executionState.completed
+                        ? "REVIEW ENGINE ACTIVE"
+                        : "READY TO ACTIVATE"
+                }
+            </p>
+
+            <h3>
+                ${
+                    executionState.completed
+                        ? "Growth Operator is now monitoring the result."
+                        : "One click closes the loop."
+                }
+            </h3>
+
+            <p>
+                ${
+                    executionState.completed
+                        ? `Activated ${activatedDate}. I’ll track review volume, response pace, competitor movement, and future ranking changes.`
+                        : "After activation, this workflow will be remembered on the dashboard and the Review Engine stage will be marked complete."
+                }
+            </p>
+
+            <div class="go-execution-activation-summary">
+                <div>
+                    <span>SEND TIMING</span>
+                    <strong>${escapeHtml(executionState.timing)}</strong>
+                </div>
+
+                <div>
+                    <span>DESTINATION</span>
+                    <strong>Google Reviews</strong>
+                </div>
+
+                <div>
+                    <span>MONITORING</span>
+                    <strong>Reviews + rankings</strong>
+                </div>
+            </div>
+        </div>
+    `;
+
+    advisor.innerHTML = `
+        <h3>
+            ${
+                executionState.completed
+                    ? "The next job is measurement."
+                    : "I would activate this now."
+            }
+        </h3>
+
+        <p>
+            ${
+                executionState.completed
+                    ? "The setup is finished. Growth Operator should now judge the recommendation by what actually changes."
+                    : "Your rating is already strong. Increasing review pace is the fastest remaining reputation opportunity."
+            }
+        </p>
+
+        <div class="go-execution-advisor-stat positive">
+            <span>ESTIMATED ANNUAL IMPACT</span>
+            <strong>+$8,700</strong>
+            <small>based on current opportunity model</small>
+        </div>
+    `;
+}
+
+function finishExecution() {
+    executionState.completed = true;
+    executionState.activatedAt =
+        executionState.activatedAt || new Date().toISOString();
+
+    saveExecutionState();
+
+    if (!Array.isArray(completedActions.Reputation)) {
+        completedActions.Reputation = [];
+    }
+
+    completedActions.Reputation = [0, 1, 2];
+    saveCompletedActions();
+
+    updateJourneyProgress();
+    syncExecutionStateToDashboard();
+    updateOperatorExperience();
+    renderExecutionStep();
+
+    document.getElementById(
+        "go-execution-next"
+    ).textContent = "Return to Dashboard →";
+}
+
+function syncExecutionStateToDashboard() {
+    const actionButton = document.querySelector(
+        ".go-ai-action-cta .go-primary-button"
+    );
+
+    const actionEyebrow = document.querySelector(
+        ".go-ai-action-copy > span"
+    );
+
+    const actionTitle = document.querySelector(
+        ".go-ai-action-copy > strong"
+    );
+
+    const actionDescription = document.querySelector(
+        ".go-ai-action-copy > p"
+    );
+
+    const actionMeta = document.querySelector(
+        ".go-ai-action-cta > small"
+    );
+
+    if (!actionButton) {
+        return;
+    }
+
+    if (executionState.completed) {
+        actionButton.textContent = "Open Visibility Plan →";
+        actionButton.classList.add("go-execution-complete-button");
+
+        if (actionEyebrow) {
+            actionEyebrow.textContent =
+                "THE NEXT DECISION I NEED FROM YOU";
+        }
+
+        if (actionTitle) {
+            actionTitle.textContent =
+                "Approve the visibility plan while I continue measuring your Review Engine.";
+        }
+
+        if (actionDescription) {
+            actionDescription.textContent =
+                "The review workflow is running. I found a separate ranking gap we can fix now without interrupting the measurement period.";
+        }
+
+        if (actionMeta) {
+            actionMeta.textContent =
+                "Review Engine stays active · About 20 minutes";
+        }
+
+        const scanStatus = document.querySelector(
+            ".go-ai-scan-status strong"
+        );
+
+        if (scanStatus) {
+            scanStatus.textContent = "Priority updated";
+        }
+    } else {
+        actionButton.textContent =
+            executionState.currentStep > 0
+                ? "Continue setup →"
+                : "Let's build it →";
+
+        actionButton.classList.remove(
+            "go-execution-complete-button"
+        );
+    }
+}
+
+
+function activateOperatorExperience() {
+    updateOperatorExperience();
+
+    const worklogItems = document.querySelectorAll(".go-operator-worklog-item");
+
+    worklogItems.forEach(function (item, index) {
+        item.style.setProperty("--go-worklog-delay", `${index * 90}ms`);
+        item.classList.add("go-operator-worklog-reveal");
+    });
+}
+
+function updateOperatorExperience() {
+    const title = document.querySelector(".go-ai-finding-title h2");
+    const description = document.querySelector(".go-ai-finding-title > p");
+    const voiceMessage = document.getElementById("go-operator-voice-message");
+    const label = document.querySelector(".go-ai-finding-label");
+    const worklogFinished = document.querySelector(".go-operator-worklog-item.complete strong");
+    const worklogWatching = document.querySelector(".go-operator-worklog-item.watching strong");
+    const worklogDecision = document.querySelector(".go-operator-worklog-item.decision strong");
+
+    if (executionState.completed) {
+        if (label) {
+            label.textContent = "I CHANGED THE PRIORITY AFTER NEW DATA ARRIVED";
+        }
+
+        if (title) {
+            title.textContent =
+                "The Review Engine is live. Now I’m moving to the visibility gap it cannot solve alone.";
+        }
+
+        if (description) {
+            description.textContent =
+                "Two new reviews arrived and your rating remains strong. I am keeping that system running while shifting your attention to the next constraint: competitors still appear above you for several high-intent local searches.";
+        }
+
+        if (voiceMessage) {
+            voiceMessage.textContent =
+                "Yesterday, review velocity was the bottleneck. Today, that fix is active. I am not asking you to keep solving the same problem—I am measuring it and moving us to the next one.";
+        }
+    } else {
+        if (worklogFinished) {
+            worklogFinished.textContent =
+                "I completed the diagnosis and built the recommended workflow.";
+        }
+
+        if (worklogWatching) {
+            worklogWatching.textContent =
+                "I am watching competitor review momentum and local rankings.";
+        }
+
+        if (worklogDecision) {
+            worklogDecision.textContent =
+                "I need your approval to activate the Review Engine.";
+        }
+    }
+}
+
+function formatPreviewMessage(value) {
+    return escapeHtml(value)
+        .replace(/\{\{review_link\}\}/g, "")
+        .replace(/\n/g, "<br>");
+}
+
+function escapeHtml(value) {
+    return String(value)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+}
+
+function escapeAttribute(value) {
+    return escapeHtml(value);
 }

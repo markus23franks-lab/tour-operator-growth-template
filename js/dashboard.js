@@ -239,6 +239,7 @@ document.addEventListener("DOMContentLoaded", function () {
     syncExecutionStateToDashboard();
     activateOperatorExperience();
     animateDashboard();
+    activateBuild006Experience();
 });
 
 function createIntelligenceSection() {
@@ -2022,4 +2023,82 @@ function escapeHtml(value) {
 
 function escapeAttribute(value) {
     return escapeHtml(value);
+}
+
+
+/* =========================================================
+   GROWTH OPERATOR BUILD 006 — DAILY OPERATOR REPORT
+   ========================================================= */
+function activateBuild006Experience() {
+    updateDailyOperatorHeader();
+    activateTimelineAction();
+    animateOperatorNumbers();
+
+    document.querySelectorAll(".go-timeline-entry").forEach(function (entry, index) {
+        entry.style.setProperty("--go-worklog-delay", `${index * 95}ms`);
+    });
+}
+
+function updateDailyOperatorHeader() {
+    const kicker = document.querySelector(".go-topbar .go-kicker");
+    const heading = document.querySelector(".go-topbar h1");
+    const now = new Date();
+    const hour = now.getHours();
+    const greeting = hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
+
+    if (kicker) {
+        kicker.textContent = now.toLocaleDateString([], {
+            weekday: "long",
+            month: "long",
+            day: "numeric"
+        }).toUpperCase();
+    }
+
+    if (heading) {
+        heading.textContent = `${greeting}, Markus.`;
+    }
+}
+
+function activateTimelineAction() {
+    const button = document.querySelector(".go-timeline-action");
+    const recommendation = document.querySelector(".go-ai-finding-card");
+
+    if (!button || !recommendation) return;
+
+    button.addEventListener("click", function () {
+        recommendation.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+}
+
+function animateOperatorNumbers() {
+    const targets = document.querySelectorAll(
+        ".go-briefing-score strong, .go-score-ring-inner strong, .go-weekly-win-card strong"
+    );
+
+    targets.forEach(function (element) {
+        const raw = element.textContent.trim();
+        const match = raw.match(/-?\d+(?:\.\d+)?/);
+        if (!match) return;
+
+        const target = Number(match[0]);
+        if (!Number.isFinite(target) || target > 500) return;
+
+        const prefix = raw.slice(0, match.index);
+        const suffix = raw.slice(match.index + match[0].length);
+        const duration = 700;
+        const started = performance.now();
+        element.classList.add("go-count-ready");
+
+        function tick(now) {
+            const progress = Math.min(1, (now - started) / duration);
+            const eased = 1 - Math.pow(1 - progress, 3);
+            const value = Number.isInteger(target)
+                ? Math.round(target * eased)
+                : (target * eased).toFixed(1);
+            element.textContent = `${prefix}${value}${suffix}`;
+            if (progress < 1) requestAnimationFrame(tick);
+        }
+
+        requestAnimationFrame(tick);
+    });
 }

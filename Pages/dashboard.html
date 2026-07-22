@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-    <title>Growth Operator Dashboard</title>
+    <title>Growth Operator — Daily Operator Report</title>
 
     <link rel="stylesheet" href="../styles.css">
 </head>
@@ -93,7 +93,7 @@
                 <div class="go-topbar-actions">
 
                     <button class="go-date-button" type="button">
-                        Last 30 Days⌄
+                        Last 30 Days <span aria-hidden="true">⌄</span>
                     </button>
 
                     <button class="go-avatar" type="button" aria-label="Open profile">
@@ -260,46 +260,64 @@
 
             </section>
 
-            <section class="go-operator-worklog" aria-labelledby="go-operator-worklog-title">
+            <section class="go-operator-worklog go-operator-timeline" aria-labelledby="go-operator-worklog-title">
                 <div class="go-operator-worklog-heading">
                     <div>
-                        <p class="go-kicker">YOUR GROWTH EMPLOYEE</p>
-                        <h2 id="go-operator-worklog-title">What I did while you were away</h2>
+                        <p class="go-kicker">TODAY'S OPERATOR REPORT</p>
+                        <h2 id="go-operator-worklog-title">Here is how I moved the business forward</h2>
                     </div>
-
                     <div class="go-operator-live-status">
                         <span class="go-pulse-dot"></span>
-                        <strong>Still monitoring</strong>
+                        <strong>Working now</strong>
                     </div>
                 </div>
 
-                <div class="go-operator-worklog-grid">
-                    <article class="go-operator-worklog-item complete">
-                        <span class="go-operator-worklog-icon">✓</span>
-                        <div>
-                            <small>FINISHED</small>
-                            <strong>I verified your Review Engine is active.</strong>
-                            <p>The trigger, message, timing, and Google destination are all working.</p>
-                        </div>
-                    </article>
+                <div class="go-timeline-layout">
+                    <div class="go-timeline-feed" aria-label="Operator activity timeline">
+                        <article class="go-timeline-entry complete">
+                            <time datetime="07:14">7:14 AM</time>
+                            <span class="go-timeline-marker">✓</span>
+                            <div>
+                                <small>FINISHED</small>
+                                <strong>Verified the Review Engine from trigger to Google.</strong>
+                                <p>The timing, message, customer path, and destination all passed.</p>
+                            </div>
+                        </article>
+                        <article class="go-timeline-entry complete">
+                            <time datetime="08:32">8:32 AM</time>
+                            <span class="go-timeline-marker">↗</span>
+                            <div>
+                                <small>FOUND</small>
+                                <strong>Detected a visibility gap on high-intent searches.</strong>
+                                <p>Competitors still appear above you even as review momentum improves.</p>
+                            </div>
+                        </article>
+                        <article class="go-timeline-entry watching">
+                            <time datetime="09:05">9:05 AM</time>
+                            <span class="go-timeline-marker">◎</span>
+                            <div>
+                                <small>MONITORING</small>
+                                <strong>Started measuring reviews against ranking movement.</strong>
+                                <p>I will keep this running while we work on the next constraint.</p>
+                            </div>
+                        </article>
+                        <article class="go-timeline-entry decision">
+                            <time>Waiting</time>
+                            <span class="go-timeline-marker">→</span>
+                            <div>
+                                <small>NEEDS YOUR DECISION</small>
+                                <strong>Approve the Visibility Plan.</strong>
+                                <p>This is the only action I need from you today.</p>
+                            </div>
+                        </article>
+                    </div>
 
-                    <article class="go-operator-worklog-item watching">
-                        <span class="go-operator-worklog-icon">◎</span>
-                        <div>
-                            <small>WATCHING NOW</small>
-                            <strong>I am measuring whether reviews change visibility.</strong>
-                            <p>I will compare review pace, ranking movement, and competitor momentum.</p>
-                        </div>
-                    </article>
-
-                    <article class="go-operator-worklog-item decision">
-                        <span class="go-operator-worklog-icon">→</span>
-                        <div>
-                            <small>NEEDS YOUR DECISION</small>
-                            <strong>I found the next visibility gap worth fixing.</strong>
-                            <p>Approve the plan and I will build the next action with you.</p>
-                        </div>
-                    </article>
+                    <aside class="go-operator-summary">
+                        <span>MY STATUS</span>
+                        <strong>3 jobs handled.<br>1 decision waiting.</strong>
+                        <p>I am continuing to monitor the Review Engine. Your attention is only needed on the visibility plan.</p>
+                        <button class="go-primary-button go-timeline-action" type="button">Review My Recommendation →</button>
+                    </aside>
                 </div>
             </section>
 
@@ -686,14 +704,20 @@
                 <div class="go-section-heading">
 
                     <div>
-                        <p class="go-kicker">KEY GROWTH FACTORS</p>
-                        <h2>Business Health</h2>
+                        <p class="go-kicker">WHAT NEEDS ATTENTION NEXT</p>
+                        <h2>Business Health, prioritized</h2>
                     </div>
 
                     <button class="go-text-button" type="button">
                         View Full Analysis →
                     </button>
 
+                </div>
+
+                <div class="go-health-priority-strip">
+                    <span class="attention"><strong>1</strong> Needs attention</span>
+                    <span class="improving"><strong>2</strong> Improving</span>
+                    <span class="healthy"><strong>3</strong> Healthy</span>
                 </div>
 
                 <div class="go-health-grid">
@@ -931,8 +955,8 @@
                     <div class="go-card-heading">
 
                         <div>
-                            <p class="go-kicker">YOUR GROWTH JOURNEY</p>
-                            <h2>90-Day Growth Plan</h2>
+                            <p class="go-kicker">WHERE WE ARE HEADED</p>
+                            <h2>Your Growth Roadmap</h2>
                         </div>
 
                         <span class="go-plan-progress">

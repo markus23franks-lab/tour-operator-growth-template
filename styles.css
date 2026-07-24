@@ -2097,7 +2097,7 @@ hr {
 }
 
 /* ==================================================
-   WHY THIS MATTERS â€” INTELLIGENCE SECTION
+   WHY THIS MATTERS Ã¢â‚¬â€ INTELLIGENCE SECTION
 ================================================== */
 
 .go-intelligence-section {
@@ -2345,7 +2345,7 @@ hr {
 }
 
 /* ==================================================
-   AI FINDING â€” TODAY'S PRIORITY
+   AI FINDING Ã¢â‚¬â€ TODAY'S PRIORITY
 ================================================== */
 
 .go-ai-finding-card {
@@ -2785,7 +2785,7 @@ hr {
 
 
 /* =========================================================
-   GROWTH OPERATOR BUILD 002 â€” AI OPERATOR EXPERIENCE
+   GROWTH OPERATOR BUILD 002 Ã¢â‚¬â€ AI OPERATOR EXPERIENCE
    ========================================================= */
 
 .go-ai-operator-card {
@@ -2998,7 +2998,7 @@ hr {
     }
 }
 /* =========================================================
-   GROWTH OPERATOR BUILD 003 â€” GUIDED EXECUTION
+   GROWTH OPERATOR BUILD 003 Ã¢â‚¬â€ GUIDED EXECUTION
    ========================================================= */
 
 .go-execution-open {
@@ -3389,7 +3389,7 @@ hr {
 }
 
 .go-execution-trust li::before {
-    content: "âœ“";
+    content: "Ã¢Å“â€œ";
     position: absolute;
     left: 0;
     color: #80e49d;
@@ -4005,7 +4005,7 @@ hr {
 
 
 /* =========================================================
-   GROWTH OPERATOR BUILD 004 â€” OPERATOR-FIRST DASHBOARD
+   GROWTH OPERATOR BUILD 004 Ã¢â‚¬â€ OPERATOR-FIRST DASHBOARD
    ========================================================= */
 
 /* The briefing is now an orientation layer, not a competing hero. */
@@ -4126,7 +4126,7 @@ hr {
 
 
 /* =========================================================
-   GROWTH OPERATOR BUILD 005 â€” LIVING OPERATOR EXPERIENCE
+   GROWTH OPERATOR BUILD 005 Ã¢â‚¬â€ LIVING OPERATOR EXPERIENCE
    ========================================================= */
 
 .go-operator-worklog {
@@ -4346,7 +4346,7 @@ hr {
 
 
 /* =========================================================
-   GROWTH OPERATOR BUILD 006 â€” DAILY OPERATOR REPORT
+   GROWTH OPERATOR BUILD 006 Ã¢â‚¬â€ DAILY OPERATOR REPORT
    ========================================================= */
 .go-main { max-width: 1680px; width: 100%; margin: 0 auto; padding: 38px 42px 56px; }
 .go-topbar { align-items: center; margin-bottom: 34px; }
@@ -4409,3 +4409,251 @@ hr {
 @media (max-width:1180px) { .go-main{padding:32px 28px 48px}.go-timeline-layout{grid-template-columns:1fr}.go-health-card:first-child{grid-column:auto} }
 @media (max-width:850px) { .go-main{padding:26px 20px 42px}.go-topbar{align-items:flex-start}.go-ai-finding-card.go-ai-operator-card{padding:28px}.go-timeline-feed::before{left:74px}.go-timeline-entry{grid-template-columns:48px 42px minmax(0,1fr)}.go-timeline-entry time{font-size:8px} }
 @media (max-width:620px) { .go-main{padding:22px 14px 38px}.go-topbar-actions{justify-content:space-between}.go-date-button{flex:0 0 auto}.go-operator-timeline{padding:22px 16px}.go-timeline-feed::before{left:20px}.go-timeline-entry{grid-template-columns:42px minmax(0,1fr);gap:12px}.go-timeline-entry time{grid-column:2;text-align:left;padding:0}.go-timeline-marker{grid-row:1 / span 2}.go-timeline-entry > div{grid-column:2}.go-ai-finding-card.go-ai-operator-card{padding:23px 17px}.go-ai-finding-title h2{font-size:32px}.go-operator-summary>strong{font-size:24px} }
+
+/* =========================================================
+   GROWTH OPERATOR BUILD 008 â€” OPERATOR BRAIN
+   ========================================================= */
+.go-operator-brain {
+    position: relative;
+    overflow: hidden;
+    margin-bottom: 20px;
+    padding: 28px;
+    background:
+        radial-gradient(circle at 90% 0%, rgba(76, 184, 255, 0.14), transparent 34%),
+        linear-gradient(145deg, rgba(13, 31, 49, 0.99), rgba(7, 21, 35, 0.99));
+    border: 1px solid rgba(76, 184, 255, 0.2);
+    border-radius: var(--go-radius-large);
+    box-shadow: var(--go-shadow);
+}
+
+.go-operator-brain::before {
+    content: "";
+    position: absolute;
+    inset: 0 auto 0 0;
+    width: 3px;
+    background: linear-gradient(180deg, #4cb8ff, #38d39f);
+}
+
+.go-operator-brain-header,
+.go-operator-brain-footer,
+.go-operator-brain-identity,
+.go-operator-brain-status,
+.go-brain-decision {
+    display: flex;
+    align-items: center;
+}
+
+.go-operator-brain-header,
+.go-operator-brain-footer {
+    justify-content: space-between;
+    gap: 24px;
+}
+
+.go-operator-brain-identity {
+    min-width: 0;
+    gap: 15px;
+}
+
+.go-operator-brain-mark {
+    width: 46px;
+    height: 46px;
+    flex: 0 0 46px;
+    display: grid;
+    place-items: center;
+    color: #dff4ff;
+    background: linear-gradient(145deg, rgba(76, 184, 255, 0.2), rgba(56, 211, 159, 0.12));
+    border: 1px solid rgba(76, 184, 255, 0.26);
+    border-radius: 14px;
+    font-size: 12px;
+    font-weight: 900;
+    letter-spacing: 0.08em;
+}
+
+.go-operator-brain-header h2 {
+    max-width: 780px;
+    margin: 2px 0 0;
+    font-size: clamp(21px, 2vw, 28px);
+    line-height: 1.2;
+    letter-spacing: -0.035em;
+}
+
+.go-operator-brain-status {
+    flex: 0 0 auto;
+    gap: 9px;
+    padding: 9px 12px;
+    color: #9deec0;
+    background: rgba(34, 197, 94, 0.075);
+    border: 1px solid rgba(34, 197, 94, 0.16);
+    border-radius: 999px;
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.go-operator-brain-story {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 34px minmax(0, 1fr) 34px minmax(0, 1fr);
+    align-items: stretch;
+    gap: 10px;
+    margin: 24px 0;
+}
+
+.go-brain-story-step {
+    min-width: 0;
+    padding: 18px;
+    background: rgba(255, 255, 255, 0.025);
+    border: 1px solid rgba(255, 255, 255, 0.065);
+    border-radius: 15px;
+}
+
+.go-brain-story-step.signal {
+    background: rgba(245, 158, 11, 0.045);
+    border-color: rgba(245, 158, 11, 0.18);
+}
+
+.go-brain-story-step.current {
+    background: rgba(76, 184, 255, 0.07);
+    border-color: rgba(76, 184, 255, 0.24);
+}
+
+.go-brain-step-label {
+    display: block;
+    margin-bottom: 9px;
+    color: var(--go-muted);
+    font-size: 9px;
+    font-weight: 800;
+    letter-spacing: 0.12em;
+}
+
+.go-brain-story-step.signal .go-brain-step-label {
+    color: #f6c86f;
+}
+
+.go-brain-story-step.current .go-brain-step-label {
+    color: #72c9ff;
+}
+
+.go-brain-story-step strong {
+    display: block;
+    color: var(--go-text);
+    font-size: 16px;
+    line-height: 1.35;
+}
+
+.go-brain-story-step p {
+    margin: 9px 0 0;
+    color: var(--go-muted);
+    font-size: 12px;
+    line-height: 1.6;
+}
+
+.go-brain-story-connector {
+    display: grid;
+    place-items: center;
+    color: rgba(132, 208, 255, 0.65);
+    font-size: 20px;
+}
+
+.go-operator-brain-footer {
+    padding-top: 20px;
+    border-top: 1px solid rgba(255, 255, 255, 0.065);
+}
+
+.go-brain-memory-list > span {
+    display: block;
+    margin-bottom: 9px;
+    color: var(--go-muted);
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.go-brain-memory-list ul {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.go-brain-memory-list li {
+    padding: 7px 10px;
+    color: #c8d9e7;
+    background: rgba(255, 255, 255, 0.035);
+    border: 1px solid rgba(255, 255, 255, 0.065);
+    border-radius: 999px;
+    font-size: 10px;
+}
+
+.go-brain-decision {
+    flex: 0 0 auto;
+    justify-content: flex-end;
+    gap: 14px;
+}
+
+.go-brain-decision p {
+    max-width: 280px;
+    margin: 0;
+    color: var(--go-muted);
+    font-size: 11px;
+    line-height: 1.5;
+    text-align: right;
+}
+
+.go-operator-brain.remembered {
+    border-color: rgba(56, 211, 159, 0.28);
+}
+
+.go-operator-brain.remembered::before {
+    background: #38d39f;
+}
+
+#go-brain-confirm:disabled {
+    cursor: default;
+    opacity: 0.78;
+    transform: none;
+}
+
+@media (max-width: 1050px) {
+    .go-operator-brain-story {
+        grid-template-columns: 1fr;
+    }
+
+    .go-brain-story-connector {
+        height: 18px;
+        transform: rotate(90deg);
+    }
+
+    .go-operator-brain-footer,
+    .go-brain-decision {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .go-brain-decision p {
+        max-width: none;
+        text-align: left;
+    }
+}
+
+@media (max-width: 680px) {
+    .go-operator-brain {
+        padding: 22px 17px;
+    }
+
+    .go-operator-brain-header {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .go-operator-brain-footer {
+        align-items: stretch;
+    }
+
+    #go-brain-confirm {
+        width: 100%;
+    }
+}

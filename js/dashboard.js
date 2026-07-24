@@ -241,6 +241,7 @@ document.addEventListener("DOMContentLoaded", function () {
     animateDashboard();
     activateBuild006Experience();
     activateOperatorBrain();
+    activateOperatorMemory();
 });
 
 function createIntelligenceSection() {
@@ -2169,4 +2170,390 @@ function showRememberedBrainState(button, copy, brain, savedAt) {
     button.textContent = "Decision remembered ✓";
     button.disabled = true;
     copy.textContent = `Saved ${formattedTime}. I’ll carry this decision into the next recommendation.`;
+}
+
+/* =========================================================
+   GROWTH OPERATOR BUILD 009 — OPERATOR MEMORY
+   ========================================================= */
+const OPERATOR_MEMORY_STORAGE_KEY = "growthOperatorMemory";
+const OPERATOR_MEMORY_REVIEW_KEY = "growthOperatorMemoryLastReviewed";
+
+function activateOperatorMemory() {
+    const existingMemory = document.querySelector(".go-operator-memory");
+
+    if (existingMemory) {
+        hydrateOperatorMemory(existingMemory);
+        return;
+    }
+
+    const anchor =
+        document.querySelector(".go-operator-brain") ||
+        document.querySelector(".go-operator-timeline") ||
+        document.querySelector(".go-briefing-card");
+
+    if (!anchor) {
+        return;
+    }
+
+    const section = document.createElement("section");
+    section.className = "go-operator-memory";
+    section.setAttribute("aria-labelledby", "go-memory-title");
+    section.innerHTML = buildOperatorMemoryMarkup();
+
+    anchor.insertAdjacentElement("afterend", section);
+    hydrateOperatorMemory(section);
+}
+
+function buildOperatorMemoryMarkup() {
+    return `
+        <div class="go-memory-header">
+            <div class="go-memory-heading">
+                <div class="go-memory-mark" aria-hidden="true">AM</div>
+                <div>
+                    <p class="go-kicker">OPERATOR MEMORY · MORNING BRIEF</p>
+                    <h2 id="go-memory-title">I was working while you were away.</h2>
+                    <p>
+                        I checked the business, compared today with yesterday, and prepared the next decision.
+                    </p>
+                </div>
+            </div>
+
+            <div class="go-memory-status">
+                <span class="go-pulse-dot"></span>
+                <div>
+                    <strong id="go-memory-status-copy">Morning scan complete</strong>
+                    <small id="go-memory-updated-copy">Updated today</small>
+                </div>
+            </div>
+        </div>
+
+        <div id="go-memory-feed" class="go-memory-feed"></div>
+
+        <div class="go-memory-footer">
+            <div>
+                <span>WHAT THIS CHANGED</span>
+                <strong id="go-memory-conclusion">Today’s priority is ready.</strong>
+                <p id="go-memory-conclusion-copy"></p>
+            </div>
+
+            <button id="go-memory-review" class="go-primary-button" type="button">
+                Mark morning brief reviewed →
+            </button>
+        </div>
+    `;
+}
+
+function hydrateOperatorMemory(section) {
+    const memory = loadOperatorMemory();
+    const feed = section.querySelector("#go-memory-feed");
+    const updatedCopy = section.querySelector("#go-memory-updated-copy");
+    const conclusion = section.querySelector("#go-memory-conclusion");
+    const conclusionCopy = section.querySelector("#go-memory-conclusion-copy");
+    const reviewButton = section.querySelector("#go-memory-review");
+    const statusCopy = section.querySelector("#go-memory-status-copy");
+
+    if (!feed || !reviewButton) {
+        return;
+    }
+
+    feed.innerHTML = memory.entries
+        .map(function (entry, index) {
+            return `
+                <article class="go-memory-entry ${entry.type}" data-memory-entry="${index}">
+                    <time datetime="${escapeAttribute(entry.isoTime)}">${escapeHtml(entry.time)}</time>
+
+                    <div class="go-memory-entry-marker" aria-hidden="true">
+                        ${escapeHtml(entry.icon)}
+                    </div>
+
+                    <div class="go-memory-entry-body">
+                        <div class="go-memory-entry-heading">
+                            <div>
+                                <span>${escapeHtml(entry.label)}</span>
+                                <strong>${escapeHtml(entry.title)}</strong>
+                            </div>
+
+                            <button class="go-memory-why" type="button" aria-expanded="false">
+                                Show why
+                            </button>
+                        </div>
+
+                        <p>${escapeHtml(entry.summary)}</p>
+
+                        <div class="go-memory-reasoning" hidden>
+                            <span>WHY I CARE</span>
+                            <p>${escapeHtml(entry.reasoning)}</p>
+
+                            <div class="go-memory-proof">
+                                <small>${escapeHtml(entry.proofLabel)}</small>
+                                <strong>${escapeHtml(entry.proofValue)}</strong>
+                            </div>
+                        </div>
+                    </div>
+                </article>
+            `;
+        })
+        .join("");
+
+    if (updatedCopy) {
+        updatedCopy.textContent = `Updated ${memory.updatedLabel}`;
+    }
+
+    if (conclusion) {
+        conclusion.textContent = memory.conclusion;
+    }
+
+    if (conclusionCopy) {
+        conclusionCopy.textContent = memory.conclusionCopy;
+    }
+
+    section.querySelectorAll(".go-memory-why").forEach(function (button) {
+        button.addEventListener("click", function () {
+            const entry = button.closest(".go-memory-entry");
+            const reasoning = entry?.querySelector(".go-memory-reasoning");
+
+            if (!reasoning) {
+                return;
+            }
+
+            const isOpen = button.getAttribute("aria-expanded") === "true";
+            button.setAttribute("aria-expanded", String(!isOpen));
+            button.textContent = isOpen ? "Show why" : "Hide why";
+            reasoning.hidden = isOpen;
+            entry.classList.toggle("open", !isOpen);
+        });
+    });
+
+    const reviewedAt = loadOperatorMemoryReviewedAt();
+
+    if (reviewedAt) {
+        showOperatorMemoryReviewedState(section, reviewedAt);
+    }
+
+    reviewButton.addEventListener("click", function () {
+        const reviewedTime = new Date().toISOString();
+
+        try {
+            localStorage.setItem(OPERATOR_MEMORY_REVIEW_KEY, reviewedTime);
+        } catch (error) {
+            console.warn("Growth Operator could not save the morning brief review.", error);
+        }
+
+        showOperatorMemoryReviewedState(section, reviewedTime);
+    });
+
+    if (statusCopy && reviewedAt) {
+        statusCopy.textContent = "Morning brief reviewed";
+    }
+
+    section.querySelectorAll(".go-memory-entry").forEach(function (entry, index) {
+        entry.style.setProperty("--go-memory-delay", `${index * 85}ms`);
+        entry.classList.add("go-memory-reveal");
+    });
+}
+
+function loadOperatorMemory() {
+    const now = new Date();
+    const todayKey = now.toISOString().slice(0, 10);
+
+    try {
+        const stored = localStorage.getItem(OPERATOR_MEMORY_STORAGE_KEY);
+        const parsed = stored ? JSON.parse(stored) : null;
+
+        if (parsed && parsed.dateKey === todayKey && Array.isArray(parsed.entries)) {
+            return parsed;
+        }
+    } catch (error) {
+        console.warn("Growth Operator could not load Operator Memory.", error);
+    }
+
+    const memory = createTodayOperatorMemory(now, todayKey);
+
+    try {
+        localStorage.setItem(OPERATOR_MEMORY_STORAGE_KEY, JSON.stringify(memory));
+        localStorage.removeItem(OPERATOR_MEMORY_REVIEW_KEY);
+    } catch (error) {
+        console.warn("Growth Operator could not save Operator Memory.", error);
+    }
+
+    return memory;
+}
+
+function createTodayOperatorMemory(now, todayKey) {
+    const completedReviewEngine = Boolean(executionState && executionState.completed);
+    const rememberedDecision = loadOperatorBrainDecision();
+    const baseHour = Math.max(6, Math.min(8, now.getHours() - 1));
+    const baseDate = new Date(now);
+    baseDate.setHours(baseHour, 12, 0, 0);
+
+    const entries = [
+        createMemoryEntry(
+            baseDate,
+            0,
+            "scan",
+            "SCAN COMPLETE",
+            "I checked your core growth signals.",
+            "Your business profile, review pace, visibility score, and active growth systems were compared with the last known state.",
+            "This gives me a clean baseline before I change your priority. I do not want to create work from one isolated signal.",
+            "Signals reviewed",
+            "8",
+            "◎"
+        ),
+        createMemoryEntry(
+            baseDate,
+            4,
+            "competitor",
+            "COMPETITOR MOVEMENT",
+            "River Adventures added 3 reviews.",
+            "Their recent review pace remains materially higher than yours, even after your own momentum improved.",
+            "Review velocity can influence customer trust and local prominence. The gap matters because it compounds every week it remains open.",
+            "Current pace gap",
+            "2.3×",
+            "↗"
+        ),
+        createMemoryEntry(
+            baseDate,
+            9,
+            "watching",
+            "VISIBILITY CHECK",
+            "Your Visibility Score held at 65.",
+            "I found no meaningful ranking movement overnight, so I am keeping this signal under active observation.",
+            "A flat score after reputation improvements suggests reviews are no longer the only constraint. The next move should address local search visibility directly.",
+            "Score movement",
+            "0 pts",
+            "⌁"
+        )
+    ];
+
+    if (completedReviewEngine) {
+        entries.push(
+            createMemoryEntry(
+                baseDate,
+                14,
+                "complete",
+                "SYSTEM VERIFIED",
+                "I confirmed the Review Engine is still active.",
+                "The workflow remains saved, the review destination is configured, and the measurement period is underway.",
+                "The previous bottleneck has an active system behind it. Reopening the same task would waste your time, so I am moving forward while continuing to measure it.",
+                "System status",
+                "Active",
+                "✓"
+            )
+        );
+    } else {
+        entries.push(
+            createMemoryEntry(
+                baseDate,
+                14,
+                "decision",
+                "DECISION REQUIRED",
+                "The Review Engine still needs your approval.",
+                "I kept this as the highest-leverage unfinished action because the execution workflow is already prepared.",
+                "This is not another analysis task. The recommendation is ready to become an operating system, but it cannot produce evidence until it is activated.",
+                "Setup readiness",
+                "100%",
+                "!"
+            )
+        );
+    }
+
+    entries.push(
+        createMemoryEntry(
+            baseDate,
+            19,
+            rememberedDecision?.confirmed ? "memory" : "priority",
+            rememberedDecision?.confirmed ? "MEMORY APPLIED" : "PRIORITY PREPARED",
+            rememberedDecision?.confirmed
+                ? "I carried yesterday’s decision into today’s plan."
+                : "I prepared today’s highest-value move.",
+            completedReviewEngine
+                ? "Close the local visibility gap while the Review Engine continues running in the background."
+                : "Activate the Review Engine so Growth Operator can begin measuring real outcomes instead of projected ones.",
+            rememberedDecision?.confirmed
+                ? "Continuity matters. I used the saved decision as context, then checked whether new evidence justified changing it. It did not."
+                : "The plan prioritizes the action with the clearest path from diagnosis to measurable business impact.",
+            "Estimated annual opportunity",
+            completedReviewEngine ? "+$14,800" : "+$8,700",
+            "◆"
+        )
+    );
+
+    return {
+        dateKey: todayKey,
+        createdAt: now.toISOString(),
+        updatedLabel: now.toLocaleTimeString([], {
+            hour: "numeric",
+            minute: "2-digit"
+        }),
+        entries: entries,
+        conclusion: completedReviewEngine
+            ? "I moved the business to its next constraint."
+            : "I kept the highest-ROI unfinished action at the top.",
+        conclusionCopy: completedReviewEngine
+            ? "The Review Engine stays active. Today, I want your attention on the local visibility plan because that is now the clearest remaining growth gap."
+            : "The diagnosis and workflow are complete. Activating the Review Engine is the shortest path from recommendation to measurable proof."
+    };
+}
+
+function createMemoryEntry(
+    baseDate,
+    minuteOffset,
+    type,
+    label,
+    title,
+    summary,
+    reasoning,
+    proofLabel,
+    proofValue,
+    icon
+) {
+    const entryDate = new Date(baseDate.getTime() + minuteOffset * 60000);
+
+    return {
+        type: type,
+        label: label,
+        title: title,
+        summary: summary,
+        reasoning: reasoning,
+        proofLabel: proofLabel,
+        proofValue: proofValue,
+        icon: icon,
+        isoTime: entryDate.toISOString(),
+        time: entryDate.toLocaleTimeString([], {
+            hour: "numeric",
+            minute: "2-digit"
+        })
+    };
+}
+
+function loadOperatorMemoryReviewedAt() {
+    try {
+        return localStorage.getItem(OPERATOR_MEMORY_REVIEW_KEY);
+    } catch (error) {
+        console.warn("Growth Operator could not load the morning brief review.", error);
+        return null;
+    }
+}
+
+function showOperatorMemoryReviewedState(section, reviewedAt) {
+    const button = section.querySelector("#go-memory-review");
+    const statusCopy = section.querySelector("#go-memory-status-copy");
+    const reviewedDate = new Date(reviewedAt);
+    const reviewedLabel = Number.isNaN(reviewedDate.getTime())
+        ? "today"
+        : reviewedDate.toLocaleTimeString([], {
+              hour: "numeric",
+              minute: "2-digit"
+          });
+
+    section.classList.add("reviewed");
+
+    if (button) {
+        button.textContent = `Reviewed ${reviewedLabel} ✓`;
+        button.disabled = true;
+    }
+
+    if (statusCopy) {
+        statusCopy.textContent = "Morning brief reviewed";
+    }
 }

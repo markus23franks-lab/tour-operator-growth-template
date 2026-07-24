@@ -2097,7 +2097,7 @@ hr {
 }
 
 /* ==================================================
-   WHY THIS MATTERS Ã¢â‚¬â€ INTELLIGENCE SECTION
+   WHY THIS MATTERS ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â INTELLIGENCE SECTION
 ================================================== */
 
 .go-intelligence-section {
@@ -2345,7 +2345,7 @@ hr {
 }
 
 /* ==================================================
-   AI FINDING Ã¢â‚¬â€ TODAY'S PRIORITY
+   AI FINDING ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â TODAY'S PRIORITY
 ================================================== */
 
 .go-ai-finding-card {
@@ -2785,7 +2785,7 @@ hr {
 
 
 /* =========================================================
-   GROWTH OPERATOR BUILD 002 Ã¢â‚¬â€ AI OPERATOR EXPERIENCE
+   GROWTH OPERATOR BUILD 002 ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â AI OPERATOR EXPERIENCE
    ========================================================= */
 
 .go-ai-operator-card {
@@ -2998,7 +2998,7 @@ hr {
     }
 }
 /* =========================================================
-   GROWTH OPERATOR BUILD 003 Ã¢â‚¬â€ GUIDED EXECUTION
+   GROWTH OPERATOR BUILD 003 ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â GUIDED EXECUTION
    ========================================================= */
 
 .go-execution-open {
@@ -3389,7 +3389,7 @@ hr {
 }
 
 .go-execution-trust li::before {
-    content: "Ã¢Å“â€œ";
+    content: "ÃƒÂ¢Ã…â€œÃ¢â‚¬Å“";
     position: absolute;
     left: 0;
     color: #80e49d;
@@ -4005,7 +4005,7 @@ hr {
 
 
 /* =========================================================
-   GROWTH OPERATOR BUILD 004 Ã¢â‚¬â€ OPERATOR-FIRST DASHBOARD
+   GROWTH OPERATOR BUILD 004 ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â OPERATOR-FIRST DASHBOARD
    ========================================================= */
 
 /* The briefing is now an orientation layer, not a competing hero. */
@@ -4126,7 +4126,7 @@ hr {
 
 
 /* =========================================================
-   GROWTH OPERATOR BUILD 005 Ã¢â‚¬â€ LIVING OPERATOR EXPERIENCE
+   GROWTH OPERATOR BUILD 005 ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â LIVING OPERATOR EXPERIENCE
    ========================================================= */
 
 .go-operator-worklog {
@@ -4346,7 +4346,7 @@ hr {
 
 
 /* =========================================================
-   GROWTH OPERATOR BUILD 006 Ã¢â‚¬â€ DAILY OPERATOR REPORT
+   GROWTH OPERATOR BUILD 006 ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â DAILY OPERATOR REPORT
    ========================================================= */
 .go-main { max-width: 1680px; width: 100%; margin: 0 auto; padding: 38px 42px 56px; }
 .go-topbar { align-items: center; margin-bottom: 34px; }
@@ -4411,7 +4411,7 @@ hr {
 @media (max-width:620px) { .go-main{padding:22px 14px 38px}.go-topbar-actions{justify-content:space-between}.go-date-button{flex:0 0 auto}.go-operator-timeline{padding:22px 16px}.go-timeline-feed::before{left:20px}.go-timeline-entry{grid-template-columns:42px minmax(0,1fr);gap:12px}.go-timeline-entry time{grid-column:2;text-align:left;padding:0}.go-timeline-marker{grid-row:1 / span 2}.go-timeline-entry > div{grid-column:2}.go-ai-finding-card.go-ai-operator-card{padding:23px 17px}.go-ai-finding-title h2{font-size:32px}.go-operator-summary>strong{font-size:24px} }
 
 /* =========================================================
-   GROWTH OPERATOR BUILD 008 â€” OPERATOR BRAIN
+   GROWTH OPERATOR BUILD 008 Ã¢â‚¬â€ OPERATOR BRAIN
    ========================================================= */
 .go-operator-brain {
     position: relative;
@@ -4655,5 +4655,443 @@ hr {
 
     #go-brain-confirm {
         width: 100%;
+    }
+}
+/* =========================================================
+   GROWTH OPERATOR BUILD 009 â€” OPERATOR MEMORY
+   ========================================================= */
+.go-operator-memory {
+    position: relative;
+    overflow: hidden;
+    margin-bottom: 28px;
+    padding: 30px;
+    background:
+        radial-gradient(circle at 100% 0%, rgba(36, 140, 255, 0.16), transparent 35%),
+        linear-gradient(145deg, rgba(13, 31, 49, 0.99), rgba(6, 19, 32, 0.99));
+    border: 1px solid rgba(76, 184, 255, 0.25);
+    border-radius: 26px;
+    box-shadow:
+        0 30px 80px rgba(0, 0, 0, 0.28),
+        inset 0 1px 0 rgba(255, 255, 255, 0.025);
+}
+
+.go-operator-memory::before {
+    content: "";
+    position: absolute;
+    inset: 0 0 auto 0;
+    height: 3px;
+    background: linear-gradient(90deg, #248cff, #4cb8ff 48%, #38d39f);
+}
+
+.go-memory-header,
+.go-memory-heading,
+.go-memory-status,
+.go-memory-entry-heading,
+.go-memory-footer {
+    display: flex;
+    align-items: center;
+}
+
+.go-memory-header,
+.go-memory-footer,
+.go-memory-entry-heading {
+    justify-content: space-between;
+}
+
+.go-memory-header {
+    position: relative;
+    z-index: 1;
+    gap: 26px;
+    padding-bottom: 24px;
+    border-bottom: 1px solid rgba(148, 163, 184, 0.12);
+}
+
+.go-memory-heading {
+    min-width: 0;
+    align-items: flex-start;
+    gap: 16px;
+}
+
+.go-memory-mark {
+    width: 50px;
+    height: 50px;
+    flex: 0 0 50px;
+    display: grid;
+    place-items: center;
+    color: #e7f6ff;
+    background: linear-gradient(145deg, rgba(36, 140, 255, 0.26), rgba(56, 211, 159, 0.12));
+    border: 1px solid rgba(76, 184, 255, 0.3);
+    border-radius: 15px;
+    font-size: 11px;
+    font-weight: 900;
+    letter-spacing: 0.1em;
+    box-shadow: 0 12px 28px rgba(36, 140, 255, 0.14);
+}
+
+.go-memory-heading h2 {
+    margin: 0;
+    font-size: clamp(27px, 3vw, 40px);
+    line-height: 1.12;
+    letter-spacing: -0.045em;
+}
+
+.go-memory-heading > div > p:last-child {
+    max-width: 760px;
+    margin: 10px 0 0;
+    color: var(--go-muted);
+    font-size: 13px;
+    line-height: 1.65;
+}
+
+.go-memory-status {
+    flex: 0 0 auto;
+    gap: 12px;
+    padding: 12px 14px;
+    background: rgba(34, 197, 94, 0.065);
+    border: 1px solid rgba(34, 197, 94, 0.15);
+    border-radius: 14px;
+}
+
+.go-memory-status strong,
+.go-memory-status small {
+    display: block;
+}
+
+.go-memory-status strong {
+    color: #dff9e8;
+    font-size: 10px;
+}
+
+.go-memory-status small {
+    margin-top: 4px;
+    color: var(--go-muted);
+    font-size: 9px;
+}
+
+.go-memory-feed {
+    position: relative;
+    display: grid;
+    padding: 16px 0 6px;
+}
+
+.go-memory-feed::before {
+    content: "";
+    position: absolute;
+    top: 42px;
+    bottom: 42px;
+    left: 112px;
+    width: 1px;
+    background: linear-gradient(180deg, #38d39f, #248cff 58%, #f59e0b);
+    opacity: 0.35;
+}
+
+.go-memory-entry {
+    position: relative;
+    z-index: 1;
+    display: grid;
+    grid-template-columns: 82px 44px minmax(0, 1fr);
+    gap: 18px;
+    align-items: start;
+    padding: 13px 0;
+}
+
+.go-memory-entry time {
+    padding-top: 15px;
+    color: #71839a;
+    font-size: 10px;
+    font-weight: 800;
+    text-align: right;
+    white-space: nowrap;
+}
+
+.go-memory-entry-marker {
+    width: 42px;
+    height: 42px;
+    display: grid;
+    place-items: center;
+    color: #9ecfff;
+    background: #102d4a;
+    border: 1px solid rgba(76, 184, 255, 0.22);
+    border-radius: 13px;
+    font-size: 14px;
+    font-weight: 900;
+    box-shadow: 0 0 0 8px #0b1d2e;
+}
+
+.go-memory-entry.complete .go-memory-entry-marker,
+.go-memory-entry.memory .go-memory-entry-marker {
+    color: #9deec0;
+    background: #103928;
+    border-color: rgba(34, 197, 94, 0.2);
+}
+
+.go-memory-entry.competitor .go-memory-entry-marker,
+.go-memory-entry.decision .go-memory-entry-marker {
+    color: #ffd27a;
+    background: #3a2b14;
+    border-color: rgba(245, 158, 11, 0.24);
+}
+
+.go-memory-entry-body {
+    min-width: 0;
+    padding: 17px 18px;
+    background: rgba(255, 255, 255, 0.024);
+    border: 1px solid rgba(255, 255, 255, 0.055);
+    border-radius: 15px;
+    transition:
+        background 0.2s ease,
+        border-color 0.2s ease,
+        transform 0.2s ease;
+}
+
+.go-memory-entry:hover .go-memory-entry-body,
+.go-memory-entry.open .go-memory-entry-body {
+    background: rgba(36, 140, 255, 0.045);
+    border-color: rgba(76, 184, 255, 0.18);
+    transform: translateX(3px);
+}
+
+.go-memory-entry-heading {
+    align-items: flex-start;
+    gap: 20px;
+}
+
+.go-memory-entry-heading span {
+    display: block;
+    margin-bottom: 6px;
+    color: var(--go-blue-light);
+    font-size: 8px;
+    font-weight: 900;
+    letter-spacing: 0.14em;
+}
+
+.go-memory-entry.competitor .go-memory-entry-heading span,
+.go-memory-entry.decision .go-memory-entry-heading span {
+    color: #ffd27a;
+}
+
+.go-memory-entry-heading strong {
+    display: block;
+    font-size: 14px;
+    line-height: 1.4;
+}
+
+.go-memory-entry-body > p {
+    margin: 7px 0 0;
+    color: var(--go-muted);
+    font-size: 10px;
+    line-height: 1.6;
+}
+
+.go-memory-why {
+    flex: 0 0 auto;
+    padding: 6px 0;
+    color: var(--go-blue-light);
+    background: transparent;
+    border: none;
+    font-size: 10px;
+    font-weight: 800;
+    cursor: pointer;
+}
+
+.go-memory-reasoning {
+    position: relative;
+    margin-top: 15px;
+    padding: 15px 150px 15px 16px;
+    background: rgba(7, 17, 31, 0.42);
+    border: 1px solid rgba(148, 163, 184, 0.11);
+    border-radius: 12px;
+}
+
+.go-memory-reasoning > span {
+    display: block;
+    color: #8fc9ff;
+    font-size: 8px;
+    font-weight: 900;
+    letter-spacing: 0.13em;
+}
+
+.go-memory-reasoning > p {
+    margin: 7px 0 0;
+    color: #b9c7d5;
+    font-size: 10px;
+    line-height: 1.6;
+}
+
+.go-memory-proof {
+    position: absolute;
+    top: 15px;
+    right: 15px;
+    min-width: 118px;
+    padding: 11px;
+    background: rgba(36, 140, 255, 0.07);
+    border: 1px solid rgba(76, 184, 255, 0.13);
+    border-radius: 10px;
+    text-align: right;
+}
+
+.go-memory-proof small,
+.go-memory-proof strong {
+    display: block;
+}
+
+.go-memory-proof small {
+    color: var(--go-muted);
+    font-size: 7px;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.go-memory-proof strong {
+    margin-top: 6px;
+    color: #8ff0ae;
+    font-size: 17px;
+}
+
+.go-memory-footer {
+    position: relative;
+    z-index: 1;
+    gap: 28px;
+    margin-top: 14px;
+    padding: 22px;
+    background: linear-gradient(135deg, rgba(36, 140, 255, 0.1), rgba(36, 140, 255, 0.025));
+    border: 1px solid rgba(76, 184, 255, 0.17);
+    border-radius: 16px;
+}
+
+.go-memory-footer span {
+    display: block;
+    color: var(--go-blue-light);
+    font-size: 8px;
+    font-weight: 900;
+    letter-spacing: 0.14em;
+}
+
+.go-memory-footer strong {
+    display: block;
+    margin-top: 7px;
+    font-size: 16px;
+}
+
+.go-memory-footer p {
+    max-width: 850px;
+    margin: 7px 0 0;
+    color: var(--go-muted);
+    font-size: 10px;
+    line-height: 1.6;
+}
+
+.go-memory-footer .go-primary-button {
+    flex: 0 0 auto;
+    min-width: 210px;
+    white-space: nowrap;
+}
+
+.go-operator-memory.reviewed {
+    border-color: rgba(56, 211, 159, 0.27);
+}
+
+.go-operator-memory.reviewed::before {
+    background: #38d39f;
+}
+
+#go-memory-review:disabled {
+    cursor: default;
+    opacity: 0.72;
+    transform: none;
+}
+
+.go-memory-reveal {
+    animation: goMemoryReveal 0.48s ease both;
+    animation-delay: var(--go-memory-delay, 0ms);
+}
+
+@keyframes goMemoryReveal {
+    from {
+        opacity: 0;
+        transform: translateY(8px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@media (max-width: 850px) {
+    .go-memory-header,
+    .go-memory-footer {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .go-memory-feed::before {
+        left: 75px;
+    }
+
+    .go-memory-entry {
+        grid-template-columns: 48px 42px minmax(0, 1fr);
+        gap: 13px;
+    }
+
+    .go-memory-entry time {
+        font-size: 8px;
+    }
+
+    .go-memory-footer .go-primary-button {
+        width: 100%;
+    }
+}
+
+@media (max-width: 620px) {
+    .go-operator-memory {
+        padding: 23px 16px;
+    }
+
+    .go-memory-heading {
+        flex-direction: column;
+    }
+
+    .go-memory-status {
+        width: 100%;
+    }
+
+    .go-memory-feed::before {
+        left: 20px;
+    }
+
+    .go-memory-entry {
+        grid-template-columns: 42px minmax(0, 1fr);
+        gap: 12px;
+    }
+
+    .go-memory-entry time {
+        grid-column: 2;
+        padding: 0;
+        text-align: left;
+    }
+
+    .go-memory-entry-marker {
+        grid-row: 1 / span 2;
+    }
+
+    .go-memory-entry-body {
+        grid-column: 2;
+    }
+
+    .go-memory-entry-heading {
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .go-memory-reasoning {
+        padding: 14px;
+    }
+
+    .go-memory-proof {
+        position: static;
+        margin-top: 12px;
+        text-align: left;
     }
 }

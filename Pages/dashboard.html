@@ -10,14 +10,13 @@
   <div class="app-shell">
     <aside class="sidebar">
       <a class="brand" href="dashboard.html" aria-label="Growth Operator home">
-        <span class="brand-mark" aria-hidden="true"><span></span></span>
-        <span class="brand-name"><strong>GROWTH</strong><small>OPERATOR</small></span>
+        <img class="dashboard-brand-logo" src="../Assets/growth-operator-logo.png" alt="Growth Operator">
       </a>
 
       <nav class="nav" aria-label="Primary navigation">
         <a class="nav-link active" href="dashboard.html"><span>⌂</span>Home</a>
         <a class="nav-link" href="growth-score.html"><span>◉</span>Growth Score</a>
-        <a class="nav-link" href="#mission"><span>✦</span>Missions</a>
+        <a class="nav-link" href="mission.html"><span>✦</span>Missions</a>
         <a class="nav-link" href="#health"><span>▦</span>Website</a>
         <a class="nav-link" href="#activity"><span>★</span>Reviews</a>
         <a class="nav-link" href="#health"><span>⌖</span>Local SEO</a>
@@ -29,8 +28,8 @@
       </nav>
 
       <div class="sidebar-card user-card">
-        <span class="mini-avatar">MF</span>
-        <div><strong>Markus Franks</strong><small>Blue River Rafting</small></div>
+        <span class="mini-avatar" id="sidebar-avatar">MF</span>
+        <div><strong id="sidebar-owner">Markus Franks</strong><small id="sidebar-business">Blue River Rafting</small></div>
       </div>
       <div class="sidebar-card plan-card"><strong>Pro Plan</strong><small>Next billing Aug 18, 2026</small><button type="button">Manage plan</button></div>
       <div class="sidebar-help"><span>?</span><div><strong>Need help?</strong><small>Chat with our team</small></div></div>
@@ -39,24 +38,61 @@
     <main class="main-content">
       <header class="topbar">
         <div>
-          <p class="eyebrow" id="today-label">DAILY COMMAND CENTER</p>
+          <p class="eyebrow" id="today-label">WEEKLY GROWTH BRIEF</p>
           <h1 id="greeting">Good evening, Markus <span>👋</span></h1>
-          <p>Here’s what happened while you were away.</p>
+          <p id="briefing-line">Here’s what we found and what we’d focus on next.</p>
+          <div class="scan-context" id="scan-context"><span></span><strong>PREVIEW ANALYSIS</strong><small id="scan-time">Just now</small></div>
         </div>
         <div class="top-actions">
           <button class="date-control" type="button">▣ <span>May 27 – May 28, 2026</span>⌄</button>
           <button class="icon-button" type="button" aria-label="Notifications">♟<b>3</b></button>
-          <button class="avatar" type="button" aria-label="Profile">MF</button>
+          <button class="avatar" id="top-avatar" type="button" aria-label="Profile">MF</button>
         </div>
       </header>
 
+      <section class="growth-brief card" id="growth-brief">
+        <div class="growth-brief__intro">
+          <div>
+            <p class="eyebrow">YOUR BUSINESS, EXPLAINED CLEARLY</p>
+            <h2><span id="brief-business-name">Blue River Rafting</span> Growth Brief</h2>
+            <p id="overall-assessment">Your business has a solid foundation. We found one clear opportunity that deserves your attention first.</p>
+          </div>
+          <div class="brief-score-summary">
+            <small>OUR READ</small>
+            <strong id="brief-summary-status">Strong foundation</strong>
+            <span id="brief-summary-line">One focused improvement could unlock more direct bookings.</span>
+          </div>
+        </div>
+
+        <div class="brief-insight-grid">
+          <article class="brief-insight brief-working">
+            <span class="brief-insight__icon">✓</span>
+            <div><small>WHAT'S WORKING</small><h3 id="working-title">Customer trust</h3><p id="working-copy">Your strongest signals are giving travelers confidence to consider booking.</p></div>
+          </article>
+          <article class="brief-insight brief-opportunity">
+            <span class="brief-insight__icon">!</span>
+            <div><small>BIGGEST OPPORTUNITY</small><h3 id="opportunity-title">Booking conversion</h3><p id="opportunity-copy">More of your current visitors could become direct customers.</p></div>
+          </article>
+          <article class="brief-insight brief-recommendation">
+            <span class="brief-insight__icon">→</span>
+            <div><small>OUR RECOMMENDATION</small><h3 id="recommendation-title">Fix the highest-impact issue first</h3><p id="recommendation-copy">We recommend completing today's mission before investing in more traffic.</p></div>
+          </article>
+        </div>
+
+        <div class="brief-why">
+          <div><small>WHY THIS COMES FIRST</small><p id="recommendation-why">It creates the clearest path to measurable growth without adding unnecessary complexity.</p></div>
+          <div><small>EXPECTED RESULT</small><p id="expected-result">More direct bookings from the traffic you already have.</p></div>
+          <button class="primary-button" id="brief-start-mission" type="button">Start Improving →</button>
+        </div>
+      </section>
+
       <section class="summary-grid" id="kpis">
         <article class="score-overview card">
-          <div class="score-ring" aria-label="Growth score 76 out of 100"><div><small>GROWTH SCORE</small><strong data-count="76">0</strong><span>Good</span></div></div>
+          <div class="score-ring" id="score-ring" aria-label="Growth score 76 out of 100"><div><small>GROWTH SCORE</small><strong id="growth-score" data-count="76">0</strong><span id="growth-status">Good</span></div></div>
           <div class="score-trend">
-            <strong>Top 32%</strong><span>of similar tour operators</span>
+            <strong id="score-percentile">Top 32%</strong><span id="score-benchmark">of similar tour operators</span>
             <svg viewBox="0 0 180 75" role="img" aria-label="Upward score trend"><polyline points="4,64 20,50 33,57 48,43 63,49 79,37 95,42 110,27 126,32 141,19 159,23 176,8"/></svg>
-            <small>◷ Score updated daily</small>
+            <div class="score-change" id="score-change">↑ 3 points <span>from the last analysis</span></div><small>◷ Score updated from your latest scan</small>
           </div>
         </article>
 
@@ -79,36 +115,38 @@
           <div class="mission-label"><span>✦</span>TODAY’S MISSION <b>7 DAY STREAK 🔥</b></div>
           <div class="mission-content">
             <div class="mission-copy">
-              <div class="mission-title-row"><span class="mission-number">1</span><h2>Improve Mobile<br>Booking Conversion</h2></div>
-              <p>61% of your visitors are on mobile. Improving your booking experience could increase direct bookings and revenue.</p>
+              <div class="mission-title-row"><span class="mission-number">1</span><h2 id="mission-title">Improve Mobile<br>Booking Conversion</h2></div>
+              <p id="mission-description">61% of your visitors are on mobile. Improving your booking experience could increase direct bookings and revenue.</p>
               <div class="mission-metrics">
                 <div><small>DIFFICULTY</small><strong><span class="dot easy"></span>Easy</strong></div>
                 <div><small>ESTIMATED TIME</small><strong>◷ 45 min</strong></div>
-                <div><small>CONFIDENCE</small><strong class="confidence">94%</strong><span class="confidence-bar"><i></i></span></div>
+                <div><small>CONFIDENCE</small><strong class="confidence" id="mission-confidence">94%</strong><span class="confidence-bar"><i></i></span></div>
               </div>
               <div class="mission-actions"><button class="primary-button" id="start-mission" type="button">Start Mission →</button><button class="secondary-button" id="preview-fix" type="button">Preview Fix</button></div>
             </div>
-            <div class="revenue-box"><small>POTENTIAL REVENUE</small><strong>+$18,400</strong><span>per year</span></div>
+            <div class="revenue-box"><small>POTENTIAL REVENUE</small><strong id="mission-revenue">+$18,400</strong><span>per year</span></div>
             <div class="phone-preview" aria-label="Mobile website preview">
-              <div class="phone-speaker"></div><div class="phone-screen"><small>9:41</small><p>Blue River Rafting</p><h3>Adventure Starts Here.</h3><span>Safe, scenic, unforgettable.</span><button type="button">Book now</button><div class="phone-image"><i></i><i></i><i></i></div></div>
+              <div class="phone-speaker"></div><div class="phone-screen"><small>9:41</small><p id="phone-business">Blue River Rafting</p><h3>Adventure Starts Here.</h3><span>Safe, scenic, unforgettable.</span><button type="button">Book now</button><div class="phone-image"><i></i><i></i><i></i></div></div>
             </div>
           </div>
         </article>
 
         <article class="health-card card" id="health">
-          <div class="section-heading"><div><p class="eyebrow">BUSINESS HEALTH</p><h2>What needs attention</h2></div><button class="text-button" type="button">View all ›</button></div>
-          <div class="health-list">
-            <button class="health-row" data-module="Get Found" type="button"><span class="health-icon blue">◉</span><div><strong>Get Found</strong><span><i style="--value:82%"></i></span></div><b>82/100</b></button>
-            <button class="health-row" data-module="Convert Visitors" type="button"><span class="health-icon green">➤</span><div><strong>Convert Visitors</strong><span><i style="--value:61%"></i></span></div><b>61/100</b></button>
-            <button class="health-row" data-module="Operate Better" type="button"><span class="health-icon orange">⚙</span><div><strong>Operate Better</strong><span><i style="--value:74%"></i></span></div><b>74/100</b></button>
-            <button class="health-row" data-module="Grow Smarter" type="button"><span class="health-icon purple">▥</span><div><strong>Grow Smarter</strong><span><i style="--value:68%"></i></span></div><b>68/100</b></button>
+          <div class="section-heading"><div><p class="eyebrow">BUSINESS SNAPSHOT</p><h2>How the business is performing</h2></div><button class="text-button" type="button">View all ›</button></div>
+          <div class="health-list" id="pillar-health-list">
+            <button class="health-row" data-pillar="Visibility" type="button"><span class="health-icon blue">◎</span><div><strong>Visibility</strong><span><i></i></span></div><b>--</b></button>
+            <button class="health-row" data-pillar="Trust" type="button"><span class="health-icon gold">★</span><div><strong>Trust</strong><span><i></i></span></div><b>--</b></button>
+            <button class="health-row" data-pillar="Conversion" type="button"><span class="health-icon green">➤</span><div><strong>Conversion</strong><span><i></i></span></div><b>--</b></button>
+            <button class="health-row" data-pillar="Operations" type="button"><span class="health-icon orange">⚙</span><div><strong>Operations</strong><span><i></i></span></div><b>--</b></button>
+            <button class="health-row" data-pillar="Intelligence" type="button"><span class="health-icon purple">✦</span><div><strong>Intelligence</strong><span><i></i></span></div><b>--</b></button>
+            <button class="health-row" data-pillar="Growth" type="button"><span class="health-icon cyan">↗</span><div><strong>Growth</strong><span><i></i></span></div><b>--</b></button>
           </div>
         </article>
       </section>
 
       <section class="lower-grid">
         <article class="activity-card card" id="activity">
-          <div class="section-heading"><div><p class="eyebrow">SINCE WE LAST MET</p><h2>Recent Activity</h2></div><button class="text-button" type="button">View all ›</button></div>
+          <div class="section-heading"><div><p class="eyebrow">RECENT PROGRESS</p><h2>What changed</h2></div><button class="text-button" type="button">View all ›</button></div>
           <div class="timeline">
             <article><span class="timeline-icon green">★</span><div><strong>New 5-star review from Sarah J.</strong><p>“Best experience ever! The kids had a blast.”</p></div><time>2h ago</time></article>
             <article><span class="timeline-icon purple">↗</span><div><strong>You passed “River Adventures”</strong><p>Now ranking #2 for “rafting near me”</p></div><time>6h ago</time></article>
@@ -118,7 +156,7 @@
         </article>
 
         <article class="opportunity-card card" id="opportunities">
-          <div class="section-heading"><div><p class="eyebrow">RANKED BY IMPACT</p><h2>Top Opportunities</h2></div><button class="text-button" type="button">View all ›</button></div>
+          <div class="section-heading"><div><p class="eyebrow">WHAT WE’D IMPROVE NEXT</p><h2>Next opportunities</h2></div><button class="text-button" type="button">View all ›</button></div>
           <div class="opportunity-list">
             <button type="button" data-opportunity="Website Mobile Experience"><span class="opportunity-icon blue">▣</span><div><strong>Website Mobile Experience</strong><p>Improve your mobile booking flow <em class="easy-tag">Easy</em></p></div><b>+$18,400<small>per year</small></b><i>›</i></button>
             <button type="button" data-opportunity="Get More 5-Star Reviews"><span class="opportunity-icon gold">★</span><div><strong>Get More 5-Star Reviews</strong><p>Increase review volume and rating <em>Medium</em></p></div><b>+$9,800<small>per year</small></b><i>›</i></button>

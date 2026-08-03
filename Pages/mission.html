@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mission Workspace — Growth Operator</title>
+  <link rel="icon" href="../Assets/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="../styles/mission.css">
+</head>
+<body>
+  <div class="mission-shell">
+    <aside class="mission-sidebar">
+      <a class="mission-brand" href="dashboard.html"><img src="../Assets/growth-operator-logo.png" alt="Growth Operator"></a>
+      <a class="back-link" href="dashboard.html">← Back to dashboard</a>
+      <div class="mission-side-status">
+        <span class="status-dot"></span>
+        <div><small>ACTIVE MISSION</small><strong id="side-pillar">Conversion</strong></div>
+      </div>
+      <nav class="workspace-nav">
+        <button class="active" data-tab="plan">Mission plan</button>
+        <button data-tab="evidence">Why we picked it</button>
+        <button data-tab="preview">Preview fix</button>
+        <button data-tab="progress">Progress</button>
+      </nav>
+      <div class="score-impact">
+        <small>PROJECTED SCORE IMPACT</small>
+        <strong>+<span id="projected-points">4</span> points</strong>
+        <p>Completing this mission can improve your weakest growth pillar.</p>
+      </div>
+    </aside>
+
+    <main class="mission-main">
+      <header class="mission-header">
+        <div>
+          <p class="eyebrow" id="mission-eyebrow">TODAY'S HIGHEST-IMPACT MISSION</p>
+          <h1 id="workspace-title">Improve mobile booking conversion</h1>
+          <p id="workspace-subtitle">Reduce friction between tour discovery and completed checkout.</p>
+        </div>
+        <div class="mission-header-actions">
+          <button class="quiet-button" id="save-exit">Save & exit</button>
+          <button class="primary-button" id="complete-mission">Complete mission</button>
+        </div>
+      </header>
+
+      <section class="mission-stats">
+        <article><small>ESTIMATED IMPACT</small><strong id="impact-value">+$18,400</strong><span>per year</span></article>
+        <article><small>CONFIDENCE</small><strong id="confidence-value">94%</strong><span>Recommendation confidence</span></article>
+        <article><small>ESTIMATED TIME</small><strong id="time-value">45 min</strong><span>focused work</span></article>
+        <article><small>PRIMARY PILLAR</small><strong id="pillar-value">Conversion</strong><span id="pillar-score">61/100</span></article>
+      </section>
+
+      <section class="workspace-panel active" data-panel="plan">
+        <div class="panel-heading"><div><p class="eyebrow">YOUR ACTION PLAN</p><h2>Complete these steps in order.</h2></div><span id="checklist-progress">0 of 5 complete</span></div>
+        <div class="task-list" id="task-list"></div>
+        <div class="advisor-guidance">
+          <span class="advisor-avatar">A</span>
+          <div><small>GROWTH OPERATOR GUIDANCE</small><strong id="advisor-guidance-title">Start with the highest-leverage change.</strong><p id="advisor-guidance-copy">The checklist is ordered so the fastest, clearest wins happen first.</p></div>
+        </div>
+      </section>
+
+      <section class="workspace-panel" data-panel="evidence">
+        <div class="panel-heading"><div><p class="eyebrow">WHY THIS MISSION</p><h2>The signals behind our recommendation.</h2></div><span class="preview-badge">PREVIEW DATA</span></div>
+        <div class="evidence-grid" id="evidence-grid"></div>
+        <div class="operator-note"><strong>What changes when live data is connected?</strong><p>Website scans, Google Business Profile, analytics, booking data, reviews, and competitor signals will replace modeled findings while preserving this same decision workflow.</p></div>
+      </section>
+
+      <section class="workspace-panel" data-panel="preview">
+        <div class="panel-heading"><div><p class="eyebrow">PREVIEW THE FIX</p><h2>Make the improvement easy to understand.</h2></div><span class="preview-badge">BEFORE → AFTER</span></div>
+        <div class="comparison-grid">
+          <article class="comparison-card before"><small>CURRENT EXPERIENCE</small><h3 id="before-title">The next step is unclear.</h3><ul id="before-list"></ul><div class="phone-mock current"><div class="phone-bar"></div><span>Tour detail</span><h4>Adventure Starts Here.</h4><p>Scroll to find availability and booking.</p><button>Learn more</button></div></article>
+          <article class="comparison-card after"><small>RECOMMENDED EXPERIENCE</small><h3 id="after-title">The booking path stays obvious.</h3><ul id="after-list"></ul><div class="phone-mock recommended"><div class="phone-bar"></div><span>Tour detail</span><h4>Adventure Starts Here.</h4><p>Trust, availability, and action stay together.</p><button>Book now</button></div></article>
+        </div>
+      </section>
+
+      <section class="workspace-panel" data-panel="progress">
+        <div class="panel-heading"><div><p class="eyebrow">MISSION PROGRESS</p><h2>Turn action into measurable growth.</h2></div><span id="progress-percent">0%</span></div>
+        <div class="progress-hero"><div class="progress-ring" id="progress-ring"><strong id="progress-number">0%</strong><span>complete</span></div><div><h3 id="progress-message">Your mission is ready to begin.</h3><p>Complete each checklist item. Growth Operator will eventually verify connected signals and track the outcome after launch.</p></div></div>
+        <div class="measurement-grid"><article><small>BASELINE SCORE</small><strong id="baseline-score">66</strong></article><article><small>PROJECTED SCORE</small><strong id="projected-score">70</strong></article><article><small>TRACKING WINDOW</small><strong>14 days</strong></article></div>
+      </section>
+    </main>
+  </div>
+
+  <div class="completion-overlay" id="completion-overlay" aria-hidden="true">
+    <div class="completion-card"><span>✓</span><p>MISSION COMPLETE</p><h2>Growth happens when insight becomes action.</h2><p id="completion-copy">Your progress has been saved.</p><button id="return-dashboard">Return to dashboard →</button></div>
+  </div>
+
+  <script src="../js/mission.js"></script>
+</body>
+</html>

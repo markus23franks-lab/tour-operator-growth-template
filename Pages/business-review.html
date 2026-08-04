@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="A guided Growth Operator business review.">
+  <title>Business Review — Growth Operator</title>
+  <link rel="icon" href="../Assets/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="../styles/business-review.css">
+</head>
+<body>
+  <div class="review-shell">
+    <header class="review-header">
+      <a class="review-brand" href="dashboard.html" aria-label="Back to business insights">
+        <img src="../Assets/growth-operator-logo.png" alt="Growth Operator">
+      </a>
+      <div class="review-context">
+        <span class="review-live"><i></i> GUIDED BUSINESS REVIEW</span>
+        <small id="review-business-header">Your business</small>
+      </div>
+      <a class="back-link" href="dashboard.html">← Back to business insights</a>
+    </header>
+
+    <main class="review-main">
+      <aside class="review-rail">
+        <div class="rail-intro">
+          <p class="eyebrow">WHAT WE REVIEWED</p>
+          <h2 id="rail-business-name">Your business</h2>
+          <p>Five clear observations, explained in the same order we would walk through them with you.</p>
+        </div>
+        <ol class="review-steps" id="review-steps"></ol>
+        <div class="rail-summary">
+          <small>REVIEW PROGRESS</small>
+          <strong><span id="review-step-count">1</span> of <span id="review-total-count">5</span></strong>
+          <div><span id="review-progress"></span></div>
+        </div>
+      </aside>
+
+      <section class="review-stage">
+        <div class="stage-heading">
+          <div>
+            <p class="eyebrow" id="finding-pillar">CONVERSION</p>
+            <h1 id="finding-title">Your next growth opportunity</h1>
+            <p id="finding-summary">We reviewed the customer journey and found one issue worth addressing first.</p>
+          </div>
+          <div class="finding-badges">
+            <span id="finding-status">OPPORTUNITY</span>
+            <strong id="finding-priority">HIGH PRIORITY</strong>
+          </div>
+        </div>
+
+        <section class="evidence-card">
+          <div class="evidence-toolbar">
+            <div><span></span><span></span><span></span></div>
+            <p id="evidence-url">yourwebsite.com</p>
+            <small>MODELED REVIEW PREVIEW</small>
+          </div>
+          <div class="evidence-canvas" id="evidence-canvas"></div>
+        </section>
+
+        <section class="diagnosis-grid">
+          <article><small>WHAT WE FOUND</small><p id="finding-found"></p></article>
+          <article><small>WHY IT MATTERS</small><p id="finding-why"></p></article>
+          <article><small>WHAT WE'D RECOMMEND</small><p id="finding-recommendation"></p></article>
+          <article><small>EXPECTED RESULT</small><p id="finding-expected"></p></article>
+        </section>
+
+        <section class="prescription-card">
+          <div>
+            <p class="eyebrow">OUR PRESCRIPTION</p>
+            <h2 id="prescription-title">Fix the highest-impact issue first.</h2>
+            <p id="prescription-copy">This gives the business the clearest path to measurable improvement without adding unnecessary complexity.</p>
+          </div>
+          <div class="prescription-metrics">
+            <span><small>IMPACT</small><strong id="metric-impact">High</strong></span>
+            <span><small>EFFORT</small><strong id="metric-effort">Easy</strong></span>
+            <span><small>CONFIDENCE</small><strong id="metric-confidence">92%</strong></span>
+          </div>
+        </section>
+
+        <div class="review-actions">
+          <button class="secondary" id="previous-finding" type="button">← Previous</button>
+          <button class="primary" id="next-finding" type="button">Next finding →</button>
+        </div>
+      </section>
+    </main>
+
+    <section class="review-complete" id="review-complete" aria-hidden="true">
+      <div class="complete-panel">
+        <span class="complete-check">✓</span>
+        <p class="eyebrow">BUSINESS REVIEW COMPLETE</p>
+        <h2 id="complete-business-name">Here’s where we’d start.</h2>
+        <p id="complete-summary">The business has real demand. The clearest opportunity is converting more of that demand into direct revenue.</p>
+        <div class="complete-priority">
+          <small>FIRST PRIORITY</small>
+          <strong id="complete-priority-title">Improve the booking experience</strong>
+          <p id="complete-priority-copy">Fix the highest-impact leak before spending more to create traffic.</p>
+        </div>
+        <div class="complete-actions">
+          <button class="primary" id="start-recommended-mission" type="button">Start improving →</button>
+          <a class="secondary-link" href="dashboard.html">Return to business insights</a>
+        </div>
+        <small class="preview-disclaimer">This guided review uses modeled evidence to demonstrate the customer experience. Live connected data will replace these preview observations.</small>
+      </div>
+    </section>
+  </div>
+  <script src="../js/business-review.js"></script>
+</body>
+</html>

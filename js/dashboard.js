@@ -27,9 +27,17 @@ const fallbackMission = {
 };
 
 const assessment = readStorage("growthOperatorAssessment", fallbackAssessment);
-const scores = readStorage("growthOperatorPreviewScores", fallbackScores);
-const mission = readStorage("growthOperatorPreviewMission", fallbackMission);
-const profile = buildProfile(assessment, scores, mission);
+const liveAudit = readStorage("growthOperatorLiveAudit", null);
+const previewScores = readStorage("growthOperatorPreviewScores", fallbackScores);
+const previewMission = readStorage("growthOperatorPreviewMission", fallbackMission);
+const intelligenceEngine = new window.GOIntelligenceEngine();
+const intelligence = intelligenceEngine.analyze({ assessment, previewScores, previewMission, liveAudit });
+const scores = intelligence.scores;
+const mission = intelligence.mission;
+const profile = buildProfile(intelligence.assessment, scores, mission);
+profile.growthScore = intelligence.growthScore;
+profile.findings = intelligence.findings;
+profile.intelligence = intelligence;
 
 const modalContent = {
   mission: {
@@ -50,6 +58,7 @@ const modalContent = {
 
 document.addEventListener("DOMContentLoaded", () => {
   personalizeDashboard();
+  renderFindings(profile);
   animateCounters();
   animateBars();
   wireInteractions();
@@ -64,7 +73,9 @@ function personalizeDashboard() {
   document.getElementById("greeting").innerHTML = `${greeting}, ${profile.firstName} <span>👋</span>`;
   document.getElementById("today-label").textContent = now.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" }).toUpperCase();
   document.getElementById("briefing-line").innerHTML = `Here’s what’s moving the needle for <strong>${profile.businessName}</strong> and where we can help you grow.`;
-  document.getElementById("scan-time").textContent = "Latest scan: just now";
+  document.getElementById("scan-time").textContent = liveAudit ? `Live website check: ${formatAuditTime(liveAudit.completedAt)}` : "Latest preview scan: just now";
+  const contextStrong = document.querySelector("#scan-context strong");
+  if (contextStrong) contextStrong.textContent = liveAudit ? "LIVE WEBSITE DATA" : "PREVIEW ANALYSIS";
 
   setText("sidebar-owner", profile.ownerName);
   setText("sidebar-business", profile.businessName);
@@ -89,6 +100,7 @@ function personalizeDashboard() {
 
   renderPillars(profile.scores);
   renderGrowthBrief(profile);
+  localStorage.setItem("growthOperatorBusinessReviewProfile", JSON.stringify(profile));
 }
 
 function renderGrowthBrief(currentProfile) {
@@ -156,6 +168,220 @@ function renderGrowthBrief(currentProfile) {
   setText("recommendation-why", currentProfile.mission.reason);
   setText("expected-result", recommendation.expected);
   document.getElementById("overall-assessment").innerHTML = `${currentProfile.businessName} has built a foundation worth growing. <strong>${strongest[0]}</strong> is currently working in your favor, while <strong>${weakest[0]}</strong> is the clearest constraint. We’d focus there first because it offers the most practical path to measurable improvement.`;
+}
+
+
+function renderFindings(currentProfile) {
+  const findings = Array.isArray(currentProfile.findings) && currentProfile.findings.length
+    ? currentProfile.findings
+    : buildLiveFindings(currentProfile) || buildFindings(currentProfile);
+  const list = document.getElementById("findings-list");
+  if (!list) return;
+
+  setText("findings-title", `${currentProfile.businessName}: the clearest things we found`);
+  setText("findings-intro", liveAudit ? "These findings use a live mobile Lighthouse check of your website. Open any finding to see the measured signal and what we’d do next." : "We separated strengths from opportunities and ranked what we’d address first. Open any finding to see the reasoning behind it.");
+  setText("findings-source-label", currentProfile.intelligence?.sourceSummary?.label || (liveAudit ? "LIVE SOURCE" : "REVIEWED ACROSS"));
+  setText("findings-source-title", liveAudit ? "Website + GO Engine" : "GO Intelligence Engine");
+  setText("findings-source-status", `v${currentProfile.intelligence?.engineVersion || "1.0"} • ${currentProfile.intelligence?.mode || "preview"}`);
+
+  list.innerHTML = findings.map((finding, index) => `
+    <article class="finding-card ${finding.tone} ${index === 0 ? "finding-primary" : ""}" data-finding-id="${finding.id}">
+      <button class="finding-summary-row" type="button" aria-expanded="false">
+        <span class="finding-rank">${String(index + 1).padStart(2, "0")}</span>
+        <span class="finding-icon">${finding.icon}</span>
+        <span class="finding-main">
+          <small>${finding.pillar}</small>
+          <strong>${finding.title}</strong>
+          <p>${finding.summary}</p>
+        </span>
+        <span class="finding-status">${finding.status}</span>
+        <span class="finding-toggle">Show me <b>+</b></span>
+      </button>
+      <div class="finding-details" hidden>
+        <div class="finding-detail-grid">
+          <div><small>WHAT WE FOUND</small><p>${finding.found}</p></div>
+          <div><small>WHY IT MATTERS</small><p>${finding.why}</p></div>
+          <div><small>WHAT WE’D RECOMMEND</small><p>${finding.recommendation}</p></div>
+          <div><small>EXPECTED RESULT</small><p>${finding.expected}</p></div>
+        </div>
+        <div class="finding-proof">
+          <span><small>CURRENT SIGNAL</small><strong>${finding.score}/100</strong></span>
+          <span><small>PRIORITY</small><strong>${finding.priorityScore ?? "--"}/100</strong></span>
+          <p><strong>What we’ll verify with live data:</strong> ${finding.verify}</p>
+          <button class="finding-action" type="button" data-finding-action="${finding.id}">${index === 0 ? "Start improving →" : "Make this a mission →"}</button>
+        </div>
+      </div>
+    </article>
+  `).join("");
+
+  list.querySelectorAll(".finding-summary-row").forEach((button) => {
+    button.addEventListener("click", () => {
+      const card = button.closest(".finding-card");
+      const details = card.querySelector(".finding-details");
+      const expanded = button.getAttribute("aria-expanded") === "true";
+      button.setAttribute("aria-expanded", String(!expanded));
+      details.hidden = expanded;
+      card.classList.toggle("open", !expanded);
+      button.querySelector(".finding-toggle").innerHTML = expanded ? "Show me <b>+</b>" : "Hide <b>−</b>";
+    });
+  });
+
+  list.querySelectorAll("[data-finding-action]").forEach((button) => {
+    button.addEventListener("click", (event) => {
+      event.stopPropagation();
+      const finding = findings.find((item) => item.id === button.dataset.findingAction);
+      if (!finding) return;
+
+      if (finding.pillar === currentProfile.mission.pillar) {
+        openMissionWorkspace("start");
+        return;
+      }
+
+      openModal({
+        eyebrow: `${finding.pillar.toUpperCase()} FINDING`,
+        title: finding.title,
+        copy: finding.recommendation,
+        callout: `<strong>Expected result:</strong> ${finding.expected}<br><br><strong>Next step:</strong> connect the supporting data source, verify the finding, and rank it against your current mission.`,
+        action: "Add to improvement plan →"
+      });
+    });
+  });
+}
+
+
+function mergeLiveScores(previewScores, audit) {
+  const category = audit.categories || {};
+  const performance = category.performance ?? previewScores.Conversion;
+  const seo = category.seo ?? previewScores.Visibility;
+  const accessibility = category.accessibility ?? previewScores.Trust;
+  const bestPractices = category.bestPractices ?? previewScores.Operations;
+  return {
+    ...previewScores,
+    Visibility: Math.round((previewScores.Visibility * 0.35) + (seo * 0.65)),
+    Trust: Math.round((previewScores.Trust * 0.45) + (accessibility * 0.55)),
+    Conversion: Math.round((previewScores.Conversion * 0.25) + (performance * 0.75)),
+    Operations: Math.round((previewScores.Operations * 0.45) + (bestPractices * 0.55)),
+    Intelligence: Math.round((previewScores.Intelligence * 0.7) + 21),
+    Growth: Math.round((performance + seo + accessibility + bestPractices) / 4)
+  };
+}
+
+function formatAuditTime(value) {
+  if (!value) return "just now";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "just now";
+  return date.toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
+}
+
+function buildLiveFindings(currentProfile) {
+  if (!liveAudit || !Array.isArray(liveAudit.findings) || !liveAudit.findings.length) return null;
+  return liveAudit.findings.slice(0, 5).map((finding, index) => ({
+    id: finding.id || `live-${index + 1}`,
+    pillar: finding.pillar || "Conversion",
+    icon: finding.icon || "◎",
+    title: finding.title,
+    summary: finding.summary,
+    found: finding.found,
+    why: finding.why,
+    recommendation: finding.recommendation,
+    expected: finding.expected,
+    verify: finding.evidence || `Measured during the live mobile website check completed ${formatAuditTime(liveAudit.completedAt)}.`,
+    score: Number.isFinite(finding.score) ? finding.score : currentProfile.scores[finding.pillar] || currentProfile.growthScore,
+    status: finding.status || "Live finding",
+    tone: finding.tone || (index === 0 ? "opportunity" : "neutral")
+  }));
+}
+
+function buildFindings(currentProfile) {
+  const templates = {
+    Visibility: {
+      icon: "◎",
+      title: "Make it easier for nearby travelers to find you",
+      summary: "Your local presence can do more of the work before a traveler ever reaches your website.",
+      found: "Our preview analysis suggests there is room to strengthen how consistently your business appears across high-intent local searches and discovery channels.",
+      why: "Travelers often choose from the first credible options they see. Weak or inconsistent visibility means competitors can win the click before your experience is considered.",
+      recommendation: "Tighten your local search presence, confirm business information everywhere, and build pages around the searches most likely to produce bookings.",
+      expected: "More qualified website visits and booking inquiries from travelers already looking for what you offer.",
+      verify: "Google Business Profile completeness, local rankings, Search Console queries, directory consistency, and location-page coverage."
+    },
+    Trust: {
+      icon: "★",
+      title: "Use customer trust more deliberately",
+      summary: "Your reputation should reduce hesitation at every important booking decision.",
+      found: "Customer trust appears to be an important business asset, but it may not be visible enough throughout the customer journey.",
+      why: "Travelers compare unfamiliar operators quickly. Reviews, photos, policies, and proof help them feel safe choosing you instead of a competitor.",
+      recommendation: "Place strong reviews and clear trust signals near pricing, availability, booking buttons, and checkout decisions.",
+      expected: "Higher booking confidence and stronger conversion without needing additional traffic.",
+      verify: "Google and Tripadvisor rating trends, review volume, response rate, testimonial placement, photo quality, and policy clarity."
+    },
+    Conversion: {
+      icon: "➤",
+      title: "Remove friction from the booking journey",
+      summary: "Interested visitors should never have to work hard to become paying customers.",
+      found: "The booking journey is the clearest modeled constraint. Calls to action, mobile usability, or unnecessary decisions may be allowing high-intent visitors to leave.",
+      why: "More marketing cannot solve a conversion problem. Every unclear step between interest and checkout creates another chance to lose revenue.",
+      recommendation: "Keep the booking action visible, simplify the path to availability, and answer the most important questions before checkout.",
+      expected: "More direct bookings from the traffic and demand you already have.",
+      verify: "Mobile CTA visibility, booking-engine steps, page speed, abandonment data, form friction, analytics funnels, and checkout completion."
+    },
+    Operations: {
+      icon: "⚙",
+      title: "Protect leads with consistent follow-up",
+      summary: "Demand only becomes revenue when calls, inquiries, confirmations, and staff handoffs are handled reliably.",
+      found: "The business may be relying on people to remember important follow-up steps that should happen automatically and consistently.",
+      why: "Missed calls, slow responses, manual calendars, and inconsistent guest communication create revenue leakage and unnecessary staff work.",
+      recommendation: "Centralize inquiries, automate confirmations and reminders, and create a visible owner for every follow-up task.",
+      expected: "More inquiries converted, fewer dropped opportunities, and less manual work for the team.",
+      verify: "Call-answer rate, inquiry response time, confirmation delivery, waiver completion, calendar ownership, CRM capture, and cancellation workflows."
+    },
+    Intelligence: {
+      icon: "✦",
+      title: "Turn market information into better decisions",
+      summary: "Competitor, pricing, traffic, and customer signals should guide what you do next.",
+      found: "Useful market knowledge likely exists, but it is not yet organized into a reliable benchmark the business can monitor over time.",
+      why: "Without a consistent comparison point, operators can react to noise, miss competitor changes, or invest in the wrong improvement.",
+      recommendation: "Establish a small competitor set and monitor pricing, reviews, visibility, offers, and positioning on a repeatable schedule.",
+      expected: "Faster, more confident decisions about pricing, marketing, positioning, and investment.",
+      verify: "Competitor pricing, review velocity, search position, offer changes, ad activity, social presence, and product mix."
+    },
+    Growth: {
+      icon: "↗",
+      title: "Create one repeatable improvement rhythm",
+      summary: "The business needs a clear way to choose, complete, and measure the next improvement.",
+      found: "There are several credible ways to grow, but pursuing too many at once can dilute attention and make results difficult to measure.",
+      why: "Operators are busy. A focused improvement cycle creates accountability and makes it easier to see what actually changed the business.",
+      recommendation: "Work one prioritized mission at a time, define the expected outcome, and measure the result before choosing the next move.",
+      expected: "More consistent progress, clearer ROI, and fewer unfinished initiatives.",
+      verify: "Mission completion, baseline metrics, outcome tracking, revenue impact, owner accountability, and time-to-result."
+    }
+  };
+
+  const ordered = Object.entries(currentProfile.scores)
+    .map(([pillar, score]) => ({ pillar, score: Number(score) }))
+    .sort((a, b) => a.score - b.score);
+
+  const primaryPillar = currentProfile.mission.pillar;
+  const selectedPillars = [primaryPillar];
+  ordered.forEach(({ pillar }) => {
+    if (!selectedPillars.includes(pillar) && selectedPillars.length < 4) selectedPillars.push(pillar);
+  });
+  const strongest = [...ordered].sort((a, b) => b.score - a.score)[0]?.pillar;
+  if (strongest && !selectedPillars.includes(strongest)) selectedPillars.push(strongest);
+
+  return selectedPillars.slice(0, 5).map((pillar) => {
+    const score = Number(currentProfile.scores[pillar] ?? 0);
+    const template = templates[pillar] || templates.Growth;
+    const status = score >= 78 ? "Strength" : score >= 60 ? "Opportunity" : "Needs attention";
+    const tone = status === "Strength" ? "finding-strength" : status === "Needs attention" ? "finding-alert" : "finding-opportunity";
+    return {
+      id: pillar.toLowerCase(),
+      pillar,
+      score,
+      status,
+      tone,
+      ...template
+    };
+  });
 }
 
 function renderPillars(pillarScores) {

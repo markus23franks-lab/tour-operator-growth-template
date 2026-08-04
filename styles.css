@@ -131,3 +131,49 @@
 .brief-why{margin-top:10px;padding:13px 14px;display:grid;grid-template-columns:1fr 1fr auto;gap:18px;align-items:center;border:1px solid #123b56;border-radius:10px;background:rgba(4,17,28,.62)}.brief-why small{display:block;color:#5ebeff;font-size:7px;font-weight:800;letter-spacing:.11em}.brief-why p{margin:5px 0 0;color:#90a6b7;font-size:9px;line-height:1.55}.brief-why .primary-button{white-space:nowrap}
 .score-ring{filter:drop-shadow(0 0 19px rgba(0,178,255,.82)) drop-shadow(0 0 36px rgba(0,107,255,.38))!important;box-shadow:0 0 42px rgba(0,150,255,.54),0 0 78px rgba(0,89,255,.2),inset 0 0 34px rgba(0,166,255,.28)!important}.score-ring::before{box-shadow:inset 0 0 34px rgba(0,156,255,.3),0 0 28px rgba(0,156,255,.18)!important}.score-ring::after{content:"";position:absolute;inset:-20px;border-radius:50%;border:1px solid rgba(56,190,255,.14);box-shadow:0 0 38px rgba(0,151,255,.28);animation:goScoreBloom 3.2s ease-in-out infinite;pointer-events:none}@keyframes goScoreBloom{0%,100%{opacity:.48;transform:scale(.98)}50%{opacity:1;transform:scale(1.035)}}
 @media(max-width:1250px){.growth-brief__intro{grid-template-columns:1fr 250px}.brief-insight-grid{grid-template-columns:1fr 1fr}.brief-recommendation{grid-column:1/-1}}
+
+/* =========================================================
+   BUILD 015 â€” FINDINGS ENGINE
+   ========================================================= */
+.findings-section{margin:12px 0;padding:20px 22px;overflow:hidden;position:relative}
+.findings-section:before{content:"";position:absolute;width:300px;height:300px;right:-130px;top:-160px;border-radius:50%;background:rgba(0,139,255,.09);filter:blur(65px);pointer-events:none}
+.findings-heading{position:relative;display:flex;justify-content:space-between;gap:30px;align-items:flex-start;margin-bottom:16px}
+.findings-heading h2{margin:5px 0 7px;font-size:21px;letter-spacing:-.03em}
+.findings-heading>div>p:last-child{max-width:720px;margin:0;color:var(--muted);font-size:10px;line-height:1.65}
+.findings-summary{min-width:145px;padding:11px 13px;border:1px solid var(--line);border-radius:9px;background:rgba(3,17,29,.62)}
+.findings-summary small{display:block;color:#6e8ca2;font-size:7px;font-weight:800;letter-spacing:.12em}
+.findings-summary strong{display:block;margin:5px 0 3px;font-size:11px}
+.findings-summary span{color:#28aeff;font-size:8px;font-weight:700}
+.findings-list{position:relative;display:grid;gap:8px}
+.finding-card{border:1px solid #12364f;border-radius:11px;background:rgba(4,18,30,.68);overflow:hidden;transition:.22s ease}
+.finding-card:hover,.finding-card.open{border-color:#176ca2;background:rgba(5,23,38,.9)}
+.finding-primary{border-color:#1689d4;box-shadow:0 0 20px rgba(0,131,255,.09)}
+.finding-summary-row{width:100%;min-height:76px;display:grid;grid-template-columns:32px 34px minmax(0,1fr) 90px 86px;gap:11px;align-items:center;padding:11px 13px;border:0;background:transparent;color:inherit;text-align:left;cursor:pointer}
+.finding-rank{color:#4f7086;font-size:8px;font-weight:800}
+.finding-icon{width:31px;height:31px;border-radius:9px;display:grid;place-items:center;background:rgba(20,137,239,.13);border:1px solid rgba(32,151,243,.18);color:#46bcff;font-size:13px}
+.finding-main small{display:block;color:#42b7fb;font-size:7px;font-weight:800;letter-spacing:.12em;text-transform:uppercase}
+.finding-main strong{display:block;margin:4px 0 3px;font-size:11px}
+.finding-main p{margin:0;color:#7890a3;font-size:8px;line-height:1.45}
+.finding-status{justify-self:end;padding:4px 7px;border-radius:999px;font-size:7px;font-weight:800;border:1px solid rgba(255,190,35,.28);color:#ffc43b;background:rgba(255,190,35,.08)}
+.finding-strength .finding-status{color:var(--green);border-color:rgba(64,221,120,.3);background:rgba(64,221,120,.08)}
+.finding-alert .finding-status{color:#ff7f67;border-color:rgba(255,112,82,.3);background:rgba(255,112,82,.08)}
+.finding-toggle{justify-self:end;color:#66bfff;font-size:8px;font-weight:800;white-space:nowrap}
+.finding-toggle b{display:inline-grid;width:18px;height:18px;margin-left:5px;border:1px solid #15567f;border-radius:50%;place-items:center;font-size:11px}
+.finding-details{padding:0 13px 13px 90px;border-top:1px solid rgba(18,54,79,.65);animation:findingOpen .25s ease}
+.finding-detail-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;padding-top:12px}
+.finding-detail-grid>div{min-height:105px;padding:11px;border:1px solid #11334b;border-radius:8px;background:rgba(3,16,27,.7)}
+.finding-detail-grid small,.finding-proof small{display:block;color:#65859b;font-size:6px;font-weight:800;letter-spacing:.12em}
+.finding-detail-grid p{margin:7px 0 0;color:#9bb0bf;font-size:8px;line-height:1.6}
+.finding-proof{display:grid;grid-template-columns:90px 1fr auto;gap:12px;align-items:center;margin-top:8px;padding:10px 11px;border:1px solid #164665;border-radius:8px;background:linear-gradient(90deg,rgba(9,70,110,.18),rgba(3,17,29,.56))}
+.finding-proof span strong{display:block;margin-top:4px;color:#42bdff;font-size:14px}
+.finding-proof p{margin:0;color:#8199aa;font-size:8px;line-height:1.5}
+.finding-proof p strong{color:#b9ccd9}
+.finding-action{height:34px;padding:0 13px;border:0;border-radius:7px;background:linear-gradient(135deg,#1b9cff,#1468ed);color:white;font-size:8px;font-weight:800;cursor:pointer;box-shadow:0 0 15px rgba(0,130,255,.2)}
+@keyframes findingOpen{from{opacity:0;transform:translateY(-5px)}to{opacity:1;transform:none}}
+@media(max-width:1250px){.finding-detail-grid{grid-template-columns:1fr 1fr}.finding-summary-row{grid-template-columns:28px 32px minmax(0,1fr) 82px 72px}.finding-details{padding-left:76px}}
+
+
+
+/* BUILD 016 â€” Live Website Analysis */
+.live-check-link{display:inline-flex;margin-top:10px;color:#35b9ff;text-decoration:none;font-size:9px;font-weight:800}.live-check-link:hover{color:#fff}.findings-summary{min-width:190px}
+\n\n/* BUILD 018 â€” Guided Business Review entry points */\n.review-link{margin-top:6px;color:#72d9ff}.brief-action-stack{display:flex;align-items:center;gap:8px}.review-launch{height:38px;display:inline-flex;align-items:center;text-decoration:none;white-space:nowrap}.findings-summary .review-link{display:flex}@media(max-width:900px){.brief-action-stack{align-items:stretch;flex-direction:column}.review-launch{justify-content:center}}\n

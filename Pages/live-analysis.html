@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Run a live Growth Operator website check using real Lighthouse data.">
+  <title>Live Website Check — Growth Operator</title>
+  <link rel="icon" href="../Assets/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="../styles/live-analysis.css">
+</head>
+<body>
+  <main class="analysis-shell">
+    <div class="ambient ambient-one"></div><div class="ambient ambient-two"></div><div class="grid"></div>
+    <header class="analysis-header">
+      <a href="dashboard.html"><img src="../Assets/growth-operator-logo.png" alt="Growth Operator"></a>
+      <a class="back-link" href="dashboard.html">← Back to business insights</a>
+    </header>
+
+    <section class="analysis-hero">
+      <p class="eyebrow">LIVE WEBSITE CHECK — VERSION 1</p>
+      <h1>Let’s look at the real website.</h1>
+      <p>Growth Operator will run a live mobile Lighthouse check, translate the technical results into operator language, and send the strongest findings back to the dashboard.</p>
+
+      <form id="audit-form" class="audit-form">
+        <label for="audit-url">Business website</label>
+        <div><input id="audit-url" type="url" placeholder="https://yourtourcompany.com" required><button id="audit-button" type="submit">Run live check <span>→</span></button></div>
+        <small>Real data source: Google PageSpeed Insights / Lighthouse. No API key is required for occasional testing.</small>
+      </form>
+    </section>
+
+    <section id="analysis-workspace" class="analysis-workspace" hidden>
+      <article class="run-card">
+        <div class="run-header"><div><p class="eyebrow">LIVE ANALYSIS</p><h2 id="run-title">Connecting to the website</h2></div><span id="run-state"><i></i> RUNNING</span></div>
+        <div class="master-track"><span id="master-bar"></span></div>
+        <div id="run-log" class="run-log" aria-live="polite"></div>
+      </article>
+
+      <aside class="score-card">
+        <p class="eyebrow">MEASURED SIGNALS</p>
+        <div class="score-list">
+          <div data-score="performance"><span>Performance</span><strong>--</strong><i><b></b></i></div>
+          <div data-score="seo"><span>SEO</span><strong>--</strong><i><b></b></i></div>
+          <div data-score="accessibility"><span>Accessibility</span><strong>--</strong><i><b></b></i></div>
+          <div data-score="bestPractices"><span>Best practices</span><strong>--</strong><i><b></b></i></div>
+        </div>
+        <p class="score-note">These are real Lighthouse category scores—not the full Growth Score.</p>
+      </aside>
+    </section>
+
+    <section id="results" class="results" hidden>
+      <div class="results-heading"><div><p class="eyebrow">LIVE RESULTS</p><h2>Here’s what the website told us.</h2><p id="results-summary"></p></div><button id="send-dashboard" type="button">Send findings to dashboard →</button></div>
+      <div id="metric-strip" class="metric-strip"></div>
+      <div id="live-findings" class="live-findings"></div>
+      <div class="scope-note"><strong>What this version checks:</strong> mobile performance, SEO fundamentals, accessibility, best practices, and selected Lighthouse audits. Google Business Profile, reviews, competitors, booking-flow crawling, social presence, and analytics connections come next.</div>
+    </section>
+
+    <section id="error-panel" class="error-panel" hidden><h2>We couldn’t complete this check.</h2><p id="error-message"></p><button id="try-again" type="button">Try again</button></section>
+  </main>
+  <script src="../js/live-analysis.js"></script>
+</body>
+</html>

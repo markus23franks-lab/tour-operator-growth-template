@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Growth Operator — Daily Command Center</title>
+  <title>Growth Operator — Business Insights</title>
   <link rel="stylesheet" href="../styles.css">
 </head>
 <body>
@@ -17,6 +17,8 @@
         <a class="nav-link active" href="dashboard.html"><span>⌂</span>Home</a>
         <a class="nav-link" href="growth-score.html"><span>◉</span>Growth Score</a>
         <a class="nav-link" href="mission.html"><span>✦</span>Missions</a>
+        <a class="nav-link" href="live-analysis.html"><span>◫</span>Live Website Check</a>
+        <a class="nav-link" href="business-review.html"><span>▶</span>Business Review</a>
         <a class="nav-link" href="#health"><span>▦</span>Website</a>
         <a class="nav-link" href="#activity"><span>★</span>Reviews</a>
         <a class="nav-link" href="#health"><span>⌖</span>Local SEO</a>
@@ -53,8 +55,8 @@
       <section class="growth-brief card" id="growth-brief">
         <div class="growth-brief__intro">
           <div>
-            <p class="eyebrow">YOUR BUSINESS, EXPLAINED CLEARLY</p>
-            <h2><span id="brief-business-name">Blue River Rafting</span> Growth Brief</h2>
+            <p class="eyebrow">YOUR BUSINESS INSIGHTS</p>
+            <h2><span id="brief-business-name">Blue River Rafting</span>: Here’s what we found.</h2>
             <p id="overall-assessment">Your business has a solid foundation. We found one clear opportunity that deserves your attention first.</p>
           </div>
           <div class="brief-score-summary">
@@ -82,8 +84,27 @@
         <div class="brief-why">
           <div><small>WHY THIS COMES FIRST</small><p id="recommendation-why">It creates the clearest path to measurable growth without adding unnecessary complexity.</p></div>
           <div><small>EXPECTED RESULT</small><p id="expected-result">More direct bookings from the traffic you already have.</p></div>
-          <button class="primary-button" id="brief-start-mission" type="button">Start Improving →</button>
+          <div class="brief-action-stack"><a class="secondary-button review-launch" href="business-review.html">Walk through the review</a><button class="primary-button" id="brief-start-mission" type="button">Start Improving →</button></div>
         </div>
+      </section>
+
+
+      <section class="findings-section card" id="findings">
+        <div class="findings-heading">
+          <div>
+            <p class="eyebrow">WHAT WE FOUND</p>
+            <h2 id="findings-title">Your most important business findings</h2>
+            <p id="findings-intro">We organized the clearest strengths and opportunities so you know what deserves attention first.</p>
+          </div>
+          <div class="findings-summary">
+            <small id="findings-source-label">REVIEWED ACROSS</small>
+            <strong id="findings-source-title">6 growth pillars</strong>
+            <span id="findings-source-status">Preview analysis</span>
+            <a class="live-check-link" href="live-analysis.html">Run live website check →</a>
+            <a class="live-check-link review-link" href="business-review.html">Open guided business review →</a>
+          </div>
+        </div>
+        <div class="findings-list" id="findings-list"></div>
       </section>
 
       <section class="summary-grid" id="kpis">
@@ -173,6 +194,7 @@
     <section class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title"><button class="modal-close" id="modal-close" type="button">×</button><p class="eyebrow" id="modal-eyebrow">GROWTH OPERATOR</p><h2 id="modal-title">Mission ready</h2><p id="modal-copy"></p><div class="modal-callout" id="modal-callout"></div><button class="primary-button" id="modal-action" type="button">Continue →</button></section>
   </div>
   <div class="toast" id="toast" role="status"></div>
+  <script src="../js/intelligence-engine.js"></script>
   <script src="../js/dashboard.js"></script>
 </body>
 </html>

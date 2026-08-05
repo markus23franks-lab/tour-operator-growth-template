@@ -18,6 +18,7 @@
         <a class="nav-link" href="growth-score.html"><span>◉</span>Growth Score</a>
         <a class="nav-link" href="mission.html"><span>✦</span>Missions</a>
         <a class="nav-link" href="live-analysis.html"><span>◫</span>Live Website Check</a>
+        <a class="nav-link" href="#go-workbench"><span>●</span>GO at Work</a>
         <a class="nav-link" href="business-review.html"><span>▶</span>Business Review</a>
         <a class="nav-link" href="#health"><span>▦</span>Website</a>
         <a class="nav-link" href="#activity"><span>★</span>Reviews</a>
@@ -40,7 +41,7 @@
     <main class="main-content">
       <header class="topbar">
         <div>
-          <p class="eyebrow" id="today-label">WEEKLY GROWTH BRIEF</p>
+          <p class="eyebrow" id="today-label">MY GROWTH OPERATOR</p>
           <h1 id="greeting">Good evening, Markus <span>👋</span></h1>
           <p id="briefing-line">Here’s what we found and what we’d focus on next.</p>
           <div class="scan-context" id="scan-context"><span></span><strong>PREVIEW ANALYSIS</strong><small id="scan-time">Just now</small></div>
@@ -88,6 +89,41 @@
         </div>
       </section>
 
+
+
+      <section class="go-workbench card" id="go-workbench">
+        <div class="go-workbench__header">
+          <div>
+            <p class="eyebrow">MY GROWTH OPERATOR</p>
+            <h2 id="go-work-headline">Here’s what GO is moving forward.</h2>
+            <p>GO notices what matters, prepares the next improvement, asks for approval when needed, and tracks what changed afterward.</p>
+          </div>
+          <div class="go-on-duty"><span></span><strong>GO IS ON IT</strong><small id="go-last-update">Updated just now</small></div>
+        </div>
+
+        <div class="go-work-grid">
+          <article class="go-work-panel go-approval-panel">
+            <div class="go-panel-heading"><span class="go-panel-icon approval">✓</span><div><small>READY FOR YOUR APPROVAL</small><h3>GO prepared the next move</h3></div></div>
+            <div id="go-approval-list" class="go-approval-list"></div>
+          </article>
+
+          <article class="go-work-panel">
+            <div class="go-panel-heading"><span class="go-panel-icon working">↻</span><div><small>CURRENTLY WORKING ON</small><h3>Work already in motion</h3></div></div>
+            <div id="go-working-list" class="go-working-list"></div>
+          </article>
+
+          <article class="go-work-panel">
+            <div class="go-panel-heading"><span class="go-panel-icon monitoring">◉</span><div><small>MONITORING FOR YOU</small><h3>GO is watching the business</h3></div></div>
+            <div id="go-monitoring-list" class="go-monitoring-list"></div>
+          </article>
+        </div>
+
+        <div class="go-results-strip">
+          <div><small>COMPLETED IMPROVEMENTS</small><strong id="go-completed-count">0</strong><span>GO keeps the history so progress compounds.</span></div>
+          <div><small>RECOVERABLE REVENUE BEING TRACKED</small><strong id="go-revenue-tracked">$0</strong><button id="revenue-math-button" type="button">How we calculated this →</button></div>
+          <div><small>WHAT HAPPENS NEXT</small><strong>Approve. GO handles the work.</strong><span>You stay in control without having to manage every task.</span></div>
+        </div>
+      </section>
 
       <section class="findings-section card" id="findings">
         <div class="findings-heading">
@@ -195,6 +231,7 @@
   </div>
   <div class="toast" id="toast" role="status"></div>
   <script src="../js/intelligence-engine.js"></script>
+  <script src="../js/go-engine.js"></script>
   <script src="../js/dashboard.js"></script>
 </body>
 </html>

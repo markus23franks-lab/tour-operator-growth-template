@@ -39,6 +39,9 @@ profile.growthScore = intelligence.growthScore;
 profile.findings = intelligence.findings;
 profile.intelligence = intelligence;
 
+const goEngine = new window.GOWorkEngine(profile);
+const goWorkState = goEngine.state;
+
 const modalContent = {
   mission: {
     eyebrow: "TODAY’S HIGHEST-IMPACT MOVE",
@@ -59,11 +62,77 @@ const modalContent = {
 document.addEventListener("DOMContentLoaded", () => {
   personalizeDashboard();
   renderFindings(profile);
+  renderGOWorkbench();
   animateCounters();
   animateBars();
   wireInteractions();
   revealCards();
 });
+
+
+function renderGOWorkbench() {
+  setText("go-work-headline", goWorkState.headline);
+  setText("go-completed-count", String(goWorkState.completed.length));
+  setText("go-revenue-tracked", `$${Math.round(goWorkState.revenueModel.annual).toLocaleString("en-US")}`);
+
+  const approvalList = document.getElementById("go-approval-list");
+  approvalList.innerHTML = goWorkState.approvals.map(item => `
+    <article class="go-approval-item" data-go-approval="${item.id}">
+      <div><small>${item.pillar.toUpperCase()}</small><h4>${item.title}</h4><p>${item.detail}</p></div>
+      <span class="go-approval-status">${item.status}</span>
+      <div class="go-approval-actions">
+        <button class="secondary-button" type="button" data-go-review="${item.id}">Review work</button>
+        <button class="primary-button" type="button" data-go-approve="${item.id}">${item.status.startsWith("Approved") ? "Approved ✓" : "Approve and let GO handle it →"}</button>
+      </div>
+    </article>
+  `).join("");
+
+  const workingList = document.getElementById("go-working-list");
+  workingList.innerHTML = goWorkState.working.map(item => `
+    <div class="go-working-row"><div><strong>${item.label}</strong><span>${item.progress}% prepared</span></div><i><b style="--go-progress:${item.progress}%"></b></i></div>
+  `).join("");
+
+  const monitoringList = document.getElementById("go-monitoring-list");
+  monitoringList.innerHTML = goWorkState.monitoring.map(item => `
+    <div class="go-monitoring-row"><span></span><div><strong>${item.label}</strong><small>${item.detail}</small></div><b>${item.state}</b></div>
+  `).join("");
+
+  approvalList.querySelectorAll("[data-go-review]").forEach(button => {
+    button.addEventListener("click", () => {
+      const item = goWorkState.approvals.find(entry => entry.id === button.dataset.goReview);
+      openModal({
+        eyebrow: "GO PREPARED THIS FOR YOU",
+        title: item.title,
+        copy: item.detail,
+        callout: `<strong>What GO will do:</strong> prepare the change, preserve the original, request final approval, and measure the result afterward.<br><br><strong>You stay in control:</strong> nothing publishes without approval.`,
+        action: "Review prepared change →"
+      });
+    });
+  });
+
+  approvalList.querySelectorAll("[data-go-approve]").forEach(button => {
+    button.addEventListener("click", () => {
+      const item = goEngine.approve(button.dataset.goApprove);
+      if (!item) return;
+      button.textContent = "Approved ✓";
+      button.disabled = true;
+      button.closest(".go-approval-item").querySelector(".go-approval-status").textContent = item.status;
+      showToast(`${item.title} approved. GO is moving it forward.`);
+    });
+  });
+
+  document.getElementById("revenue-math-button")?.addEventListener("click", () => {
+    const model = goWorkState.revenueModel;
+    const liftPercent = (model.modeledLift * 100).toFixed(1);
+    openModal({
+      eyebrow: "RECOVERABLE REVENUE MODEL",
+      title: "Here’s the math behind the opportunity.",
+      copy: "GO uses a conservative scenario so the number is explainable, testable, and replaceable with real connected data.",
+      callout: `<strong>${model.monthlyVisitors.toLocaleString("en-US")}</strong> monthly visitors × <strong>${liftPercent}%</strong> modeled conversion lift × <strong>$${model.averageBooking}</strong> average booking × 12 months = approximately <strong>$${Math.round(model.annual).toLocaleString("en-US")}/year</strong>.<br><br>${model.disclaimer}`,
+      action: "Track this outcome →"
+    });
+  });
+}
 
 function personalizeDashboard() {
   const now = new Date();

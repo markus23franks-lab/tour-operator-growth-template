@@ -97,6 +97,8 @@ function renderGOWorkbench() {
     <div class="go-monitoring-row"><span></span><div><strong>${item.label}</strong><small>${item.detail}</small></div><b>${item.state}</b></div>
   `).join("");
 
+  renderGOJournal();
+
   approvalList.querySelectorAll("[data-go-review]").forEach(button => {
     button.addEventListener("click", () => {
       const item = goWorkState.approvals.find(entry => entry.id === button.dataset.goReview);
@@ -117,6 +119,7 @@ function renderGOWorkbench() {
       button.textContent = "Approved ✓";
       button.disabled = true;
       button.closest(".go-approval-item").querySelector(".go-approval-status").textContent = item.status;
+      renderGOJournal();
       showToast(`${item.title} approved. GO is moving it forward.`);
     });
   });
@@ -132,6 +135,40 @@ function renderGOWorkbench() {
       action: "Track this outcome →"
     });
   });
+}
+
+function renderGOJournal() {
+  const journalList = document.getElementById("go-journal-list");
+  if (!journalList) return;
+
+  const iconByType = {
+    prepared: "✦",
+    checked: "✓",
+    monitoring: "◉",
+    measured: "↗",
+    approved: "→",
+    completed: "✓",
+    update: "•"
+  };
+
+  journalList.innerHTML = (goWorkState.journal || []).map(item => {
+    const occurred = new Date(item.occurredAt);
+    const time = Number.isNaN(occurred.getTime())
+      ? "Recently"
+      : occurred.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+    const typeClass = item.type || "update";
+    return `
+      <article class="go-journal-entry ${typeClass}">
+        <time>${time}</time>
+        <span class="go-journal-icon">${iconByType[item.type] || "•"}</span>
+        <div>
+          <strong>${item.label || "GO update"}</strong>
+          <p>${item.detail || ""}</p>
+        </div>
+        <b>${item.state || "Updated"}</b>
+      </article>
+    `;
+  }).join("");
 }
 
 function personalizeDashboard() {

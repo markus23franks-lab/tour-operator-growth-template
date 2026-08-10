@@ -32,4 +32,19 @@ Every new feature should answer one question:
 
 "Would a great employee do this without being asked?"
 
-If the answer is no, rethink the feature.
+If the answer is no, rethink the feature.# The Work While You're Away Principle
+
+GO should create value whether or not the operator logs in.
+
+The product should continuously communicate:
+
+- what GO checked
+- what GO found
+- what GO prepared
+- what GO completed
+- what GO is monitoring
+- what requires approval
+
+A great employee does not stop working because the owner is not watching.
+
+Neither should GO.

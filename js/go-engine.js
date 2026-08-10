@@ -17,6 +17,7 @@
       const opportunity = Math.max(0, Number(this.profile.revenueOpportunity || 0));
       const completed = this.memory.completed || [];
       const approvals = this.memory.approvals || [];
+      const journal = this.memory.journal?.length ? this.memory.journal : this.defaultJournal(lowestPillar);
 
       return {
         business: {
@@ -31,6 +32,7 @@
         approvals: approvals.length ? approvals : this.defaultApprovals(lowestPillar),
         monitoring: this.defaultMonitoring(),
         working: this.defaultWorking(lowestPillar),
+        journal,
         revenueModel: this.buildRevenueModel(opportunity),
         history: this.buildHistory(completed),
         updatedAt: new Date().toISOString()
@@ -73,6 +75,46 @@
       ];
     }
 
+    defaultJournal(lowestPillar) {
+      const now = new Date();
+      const stamp = (minutesAgo) => new Date(now.getTime() - minutesAgo * 60000).toISOString();
+      const business = this.profile.businessName || "your business";
+      return [
+        {
+          id: "journal-prepared",
+          occurredAt: stamp(42),
+          type: "prepared",
+          label: "Prepared your next improvement",
+          detail: `GO turned the highest-priority ${lowestPillar.toLowerCase()} finding into work that is ready for your approval.`,
+          state: "Needs approval"
+        },
+        {
+          id: "journal-competitors",
+          occurredAt: stamp(126),
+          type: "checked",
+          label: "Checked competitor movement",
+          detail: `GO reviewed the competitive signals being tracked for ${business}. No urgent response is needed right now.`,
+          state: "No action needed"
+        },
+        {
+          id: "journal-reviews",
+          occurredAt: stamp(238),
+          type: "monitoring",
+          label: "Rechecked customer trust signals",
+          detail: "GO reviewed rating and review momentum and kept the signal under active monitoring.",
+          state: "Monitoring"
+        },
+        {
+          id: "journal-baseline",
+          occurredAt: stamp(365),
+          type: "measured",
+          label: "Updated the measurement baseline",
+          detail: "GO refreshed the starting point it will use to compare results after the next approved change.",
+          state: "Baseline saved"
+        }
+      ];
+    }
+
     buildRevenueModel(opportunity) {
       const monthlyVisitors = 1800;
       const currentConversion = 0.021;
@@ -98,12 +140,50 @@
       return [...completed.map(item => ({ date: item.completedAt || "Completed", type: "Improvement completed", detail: item.title })), ...entries].slice(0, 6);
     }
 
+    recordJournal({ type = "update", label, detail, state = "Updated" }) {
+      const entry = {
+        id: `journal-${Date.now()}`,
+        occurredAt: new Date().toISOString(),
+        type,
+        label,
+        detail,
+        state
+      };
+      this.state.journal = [entry, ...(this.state.journal || [])].slice(0, 12);
+      this.memory.journal = this.state.journal;
+      this.persist();
+      return entry;
+    }
+
     approve(id) {
       const item = this.state.approvals.find(entry => entry.id === id);
       if (!item) return null;
+      if (item.status.startsWith("Approved")) {
+        const alreadyJournaled = (this.state.journal || []).some(entry =>
+          entry.type === "approved" && entry.approvalId === item.id
+        );
+        if (!alreadyJournaled) {
+          const entry = this.recordJournal({
+            type: "approved",
+            label: `${item.title} moved into implementation`,
+            detail: "GO picked up this previously approved work and is moving it forward. No additional task was created for you.",
+            state: "GO is working"
+          });
+          entry.approvalId = item.id;
+          this.persist();
+        }
+        return item;
+      }
       item.status = "Approved — GO is working on it";
       item.approvedAt = new Date().toISOString();
       this.memory.approvals = this.state.approvals;
+      const journalEntry = this.recordJournal({
+        type: "approved",
+        label: `${item.title} moved into implementation`,
+        detail: "GO moved the prepared improvement into implementation. No additional task was created for you.",
+        state: "GO is working"
+      });
+      journalEntry.approvalId = item.id;
       this.persist();
       return item;
     }
@@ -114,20 +194,27 @@
       const completedItem = { id, title: item.title, completedAt: new Date().toISOString() };
       this.memory.completed = [completedItem, ...(this.memory.completed || [])].slice(0, 20);
       this.state.completed = this.memory.completed;
+      this.recordJournal({
+        type: "completed",
+        label: `${item.title} completed`,
+        detail: "GO finished the approved improvement and moved it into measurement so the result can be compared with the saved baseline.",
+        state: "Measuring result"
+      });
       this.persist();
       return completedItem;
     }
 
     loadMemory() {
       try {
-        return JSON.parse(localStorage.getItem(STORAGE_KEY)) || { startedAt: new Date().toISOString(), completed: [], approvals: [] };
+        return JSON.parse(localStorage.getItem(STORAGE_KEY)) || { startedAt: new Date().toISOString(), completed: [], approvals: [], journal: [] };
       } catch {
-        return { startedAt: new Date().toISOString(), completed: [], approvals: [] };
+        return { startedAt: new Date().toISOString(), completed: [], approvals: [], journal: [] };
       }
     }
 
     persist() {
       this.memory.startedAt = this.state?.business?.startedAt || this.memory.startedAt || new Date().toISOString();
+      this.memory.journal = this.state?.journal || this.memory.journal || [];
       localStorage.setItem(STORAGE_KEY, JSON.stringify(this.memory));
       localStorage.setItem("growthOperatorWorkState", JSON.stringify(this.state));
     }

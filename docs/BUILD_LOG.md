@@ -93,4 +93,39 @@ Execute
 
 Measure results
 
-instead of asking operators to manage the work themselves.
+instead of asking operators to manage the work themselves.# Build 020
+
+## Major Product Shift
+
+Build 020 makes GO feel active between customer sessions.
+
+Instead of only showing recommendations, GO now keeps a visible work history of what it checked, what it found, what it prepared, and what it moved forward.
+
+## Added
+
+- GO Work Journal
+- Chronological work activity
+- Approval-to-action workflow
+- Persistent journal state
+- "GO is working" status
+- Clear separation between operator approval and GO execution
+
+## Product Behavior
+
+The operator approves.
+
+GO takes ownership.
+
+GO records the work.
+
+GO continues without creating another task for the operator.
+
+## Product Philosophy Reinforced
+
+Growth Operator should reduce work, not create more work.
+
+Approvals should be the exception.
+
+Execution should belong to GO.
+
+The operator should be able to log in and immediately understand what GO accomplished while they were running the business.

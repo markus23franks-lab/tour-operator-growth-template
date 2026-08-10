@@ -29,4 +29,20 @@ The customer should leave every session feeling:
 
 not
 
-"I have more information."
+"I have more information."# GO Works Even When You Don't Log In
+
+Growth Operator should feel like an employee who continues working in the background.
+
+The dashboard is not the product.
+
+The work is the product.
+
+The dashboard is simply where the operator sees what GO noticed, prepared, completed, and learned.
+
+A customer should log in thinking:
+
+"Let's see what GO did."
+
+not:
+
+"What do I need to do today?"

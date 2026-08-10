@@ -97,8 +97,6 @@ function renderGOWorkbench() {
     <div class="go-monitoring-row"><span></span><div><strong>${item.label}</strong><small>${item.detail}</small></div><b>${item.state}</b></div>
   `).join("");
 
-  renderGOJournal();
-
   approvalList.querySelectorAll("[data-go-review]").forEach(button => {
     button.addEventListener("click", () => {
       const item = goWorkState.approvals.find(entry => entry.id === button.dataset.goReview);
@@ -119,7 +117,6 @@ function renderGOWorkbench() {
       button.textContent = "Approved ✓";
       button.disabled = true;
       button.closest(".go-approval-item").querySelector(".go-approval-status").textContent = item.status;
-      renderGOJournal();
       showToast(`${item.title} approved. GO is moving it forward.`);
     });
   });
@@ -135,40 +132,6 @@ function renderGOWorkbench() {
       action: "Track this outcome →"
     });
   });
-}
-
-function renderGOJournal() {
-  const journalList = document.getElementById("go-journal-list");
-  if (!journalList) return;
-
-  const iconByType = {
-    prepared: "✦",
-    checked: "✓",
-    monitoring: "◉",
-    measured: "↗",
-    approved: "→",
-    completed: "✓",
-    update: "•"
-  };
-
-  journalList.innerHTML = (goWorkState.journal || []).map(item => {
-    const occurred = new Date(item.occurredAt);
-    const time = Number.isNaN(occurred.getTime())
-      ? "Recently"
-      : occurred.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
-    const typeClass = item.type || "update";
-    return `
-      <article class="go-journal-entry ${typeClass}">
-        <time>${time}</time>
-        <span class="go-journal-icon">${iconByType[item.type] || "•"}</span>
-        <div>
-          <strong>${item.label || "GO update"}</strong>
-          <p>${item.detail || ""}</p>
-        </div>
-        <b>${item.state || "Updated"}</b>
-      </article>
-    `;
-  }).join("");
 }
 
 function personalizeDashboard() {
@@ -252,7 +215,7 @@ function renderGrowthBrief(currentProfile) {
     Growth: {
       working: "Multiple ways to grow",
       workingCopy: "The business has several credible opportunities available right now.",
-      opportunity: "Create one focused growth rhythm",
+      opportunity: "Fix the biggest thing holding back bookings",
       opportunityCopy: "The biggest need is choosing one priority, measuring it, and letting the result guide the next move.",
       expected: "More consistent progress without spreading time across too many ideas."
     }
@@ -452,10 +415,10 @@ function buildFindings(currentProfile) {
     },
     Growth: {
       icon: "↗",
-      title: "Create one repeatable improvement rhythm",
+      title: "Fix the biggest thing holding back bookings",
       summary: "The business needs a clear way to choose, complete, and measure the next improvement.",
       found: "There are several credible ways to grow, but pursuing too many at once can dilute attention and make results difficult to measure.",
-      why: "Operators are busy. A focused improvement cycle creates accountability and makes it easier to see what actually changed the business.",
+      why: "Operators are busy. GO focuses on the problem most likely to affect bookings, measures the starting point, and shows what changed before moving to the next opportunity.",
       recommendation: "Work one prioritized mission at a time, define the expected outcome, and measure the result before choosing the next move.",
       expected: "More consistent progress, clearer ROI, and fewer unfinished initiatives.",
       verify: "Mission completion, baseline metrics, outcome tracking, revenue impact, owner accountability, and time-to-result."

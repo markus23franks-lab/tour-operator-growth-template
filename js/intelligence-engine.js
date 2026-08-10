@@ -212,7 +212,7 @@ class GOIntelligenceEngine {
       Conversion: "Improve mobile booking conversion",
       Operations: "Protect leads with consistent follow-up",
       Intelligence: "Build your competitor benchmark",
-      Growth: "Create a focused improvement rhythm"
+      Growth: "Fix the highest-impact booking problem first"
     };
     return titles[pillar] || titles.Conversion;
   }
@@ -285,10 +285,10 @@ class GOIntelligenceEngine {
       Growth: {
         icon: "↗",
         effort: "Easy",
-        title: "Create one repeatable improvement rhythm",
+        title: "Fix the highest-impact booking problem first",
         summary: "The business needs a clear way to choose, complete, and measure the next improvement.",
         found: "There are several credible ways to grow, but pursuing too many at once dilutes attention and makes results hard to measure.",
-        why: "A focused improvement cycle creates accountability and makes it easier to see what actually changed the business.",
+        why: "Operators have limited time. GO prioritizes the problem most likely to affect bookings, measures the starting point, and proves what changed before moving on.",
         recommendation: "Work one prioritized mission at a time, define the expected outcome, and measure the result before choosing the next move.",
         expected: "More consistent progress, clearer ROI, and fewer unfinished initiatives.",
         verify: "Mission completion, baseline metrics, outcome tracking, revenue impact, owner accountability, and time-to-result."

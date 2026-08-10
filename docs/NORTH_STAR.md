@@ -47,4 +47,17 @@ The product should continuously communicate:
 
 A great employee does not stop working because the owner is not watching.
 
-Neither should GO.
+Neither should GO.# The Instant Understanding Principle
+
+An operator should understand GO without needing to understand marketing.
+
+Every major customer-facing experience should make four things obvious within seconds:
+
+1. What did GO find?
+2. Why does it matter?
+3. What is GO going to do about it?
+4. How will we know whether it worked?
+
+If an operator needs a long explanation before seeing the value, the experience is too complicated.
+
+GO should make complicated business problems feel simple.

@@ -128,4 +128,36 @@ Approvals should be the exception.
 
 Execution should belong to GO.
 
-The operator should be able to log in and immediately understand what GO accomplished while they were running the business.
+The operator should be able to log in and immediately understand what GO accomplished while they were running the business.# Build 023
+
+## Major Product Shift
+
+Build 023 simplified the language and strengthened the prospect-facing Growth Snapshot.
+
+The goal is to make GO understandable to an operator with no marketing background and no prior knowledge of Growth Operator.
+
+## Added / Improved
+
+- Removed "growth rhythm" language
+- Replaced abstract language with operator-first wording
+- Improved booking-focused opportunity descriptions
+- Standardized Growth Operator logo assets across core pages
+- Continued development of the Growth Snapshot as a prospecting and demo experience
+
+## Product Direction
+
+GO should never require an operator to understand marketing terminology before understanding the value.
+
+The prospect experience should make it immediately clear:
+
+- what GO found
+- why it matters
+- what GO would do
+- what the potential business impact could be
+- how GO will prove whether the work actually helped
+
+## Next Major Milestone
+
+Test GO against a real operator business.
+
+The next phase should determine whether GO's intelligence can produce specific, evidence-backed findings that create a genuine "how did it know that?" reaction rather than generic recommendations.

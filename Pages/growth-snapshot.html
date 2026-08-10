@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Growth Snapshot — Growth Operator</title>
+  <link rel="stylesheet" href="../styles/growth-snapshot.css">
+</head>
+<body>
+  <main class="snapshot-shell">
+    <header class="snapshot-topbar">
+      <a href="dashboard.html" class="brand snapshot-brand-lockup" aria-label="Growth Operator">
+        <img src="../Assets/growth-operator-mark-clean.png" alt="">
+        <span><strong>GROWTH</strong><small>OPERATOR</small></span>
+      </a>
+      <span class="analysis-badge"><i></i> GO ANALYSIS</span>
+    </header>
+
+    <section class="hero">
+      <div class="hero-copy">
+        <p class="eyebrow">PERSONALIZED GROWTH SNAPSHOT</p>
+        <h1><span id="business-name">Your business</span> has growth hiding in plain sight.</h1>
+        <p class="hero-lede">GO reviewed the business through six growth pillars. Here are the clearest opportunities we would attack first — and how we would prove whether they worked.</p>
+        <div class="hero-actions"><a href="#opportunities" class="button primary">See what GO found ↓</a><a href="#call" class="button ghost">Book a Growth Review</a></div>
+      </div>
+      <div class="score-card">
+        <div class="score-ring" id="score-ring"><div><small>GROWTH SCORE</small><strong id="growth-score">76</strong><span>/100</span></div></div>
+        <div><small>GO'S READ</small><strong id="score-read">Strong business. Clear upside.</strong><p id="score-copy">You do not need to fix everything. GO found a few moves that deserve attention first.</p></div>
+      </div>
+    </section>
+
+    <section class="value-strip">
+      <div><small>TOP OPPORTUNITIES</small><strong>3</strong><span>prioritized by impact</span></div>
+      <div><small>MODELED ANNUAL OPPORTUNITY</small><strong id="modeled-total">$26,480</strong><span>estimate — not guaranteed revenue</span></div>
+      <div><small>GO'S JOB</small><strong>Find → Fix → Measure</strong><span>then make the next move</span></div>
+    </section>
+
+    <section class="section" id="opportunities">
+      <div class="section-heading"><p class="eyebrow">WHAT GO WOULD DO FIRST</p><h2>Three things holding back more bookings.</h2><p>GO shows the evidence first, explains why it matters, and then shows exactly what it would change.</p></div>
+      <div class="opportunity-list" id="opportunity-list"></div>
+    </section>
+
+    <section class="proof-loop section">
+      <div class="section-heading"><p class="eyebrow">HOW GO EARNS TRUST</p><h2>We do not stop at the recommendation.</h2><p>GO keeps the original estimate separate from what actually happens after the work.</p></div>
+      <div class="loop-grid">
+        <article><b>01</b><span>DETECT</span><strong>Find the leak</strong><p>GO identifies the highest-confidence constraint.</p></article>
+        <article><b>02</b><span>QUANTIFY</span><strong>Show the math</strong><p>Model the opportunity with transparent assumptions.</p></article>
+        <article><b>03</b><span>FIX</span><strong>Do the work</strong><p>Prepare and execute the improvement with approval when needed.</p></article>
+        <article><b>04</b><span>MEASURE</span><strong>Prove the result</strong><p>Compare the baseline to real performance after the change.</p></article>
+      </div>
+      <div class="money-legend">
+        <div><i class="estimate"></i><strong>Modeled opportunity</strong><span>What GO believes may be available before the work.</span></div>
+        <div><i class="impact"></i><strong>Measured impact</strong><span>What changed in the tracked metric after GO acted.</span></div>
+        <div><i class="revenue"></i><strong>Attributed revenue</strong><span>Revenue connected to the improvement once data supports it.</span></div>
+      </div>
+    </section>
+
+    <section class="pace-card section">
+      <div>
+        <p class="eyebrow">AFTER YOU HIRE GO</p>
+        <h2>The estimate becomes a scoreboard.</h2>
+        <p>GO saves the baseline, tracks each change, compares actual performance with the original opportunity, and adjusts when results are ahead or behind plan.</p>
+      </div>
+      <div class="pace-visual">
+        <div class="pace-head"><span>Example impact tracking</span><b>MEASURING</b></div>
+        <div class="pace-row"><span>Original modeled opportunity</span><strong id="pace-estimate">$26,480</strong></div>
+        <div class="pace-row muted"><span>Measured impact</span><strong>Connect data to begin</strong></div>
+        <div class="pace-row muted"><span>Attributed revenue</span><strong>Not yet proven</strong></div>
+        <div class="progress"><i></i></div>
+        <small>GO will never label an estimate as earned revenue.</small>
+      </div>
+    </section>
+
+    <section class="cta" id="call">
+      <p class="eyebrow">YOUR NEXT STEP</p>
+      <h2>Want to see what GO would actually do?</h2>
+      <p>Walk through the findings, pressure-test the opportunity, and see how Growth Operator would start working on the business.</p>
+      <button id="book-review" class="button primary">Book My Growth Review →</button>
+      <small>No generic audit. We walk through your business and the moves GO would prioritize first.</small>
+    </section>
+  </main>
+
+  <div class="modal" id="math-modal" hidden>
+    <div class="modal-card"><button id="close-modal" class="modal-close">×</button><p class="eyebrow">SHOW ME THE MATH</p><h2 id="math-title">Modeled opportunity</h2><div id="math-content"></div><p class="disclaimer">This is a modeled opportunity, not guaranteed revenue. Connected traffic, conversion, booking and revenue data replaces assumptions and allows GO to measure actual impact.</p></div>
+  </div>
+  <div class="toast" id="toast">Growth Review request captured for this preview.</div>
+  <script src="../js/growth-snapshot.js"></script>
+</body>
+</html>

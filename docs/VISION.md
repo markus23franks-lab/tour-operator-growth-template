@@ -45,4 +45,29 @@ A customer should log in thinking:
 
 not:
 
-"What do I need to do today?"
+"What do I need to do today?"# Sophisticated Engine. Simple Experience.
+
+Growth Operator can be extremely sophisticated behind the scenes.
+
+The customer experience should not be.
+
+GO should absorb the complexity of:
+
+- website analysis
+- search visibility
+- reviews
+- competitors
+- conversion
+- customer behavior
+- business benchmarks
+- revenue modeling
+
+and return something an operator can understand immediately.
+
+The customer should feel:
+
+"GO understands what I don't know, knows what matters most, and knows what to do next."
+
+The sophistication belongs inside GO.
+
+The simplicity belongs in front of the customer.

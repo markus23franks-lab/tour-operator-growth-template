@@ -45,4 +45,31 @@ Buttons and workflows should favor language like:
 - Let GO handle it
 - Review before publishing
 
-Avoid language that makes the operator feel responsible for managing GO's work.
+Avoid language that makes the operator feel responsible for managing GO's work.## Operator Language Only
+
+Customer-facing language should use the words operators already understand.
+
+Prefer:
+
+- bookings
+- customers
+- reviews
+- website
+- competitors
+- Google
+- visibility
+- revenue
+- follow-up
+- growth
+
+Avoid unnecessary internal or marketing terminology such as:
+
+- growth rhythm
+- optimization framework
+- intelligence opportunity
+- growth methodology
+- complex technical SEO language
+
+GO can do sophisticated work behind the scenes.
+
+The operator should receive a simple explanation of the problem, the action, and the expected result.

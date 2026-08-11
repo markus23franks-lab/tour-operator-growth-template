@@ -160,4 +160,72 @@ The prospect experience should make it immediately clear:
 
 Test GO against a real operator business.
 
-The next phase should determine whether GO's intelligence can produce specific, evidence-backed findings that create a genuine "how did it know that?" reaction rather than generic recommendations.
+The next phase should determine whether GO's intelligence can produce specific, evidence-backed findings that create a genuine "how did it know that?" reaction rather than generic recommendations.# Builds 024–025
+
+## Major Milestone — GO Begins Understanding Real Businesses
+
+Builds 024 and 025 move Growth Operator beyond placeholder recommendations and begin the real Operator Intelligence system.
+
+For the first time, GO can investigate a real operator, organize evidence, identify business-specific opportunities, and carry those findings into a personalized Growth Snapshot.
+
+## Build 024 — Operator Analyzer
+
+Added the first Operator Analyzer experience.
+
+GO now begins with:
+
+Website
+→ Search Presence
+→ Reviews
+→ Competitors
+→ Business Context
+
+The first benchmark business is Cayman Ocean Adventures.
+
+The purpose of this build is not to pretend GO can analyze every business yet. It establishes the architecture and quality bar for what a real GO investigation should eventually produce automatically.
+
+## Build 025 — Personalized Growth Snapshot
+
+Connected Operator Analyzer intelligence directly into the Growth Snapshot.
+
+The customer journey is now:
+
+Enter Website
+→ GO Investigates
+→ Evidence Collected
+→ Opportunities Prioritized
+→ Personalized Growth Snapshot
+→ GO Plan
+→ Connected Data
+→ Measured Results
+
+Findings from the analysis now carry into the prospect experience instead of reverting to generic recommendations.
+
+## Trust Architecture
+
+GO must distinguish between:
+
+- Publicly verified evidence
+- Operator-verified information
+- Modeled or inferred information
+- Information requiring connected first-party data
+
+GO should never invent precision it has not earned.
+
+Public analysis can identify opportunity.
+
+Connected business data turns opportunity into proof.
+
+## Next Major Milestone — Build 026
+
+Begin Universal Public Scan.
+
+GO should start analyzing a business it has never seen before using publicly available website information rather than requiring a hard-coded operator profile.
+
+The development benchmark is not simply whether a website successfully processes.
+
+The benchmark is whether GO routinely produces findings specific enough to create an:
+
+"How did GO know that?"
+
+reaction.

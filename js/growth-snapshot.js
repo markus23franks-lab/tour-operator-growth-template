@@ -8,22 +8,36 @@ const fallback = {
   website: "https://blueriverrafting.com"
 };
 
-const profile = read("growthOperatorBusinessReviewProfile", fallback);
+const prospectProfile = read("growthOperatorProspectProfile", null);
+const profile = prospectProfile || read("growthOperatorBusinessReviewProfile", fallback);
 const assessment = read("growthOperatorAssessment", {});
 const businessName = profile.businessName || assessment.businessName || fallback.businessName;
-const score = Number(profile.growthScore || fallback.growthScore);
-const totalOpportunity = Number(profile.revenueOpportunity || fallback.revenueOpportunity);
+const isProspect = Boolean(prospectProfile);
+const score = Number(profile.growthScore ?? fallback.growthScore);
+const totalOpportunity = isProspect ? Number(profile.revenueOpportunity || 0) : Number(profile.revenueOpportunity || fallback.revenueOpportunity);
 const scores = profile.scores || fallback.scores;
-const opportunities = buildOpportunities(scores, totalOpportunity);
+const opportunities = Array.isArray(profile.opportunities) && profile.opportunities.length ? profile.opportunities : buildOpportunities(scores, totalOpportunity);
 
 document.addEventListener("DOMContentLoaded", () => {
   text("business-name", businessName);
   text("growth-score", score);
-  text("modeled-total", money(totalOpportunity));
-  text("pace-estimate", money(totalOpportunity));
+  text("opportunity-count", opportunities.length);
+  text("modeled-total", totalOpportunity ? money(totalOpportunity) : (profile.revenueLabel || "Connect business data"));
+  text("pace-estimate", totalOpportunity ? money(totalOpportunity) : "Not modeled yet");
   document.getElementById("score-ring").style.setProperty("--score", score);
-  text("score-read", score >= 80 ? "Strong business. Smaller leaks." : score >= 65 ? "Strong foundation. Clear upside." : "Real upside. Start with the basics.");
-  text("score-copy", score >= 80 ? "GO sees a healthy foundation with a few focused opportunities worth testing." : "You do not need to fix everything. GO found a few moves that deserve attention first.");
+  text("score-read", profile.analysisType ? profile.analysisType : (score >= 80 ? "Strong business. Smaller leaks." : score >= 65 ? "Strong foundation. Clear upside." : "Real upside. Start with the basics."));
+  text("score-copy", profile.summary || (score >= 80 ? "GO sees a healthy foundation with a few focused opportunities worth testing." : "You do not need to fix everything. GO found a few moves that deserve attention first."));
+  if (isProspect) {
+    text("snapshot-eyebrow", "PUBLIC + OPERATOR GROWTH SNAPSHOT");
+    text("score-label", "PROVISIONAL GROWTH SCORE");
+    text("score-read", `${profile.analysisConfidence || "High"} confidence. Clear first moves.`);
+    text("hero-lede", "GO carried the evidence from the business analysis into this Snapshot. These are the same findings — prioritized, actionable and separated from anything that still needs connected data.");
+    text("revenue-strip-label", "REVENUE OPPORTUNITY");
+    text("revenue-strip-copy", "GO needs first-party data before putting a defensible dollar value on these findings");
+    text("opportunity-count-copy", "evidence-backed findings");
+    text("opportunity-heading", `The ${opportunities.length} moves GO would pressure-test first.`);
+    text("opportunity-lede", "No generic audit. Each recommendation below comes directly from the evidence GO showed in the business analysis.");
+  }
   renderOpportunities();
   wire();
 });
@@ -104,18 +118,25 @@ function buildOpportunities(currentScores, total) {
 
 function renderOpportunities() {
   const root = document.getElementById("opportunity-list");
-  root.innerHTML = opportunities.map((item, index) => `
+  root.innerHTML = opportunities.map((item, index) => {
+    const modeled = Number(item.amount || 0);
+    const moneyHeadline = modeled ? money(modeled) : (item.moneyLabel || "Needs connected data");
+    const sourceMarkup = Array.isArray(item.sources) && item.sources.length
+      ? `<div class="snapshot-source-stack">${item.sources.map(source => `<div class="snapshot-source ${source.type || "public"}"><b>${source.label}</b><span>${source.detail}</span></div>`).join("")}</div>`
+      : "";
+    return `
     <article class="opportunity-card ${index === 0 ? "priority" : ""}">
       <div class="op-number">0${index + 1}</div>
       <div class="op-main">
-        <div class="op-kicker"><span>${item.icon}</span><small>${item.pillar.toUpperCase()} ${index === 0 ? "• HIGHEST PRIORITY" : ""}</small></div>
+        <div class="op-kicker"><span>${item.icon || "↗"}</span><small>${(item.pillar || "Growth").toUpperCase()} ${index === 0 ? "• HIGHEST PRIORITY" : ""}</small>${item.confidence ? `<em class="confidence-pill">${item.confidence} confidence</em>` : ""}</div>
         <h3>${item.title}</h3>
         <p>${item.problem}</p>
-        ${evidenceVisual(item)}
+        ${sourceMarkup || evidenceVisual(item)}
       </div>
       <div class="op-action"><small>WHAT GO WOULD DO</small><p>${item.action}</p><div class="metric"><span>GO WOULD MEASURE</span><strong>${item.metric}</strong></div></div>
-      <div class="op-money"><small>MODELED ANNUAL OPPORTUNITY</small><strong>${money(item.amount)}</strong><span>Estimate until connected data replaces assumptions and proves impact.</span><button data-math="${index}">How GO calculated this →</button></div>
-    </article>`).join("");
+      <div class="op-money"><small>${modeled ? "MODELED ANNUAL OPPORTUNITY" : "REVENUE MODEL"}</small><strong>${moneyHeadline}</strong><span>${modeled ? "Estimate until connected data replaces assumptions and proves impact." : "GO will not invent revenue without the traffic, conversion and booking data needed to defend it."}</span>${modeled ? `<button data-math="${index}">How GO calculated this →</button>` : `<button class="needs-data-button" data-needs-data="${index}">What GO needs to prove this →</button>`}</div>
+    </article>`;
+  }).join("");
 }
 
 function evidenceVisual(item) {
@@ -168,6 +189,7 @@ function evidenceVisual(item) {
 
 function wire() {
   document.querySelectorAll("[data-math]").forEach(button => button.addEventListener("click", () => openMath(Number(button.dataset.math))));
+  document.querySelectorAll("[data-needs-data]").forEach(button => button.addEventListener("click", () => openNeedsData(Number(button.dataset.needsData))));
   document.getElementById("close-modal").addEventListener("click", closeMath);
   document.getElementById("math-modal").addEventListener("click", event => { if (event.target.id === "math-modal") closeMath(); });
   document.getElementById("book-review").addEventListener("click", () => {
@@ -175,6 +197,13 @@ function wire() {
     toast.classList.add("show");
     setTimeout(() => toast.classList.remove("show"), 2600);
   });
+}
+
+function openNeedsData(index) {
+  const item = opportunities[index];
+  text("math-title", `${item.pillar}: what GO needs to prove revenue impact`);
+  document.getElementById("math-content").innerHTML = `<div class="math-grid"><div><small>WEBSITE TRAFFIC</small><strong>Connect analytics</strong></div><div><small>BOOKING CONVERSION</small><strong>Connect booking data</strong></div><div><small>AVERAGE BOOKING VALUE</small><strong>Use actual sales</strong></div><div><small>ATTRIBUTION</small><strong>Track before / after</strong></div></div><p><strong>GO's rule:</strong> ${item.moneyLabel || "No revenue claim yet."} We can identify the business problem from public and operator evidence, but we only turn it into a dollar model when the inputs are defensible.</p>`;
+  document.getElementById("math-modal").hidden = false;
 }
 
 function openMath(index) {

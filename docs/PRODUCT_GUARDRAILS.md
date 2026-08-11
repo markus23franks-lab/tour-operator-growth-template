@@ -72,4 +72,27 @@ Avoid unnecessary internal or marketing terminology such as:
 
 GO can do sophisticated work behind the scenes.
 
-The operator should receive a simple explanation of the problem, the action, and the expected result.
+The operator should receive a simple explanation of the problem, the action, and the expected result.## Never Fake Business Intelligence
+
+GO must clearly separate what it knows from what it estimates.
+
+Use clear evidence states:
+
+- Publicly Verified
+- Operator Verified
+- Modeled / Inferred
+- Needs Connected Data
+
+Do not present estimated third-party traffic as exact traffic.
+
+Do not present modeled revenue as measured revenue.
+
+Do not create precise revenue opportunity numbers when GO does not have enough information to defend the calculation.
+
+When information is unavailable, saying:
+
+"Connect booking and analytics data to calculate this"
+
+is better than displaying an impressive but unsupported number.
+
+Trust is more valuable than artificial precision.

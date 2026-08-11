@@ -70,4 +70,34 @@ The customer should feel:
 
 The sophistication belongs inside GO.
 
-The simplicity belongs in front of the customer.
+The simplicity belongs in front of the customer.# From Public Understanding to Continuous Growth
+
+Growth Operator should eventually understand a new business before the operator ever becomes a customer.
+
+The prospect journey:
+
+Enter Website
+→ GO researches the business
+→ GO understands what they sell
+→ GO evaluates website and booking experience
+→ GO evaluates reviews and reputation
+→ GO evaluates visibility and search opportunity
+→ GO identifies competitors
+→ GO finds the highest-value growth opportunities
+→ GO creates a personalized Growth Snapshot
+
+The customer journey continues:
+
+Connect Business Data
+→ Replace estimates with actual metrics
+→ GO executes improvements
+→ GO measures results
+→ GO learns
+→ GO chooses the next action
+→ Repeat
+
+The public scan finds the opportunity.
+
+Connected data turns it into proof.
+
+Continuous execution creates the value.

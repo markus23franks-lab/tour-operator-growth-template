@@ -60,4 +60,26 @@ Every major customer-facing experience should make four things obvious within se
 
 If an operator needs a long explanation before seeing the value, the experience is too complicated.
 
-GO should make complicated business problems feel simple.
+GO should make complicated business problems feel simple.# The Evidence Before Advice Principle
+
+GO should understand before it recommends.
+
+Every important recommendation should be traceable through:
+
+Evidence
+→ Finding
+→ Business Impact
+→ GO Action
+→ Measurement
+
+Generic marketing advice is not enough.
+
+The standard is not:
+
+"Is this recommendation technically correct?"
+
+The standard is:
+
+"Does this recommendation demonstrate that GO understands this specific business?"
+
+GO should increasingly know what an excellent growth operator would learn before advising the owner — without requiring the owner to teach GO everything first.

@@ -29,14 +29,19 @@ document.addEventListener("DOMContentLoaded", () => {
   text("score-copy", profile.summary || (score >= 80 ? "GO sees a healthy foundation with a few focused opportunities worth testing." : "You do not need to fix everything. GO found a few moves that deserve attention first."));
   if (isProspect) {
     text("snapshot-eyebrow", "PUBLIC + OPERATOR GROWTH SNAPSHOT");
-    text("score-label", "PROVISIONAL GROWTH SCORE");
-    text("score-read", `${profile.analysisConfidence || "High"} confidence. Clear first moves.`);
+    text("score-label", "PROVISIONAL PUBLIC-EVIDENCE SCORE");
+    text("score-read", `${profile.analysisConfidence || "High"} confidence in the public read — not a complete diagnosis.`);
     text("hero-lede", "GO carried the evidence from the business analysis into this Snapshot. These are the same findings — prioritized, actionable and separated from anything that still needs connected data.");
     text("revenue-strip-label", "REVENUE OPPORTUNITY");
     text("revenue-strip-copy", "GO needs first-party data before putting a defensible dollar value on these findings");
-    text("opportunity-count-copy", "evidence-backed findings");
-    text("opportunity-heading", `The ${opportunities.length} moves GO would pressure-test first.`);
-    text("opportunity-lede", "No generic audit. Each recommendation below comes directly from the evidence GO showed in the business analysis.");
+    const investigationCount = opportunities.filter(item => item.kind === "investigation").length;
+    text("opportunity-count-copy", investigationCount === opportunities.length ? "evidence-backed investigations" : "evidence-backed findings");
+    text("opportunity-heading", investigationCount === opportunities.length
+      ? `The ${opportunities.length} questions GO would investigate next.`
+      : `The ${opportunities.length} findings GO would prioritize next.`);
+    text("opportunity-lede", investigationCount === opportunities.length
+      ? "GO is not manufacturing problems from a healthy public website. These are the next questions worth proving with market or connected data."
+      : "No generic audit. Each finding below comes directly from evidence GO showed in the business analysis.");
   }
   renderOpportunities();
   wire();
@@ -128,12 +133,13 @@ function renderOpportunities() {
     <article class="opportunity-card ${index === 0 ? "priority" : ""}">
       <div class="op-number">0${index + 1}</div>
       <div class="op-main">
-        <div class="op-kicker"><span>${item.icon || "↗"}</span><small>${(item.pillar || "Growth").toUpperCase()} ${index === 0 ? "• HIGHEST PRIORITY" : ""}</small>${item.confidence ? `<em class="confidence-pill">${item.confidence} confidence</em>` : ""}</div>
+        <div class="op-kicker"><span>${item.icon || "↗"}</span><small>${(item.pillar || "Growth").toUpperCase()} • ${item.kind === "investigation" ? (index === 0 ? "INVESTIGATE FIRST" : "INVESTIGATE NEXT") : (index === 0 ? "HIGHEST PRIORITY" : "OPPORTUNITY")}</small>${item.confidence ? `<em class="confidence-pill">${item.confidence} confidence</em>` : ""}</div>
         <h3>${item.title}</h3>
         <p>${item.problem}</p>
         ${sourceMarkup || evidenceVisual(item)}
+        ${(item.rankExplanation || item.counterEvidence) ? `<div class="snapshot-reasoning"><div><small>WHY THIS RANKS HERE</small><p>${item.rankExplanation || item.priorityReason || "GO ranked this against the other patterns it found."}</p></div><div><small>WHAT COULD WEAKEN THIS</small><p>${item.counterEvidence || "Connected data could change this priority."}</p></div></div>` : ""}
       </div>
-      <div class="op-action"><small>WHAT GO WOULD DO</small><p>${item.action}</p><div class="metric"><span>GO WOULD MEASURE</span><strong>${item.metric}</strong></div></div>
+      <div class="op-action"><small>${item.kind === "investigation" ? "WHAT GO WOULD VERIFY" : "WHAT GO WOULD DO"}</small><p>${item.action}</p><div class="metric"><span>GO WOULD MEASURE</span><strong>${item.metric}</strong></div></div>
       <div class="op-money"><small>${modeled ? "MODELED ANNUAL OPPORTUNITY" : "REVENUE MODEL"}</small><strong>${moneyHeadline}</strong><span>${modeled ? "Estimate until connected data replaces assumptions and proves impact." : "GO will not invent revenue without the traffic, conversion and booking data needed to defend it."}</span>${modeled ? `<button data-math="${index}">How GO calculated this →</button>` : `<button class="needs-data-button" data-needs-data="${index}">What GO needs to prove this →</button>`}</div>
     </article>`;
   }).join("");

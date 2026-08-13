@@ -192,6 +192,7 @@ function buildUniversalProfile(url, pages) {
   const businessName = extractBusinessName(home, url);
   const offers = extractOffers(combined, businessName);
   const prices = extractPrices(combined);
+  const businessContext = inferBusinessContext(combined, home, url);
   const bookingProvider = detectBookingProvider(combined);
   const trust = detectTrust(combined);
   const contacts = detectContacts(combined);
@@ -201,7 +202,7 @@ function buildUniversalProfile(url, pages) {
   const seo = assessSearchFoundation(home, businessName, location, offers);
   const scores = scorePublicProfile({ offers, prices, bookingProvider, trust, contacts, callsToAction, internalPages, seo, combined });
   const growthScore = Math.round(Object.values(scores).reduce((sum, value) => sum + value, 0) / Object.keys(scores).length);
-  const opportunities = buildWebsiteFindings({ businessName, url, offers, prices, bookingProvider, trust, contacts, location, callsToAction, internalPages, seo, scores, combined });
+  const opportunities = buildWebsiteFindings({ businessName, url, offers, prices, bookingProvider, trust, contacts, location, callsToAction, internalPages, seo, scores, combined, businessContext });
 
   return {
     businessName,
@@ -214,18 +215,19 @@ function buildUniversalProfile(url, pages) {
     analysisType: "Live public website scan",
     analysisConfidence: opportunities.some(item => item.confidence === "High") ? "Medium-high" : "Medium",
     confidenceCopy: `${pages.length} public page${pages.length === 1 ? "" : "s"} read live`,
-    summary: summarizeBusiness({ businessName, offers, prices, bookingProvider, trust, opportunities }),
+    summary: summarizeBusiness({ businessName, offers, prices, bookingProvider, trust, opportunities, businessContext }),
     publicProfile: {
       offers: offers.slice(0, 5),
       pricing: prices.slice(0, 4),
       bookingProvider: bookingProvider.label,
       trust: trust.summary,
       contact: contacts.summary,
-      location: location || "Location needs verification"
+      location: businessContext.location || location || "Location needs verification",
+      businessContext
     },
     opportunities,
     watchItems: [
-      { title: "Search rankings + demand", detail: "GO has assessed the website's search foundation, but Build 026 does not yet claim live Google rankings or keyword demand." },
+      { title: "Search rankings + demand", detail: "GO has assessed the website's search foundation, but Build 027 does not yet claim live Google rankings or keyword demand." },
       { title: "Google review velocity", detail: "GO can see trust proof shown on the website, but public review counts and review velocity are a separate scan layer." },
       { title: "Actual conversion + revenue", detail: "Analytics and booking data are required before GO can prove where visitors drop out or attach dollars to an improvement." }
     ]
@@ -233,100 +235,203 @@ function buildUniversalProfile(url, pages) {
 }
 
 function buildWebsiteFindings(ctx) {
-  const findings = [];
+  const candidates = [];
   const evidence = (label, detail) => ({ type: "public", label, detail });
   const inferred = (label, detail) => ({ type: "operator", label, detail });
+  const combinedSignals = [];
+  if (ctx.offers.length) combinedSignals.push(`${ctx.offers.length} experience signals`);
+  if (ctx.prices.length) combinedSignals.push(`${ctx.prices.length} public price signals`);
+  if (ctx.callsToAction) combinedSignals.push(`${ctx.callsToAction} booking CTAs`);
+  if (ctx.bookingProvider.provider) combinedSignals.push(ctx.bookingProvider.label);
+  if (ctx.trust.score >= 2) combinedSignals.push("multiple trust signals");
 
-  if (ctx.callsToAction === 0) {
-    findings.push({
-      pillar: "Conversion", icon: "↗", title: "Customers have to work too hard to find the booking action",
-      problem: `GO did not find a clear “Book Now,” “Reserve,” or “Check Availability” action in the readable public content for ${ctx.businessName}.`,
-      action: "GO would make the primary booking action unmistakable on the homepage and highest-intent experience pages, then measure click-through to the booking flow.",
-      metric: "Website visit → booking-flow click", moneyLabel: "Needs analytics + booking baseline", confidence: "High",
-      sources: [evidence("Live website", "No clear booking CTA was found in the public page content GO read."), inferred("GO inference", "For an experience business, a hidden booking path can create avoidable conversion friction.")]
-    });
-  } else if (ctx.callsToAction >= 5) {
-    findings.push({
-      pillar: "Conversion", icon: "↗", title: "The website is already pushing customers toward booking",
-      problem: `GO found ${ctx.callsToAction} booking-oriented calls to action across the pages it read. That is a positive conversion signal — the next question is whether the handoff into the booking flow actually converts.`,
-      action: "GO would preserve the strong booking visibility, establish the click-to-book baseline and focus optimization on the point where real customers are dropping out.",
-      metric: "CTA click → completed booking", moneyLabel: "Needs analytics + booking data", confidence: "High",
-      sources: [evidence("Live website", `${ctx.callsToAction} booking-oriented calls to action were detected across ${ctx.internalPages} page${ctx.internalPages === 1 ? "" : "s"}.`), inferred("GO inference", "This does not look like a business that needs a rebuild merely because it sells online; GO should measure before changing what already works.")]
+  const customPricingContext = /(private|custom|customized|bespoke|quote|call for price|contact for price|request a quote|per group|group size|itinerary)/i.test(ctx.combined);
+  const strongBookingPath = ctx.callsToAction >= 3 && Boolean(ctx.bookingProvider.provider);
+  const strongMerchandising = ctx.offers.length >= 3 && ctx.prices.length >= 2;
+  const strongTrust = ctx.trust.score >= 2;
+
+  const add = item => candidates.push({
+    kind: "opportunity",
+    severity: 2,
+    evidenceStrength: 2,
+    revenueProximity: 2,
+    actionability: 2,
+    uncertainty: 0,
+    supportCount: 2,
+    counterEvidence: "No material counter-evidence found in the public pages GO read.",
+    ...item
+  });
+
+  // Conversion: only promote a missing booking action when other evidence says customers should be able to transact online.
+  if (ctx.callsToAction === 0 && ctx.offers.length >= 2) {
+    const providerCounter = ctx.bookingProvider.provider
+      ? `${ctx.bookingProvider.label} is present, so a booking path may exist even though GO could not see a clear booking action in the readable page content.`
+      : "GO did not detect a booking provider that would explain a hidden handoff.";
+    add({
+      pillar: "Conversion", icon: "↗", title: "The experiences are visible, but the next step to buy is not",
+      problem: `GO found ${ctx.offers.length} experience signals for ${ctx.businessName}, but no clear “Book Now,” “Reserve,” or “Check Availability” action in the readable public content. That creates a possible gap between product interest and the next buying step.`,
+      action: "GO would first verify the real mobile and desktop booking path. If the action is genuinely hard to reach, GO would make the primary booking step unmistakable on the highest-intent pages and measure whether more visitors enter checkout.",
+      metric: "Experience-page visit → booking-flow start", moneyLabel: "Needs analytics + booking baseline", confidence: ctx.bookingProvider.provider ? "Medium-high" : "High",
+      priorityReason: "This sits directly between product interest and the booking flow, so it is closer to revenue than broader website polish.",
+      counterEvidence: providerCounter,
+      evidenceStrength: ctx.bookingProvider.provider ? 2 : 3,
+      revenueProximity: 3,
+      severity: 3,
+      uncertainty: ctx.bookingProvider.provider ? 1 : 0,
+      supportCount: ctx.bookingProvider.provider ? 2 : 3,
+      sources: [
+        evidence("Live website", `${ctx.offers.length} experience signals were detected across ${ctx.internalPages} public page${ctx.internalPages === 1 ? "" : "s"}.`),
+        evidence("Booking action", "No clear booking-oriented CTA was found in the readable content GO scanned."),
+        ...(ctx.bookingProvider.provider ? [evidence("Booking technology", `${ctx.bookingProvider.label} was detected elsewhere in the public site.`)] : [])
+      ]
     });
   }
 
-  if (ctx.prices.length === 0 && ctx.offers.length >= 2) {
-    findings.push({
-      pillar: "Conversion", icon: "$", title: "Customers can see the experiences, but GO could not find public pricing",
-      problem: `${ctx.businessName} appears to offer multiple bookable experiences, but GO did not find clear price signals in the public content it read.`,
-      action: "GO would verify whether pricing is intentionally hidden. If not, it would test clearer price-from messaging so travelers can qualify themselves before entering the booking flow.",
-      metric: "Experience-page engagement + booking starts", moneyLabel: "Needs traffic + booking baseline", confidence: "Medium-high",
-      sources: [evidence("Live website", `${ctx.offers.length} experience signals were detected, but no obvious public currency pricing was found.`)]
-    });
-  } else if (ctx.prices.length >= 2) {
-    findings.push({
-      pillar: "Conversion", icon: "$", title: "Pricing is visible — now GO would test how well the value is being sold",
-      problem: `GO found public price signals including ${ctx.prices.slice(0, 3).join(", ")}. That helps customers self-qualify, but price only converts when the site makes the experience feel worth it.`,
-      action: "GO would compare pricing language with the trust and differentiation shown around it, then measure whether stronger value positioning lifts direct booking conversion without unnecessary discounting.",
-      metric: "Experience page → completed booking + average booking value", moneyLabel: "Needs conversion + revenue baseline", confidence: "Medium-high",
-      sources: [evidence("Live website", `Public pricing was detected: ${ctx.prices.slice(0, 4).join(", ")}.`)]
-    });
-  }
-
-  if (ctx.trust.score < 2) {
-    findings.push({
-      pillar: "Trust", icon: "★", title: "The website needs stronger proof before asking travelers to book",
-      problem: "GO found limited visible review/testimonial proof in the website content it could read. For an unfamiliar experience business, that can make the customer do extra trust research somewhere else.",
-      action: "GO would bring authentic review proof, ratings or customer language closer to the booking decision and then build a review-capture system to keep that proof fresh.",
-      metric: "Review velocity + booking conversion", moneyLabel: "Review target first · revenue attribution later", confidence: "Medium-high",
-      sources: [evidence("Live website", ctx.trust.detail)]
-    });
-  } else {
-    findings.push({
-      pillar: "Trust", icon: "★", title: "Customer trust is already an asset — GO would make it work harder",
-      problem: `${ctx.trust.summary}. The public site is using trust proof, which is good. GO's next question is whether fresh reviews are arriving fast enough and being surfaced where they influence bookings.`,
-      action: "GO would benchmark Google/Tripadvisor review count and velocity, automate review capture where possible, and reuse the strongest customer themes across high-intent pages.",
-      metric: "Reviews/month + review-request conversion + booking conversion", moneyLabel: "Needs public review scan + booking data", confidence: "Medium-high",
-      sources: [evidence("Live website", ctx.trust.detail), inferred("Next evidence layer", "Build 026 has not yet verified public Google/Tripadvisor review velocity, so GO is not claiming a review gap yet.")]
+  // Strong booking path: this is not a defect. It becomes a qualified investigation because it is the closest measurable revenue handoff.
+  if (strongBookingPath) {
+    add({
+      kind: "investigation",
+      pillar: "Conversion", icon: "↗", title: `The website is getting travelers to ${ctx.bookingProvider.label} — GO would measure the handoff before changing it`,
+      problem: `GO found ${ctx.callsToAction} booking-oriented calls to action and detected ${ctx.bookingProvider.label}. ${ctx.prices.length ? `It also found public pricing (${ctx.prices.slice(0, 3).join(", ")}), which means travelers can qualify themselves before entering checkout.` : "That suggests a real path from interest into checkout already exists."}`,
+      action: "GO would preserve the visible booking path, establish the website → booking-flow → completed-booking baseline, and only change the handoff if the data shows customers are leaking there.",
+      metric: "Booking CTA click → checkout start → completed booking", moneyLabel: "Needs analytics + OBP data", confidence: "High",
+      priorityReason: "This is the closest public signal GO can see to actual revenue. Measuring it can tell us whether conversion work belongs on the website, inside the booking flow, or somewhere earlier in demand generation.",
+      counterEvidence: "The public evidence looks healthy here. GO is deliberately not calling the booking path broken without conversion data.",
+      severity: 1,
+      evidenceStrength: 3,
+      revenueProximity: 3,
+      actionability: 3,
+      uncertainty: 1,
+      supportCount: 3 + (ctx.prices.length ? 1 : 0),
+      sources: [
+        evidence("Live website", `${ctx.callsToAction} booking-oriented calls to action were detected across ${ctx.internalPages} page${ctx.internalPages === 1 ? "" : "s"}.`),
+        evidence("Booking technology", `${ctx.bookingProvider.label} signals were found in the public site.`),
+        ...(ctx.prices.length ? [evidence("Public pricing", `GO found ${ctx.prices.slice(0, 4).join(", ")}.`)] : []),
+        inferred("GO judgment", "The public path appears functional enough that measurement should come before a redesign.")
+      ]
     });
   }
 
-  if (ctx.seo.score < 2) {
-    findings.push({
-      pillar: "Visibility", icon: "⌖", title: "The website is not giving search engines enough business context",
+  // Pricing: missing pricing is only an opportunity if the business looks standardized enough that the absence is meaningful.
+  if (ctx.prices.length === 0 && ctx.offers.length >= 2 && !customPricingContext) {
+    add({
+      pillar: "Conversion", icon: "$", title: "Travelers can compare the experiences, but price is still an unanswered question",
+      problem: `${ctx.businessName} appears to offer ${ctx.offers.length} bookable experiences, but GO did not find clear public price signals. For a standardized tour catalog, that can force a traveler to enter the booking process before they know whether the experience fits their budget.`,
+      action: "GO would verify whether pricing is intentionally withheld. If not, GO would test clear price-from messaging on the highest-intent experience pages and measure whether qualified booking starts increase.",
+      metric: "Experience-page visit → qualified booking start", moneyLabel: "Needs traffic + booking baseline", confidence: "Medium-high",
+      priorityReason: "Price sits close to the buying decision and appears to affect multiple experiences, making it more consequential than cosmetic website changes.",
+      counterEvidence: "GO did not find strong private/custom/quote-dependent language that would clearly explain why pricing should stay hidden.",
+      severity: 2, evidenceStrength: 2, revenueProximity: 3, actionability: 3, uncertainty: 1, supportCount: 2,
+      sources: [
+        evidence("Experience inventory", `${ctx.offers.length} experience signals were detected.`),
+        evidence("Public pricing", "No obvious currency pricing was found in the readable pages GO scanned.")
+      ]
+    });
+  } else if (ctx.prices.length === 0 && ctx.offers.length >= 2 && customPricingContext) {
+    add({
+      kind: "investigation",
+      pillar: "Conversion", icon: "$", title: "Pricing is not obvious, but GO would not call that a conversion problem yet",
+      problem: `GO found multiple experience signals without clear public pricing, but the site also uses private/custom/quote-dependent language. That makes hidden or variable pricing potentially intentional rather than automatically broken.`,
+      action: "GO would confirm how pricing is actually determined and compare inquiry/booking behavior before recommending a public-pricing change.",
+      metric: "Inquiry rate + booking conversion by experience type", moneyLabel: "Needs operator context + booking data", confidence: "Medium-high",
+      priorityReason: "This is worth validating, but the counter-evidence is strong enough that GO would not spend implementation time here first.",
+      counterEvidence: "Private/custom/quote-dependent language suggests a fixed public price may not fit the product being sold.",
+      severity: 1, evidenceStrength: 2, revenueProximity: 2, actionability: 1, uncertainty: 2, supportCount: 2,
+      sources: [
+        evidence("Live website", `${ctx.offers.length} experience signals were detected without obvious public currency pricing.`),
+        evidence("Counter-evidence", "Private/custom/quote-dependent language was also detected in the public content."),
+        inferred("GO judgment", "GO would validate the pricing model before recommending a change.")
+      ]
+    });
+  }
+
+  // Visible pricing + product depth + trust is a healthy foundation. Treat the next step as market investigation, not a conversion defect.
+  if (strongMerchandising && strongTrust) {
+    add({
+      kind: "investigation",
+      pillar: "Intelligence", icon: "◎", title: "The buying basics are in place — GO would benchmark the market before changing them",
+      problem: `GO found ${ctx.offers.length} experience signals, public pricing such as ${ctx.prices.slice(0, 3).join(", ")}, and ${ctx.trust.summary.toLowerCase()}. Travelers can see what is for sale, what it costs, and reasons to trust the operator. That is useful context, but not enough to call pricing a problem. The next valuable question is how these offers compare with the operators winning the same Palm Springs demand on price, visibility and trust.`,
+      action: "GO would preserve the working buying path and use the next public-intelligence layer to compare similar experiences, search position and review trust against real competitors before recommending a pricing or positioning change.",
+      metric: "Competitor price + search position + review trust → booking performance", moneyLabel: "Needs analytics + booking revenue", confidence: "Medium-high",
+      priorityReason: "GO is not seeing a missing buying foundation here. The higher-value next step is to compare FSA against the operators competing for the same demand before changing a working conversion path.",
+      counterEvidence: "Public evidence cannot prove that value positioning is underperforming. If these pages already convert strongly, GO should leave them alone and move to another constraint.",
+      severity: 1, evidenceStrength: 3, revenueProximity: 2, actionability: 2, uncertainty: 1, supportCount: 3,
+      sources: [
+        evidence("Experience inventory", `${ctx.offers.length} experience signals were detected.`),
+        evidence("Public pricing", `GO found ${ctx.prices.slice(0, 4).join(", ")}.`),
+        evidence("Trust proof", ctx.trust.detail),
+        inferred("GO inference", "With the buying basics present, value differentiation becomes a more plausible test than simply adding more booking buttons.")
+      ]
+    });
+  }
+
+  // Trust: weak proof only becomes a major opportunity when the site is already asking people to buy.
+  if (ctx.trust.score < 2 && (ctx.callsToAction >= 2 || ctx.prices.length >= 1)) {
+    add({
+      pillar: "Trust", icon: "★", title: "The site asks travelers to make a buying decision before showing much proof",
+      problem: `GO found ${ctx.callsToAction ? `${ctx.callsToAction} booking-oriented calls to action` : "public pricing"}, but only limited review/testimonial/history proof in the readable content. That means the site may be creating purchase intent faster than it is reducing perceived risk.`,
+      action: "GO would verify the operator's strongest public review assets, bring authentic proof closer to high-intent booking moments, and measure whether trust exposure improves booking starts and completion.",
+      metric: "Trust exposure → booking start/completion + review velocity", moneyLabel: "Needs public review scan + booking baseline", confidence: "Medium-high",
+      priorityReason: "This is tied to existing buying intent, so it is more actionable than simply recommending 'get more reviews' in isolation.",
+      counterEvidence: "GO has only assessed trust proof visible in the pages it could read. Strong Google/Tripadvisor proof may already exist off-site and could weaken this finding.",
+      severity: 2, evidenceStrength: 2, revenueProximity: 3, actionability: 3, uncertainty: 1, supportCount: 2,
+      sources: [
+        evidence("Buying intent", `${ctx.callsToAction} booking-oriented CTA${ctx.callsToAction === 1 ? "" : "s"} and ${ctx.prices.length} public price signal${ctx.prices.length === 1 ? "" : "s"} were detected.`),
+        evidence("On-site trust", ctx.trust.detail),
+        inferred("Needs next evidence layer", "Public Google/Tripadvisor review strength is not yet verified by this scan.")
+      ]
+    });
+  }
+
+  // SEO: only promote a weak foundation when GO has enough site depth to trust the observation.
+  if (ctx.seo.score < 2 && ctx.offers.length >= 2 && ctx.internalPages >= 2) {
+    add({
+      pillar: "Visibility", icon: "⌖", title: "GO can understand the experiences better than the search context around them",
       problem: ctx.seo.problem,
-      action: "GO would strengthen the page titles, headings, location/service language and dedicated experience pages before chasing more advanced SEO tactics.",
-      metric: "Indexed search queries + non-branded organic visits", moneyLabel: "Needs Search Console + ranking baseline", confidence: "High",
-      sources: [evidence("Live website", ctx.seo.detail)]
-    });
-  } else {
-    findings.push({
-      pillar: "Visibility", icon: "⌖", title: "The search foundation looks credible — rankings are the next proof point",
-      problem: ctx.seo.problem,
-      action: "GO would keep the useful on-page search foundation, then verify which high-intent searches the business actually ranks for, where competitors are ahead, and which pages deserve the next investment.",
-      metric: "Search position + organic visits + organic bookings", moneyLabel: "Needs live search landscape + Search Console", confidence: "Medium-high",
-      sources: [evidence("Live website", ctx.seo.detail), inferred("GO inference", "A good on-page foundation does not prove the business is winning valuable searches; rankings and demand must be measured separately.")]
-    });
-  }
-
-  if (ctx.bookingProvider.provider) {
-    findings.push({
-      pillar: "Operations", icon: "⚡", title: `${ctx.bookingProvider.label} appears to be handling the booking handoff`,
-      problem: `GO detected ${ctx.bookingProvider.label} in the public booking links or website content. That is useful context, but the OBP itself should not dictate the entire growth strategy.`,
-      action: "GO would keep the OBP if it is serving the operator well, then measure the handoff from website → booking flow → completed booking before recommending any platform change.",
-      metric: "Website click → OBP checkout → completed booking", moneyLabel: "Needs OBP + analytics connection", confidence: "High",
-      sources: [evidence("Live website", `${ctx.bookingProvider.label} signals were found in the public site content.`)]
+      action: "GO would strengthen service/location context on the pages already representing real experiences, then verify whether those pages gain visibility for high-intent searches before expanding content volume.",
+      metric: "High-intent search visibility + organic visits + organic bookings", moneyLabel: "Needs live search landscape + Search Console", confidence: "High",
+      priorityReason: "The issue appears across real experience pages rather than a single metadata field, giving GO a stronger reason to investigate visibility before producing more content.",
+      counterEvidence: "On-page search context does not prove ranking performance. The business may already rank well despite this foundation, so live search evidence is still required.",
+      severity: 2, evidenceStrength: 3, revenueProximity: 2, actionability: 3, uncertainty: 1, supportCount: 3,
+      sources: [
+        evidence("Live website", ctx.seo.detail),
+        evidence("Experience inventory", `${ctx.offers.length} experience signals were detected across ${ctx.internalPages} pages.`),
+        inferred("Needs next evidence layer", "GO has not yet verified actual Google rankings or search demand.")
+      ]
     });
   }
 
-  const prioritized = prioritizeFindings(findings);
-  return prioritized.slice(0, 3);
+  const ranked = prioritizeFindings(candidates);
+  const qualified = ranked.filter(item => item.kind === "opportunity" && item.priorityScore >= 8 && item.supportCount >= 2);
+  const investigations = ranked.filter(item => item.kind === "investigation" && item.priorityScore >= 6);
+
+  // Top slots are scarce. GO may return fewer than three rather than manufacture weak opportunities.
+  const selected = qualified.slice(0, 3);
+  if (selected.length < 3) {
+    investigations.forEach(item => {
+      if (selected.length < 3) selected.push(item);
+    });
+  }
+  return selected;
 }
 
 function prioritizeFindings(items) {
-  const priority = { "High": 3, "Medium-high": 2, "Medium": 1 };
-  const pillarWeight = { Conversion: 4, Trust: 3, Visibility: 3, Operations: 2, Intelligence: 1, Growth: 1 };
-  return [...items].sort((a, b) => (priority[b.confidence] + (pillarWeight[b.pillar] || 0)) - (priority[a.confidence] + (pillarWeight[a.pillar] || 0)));
+  return items
+    .map(item => {
+      const score = (item.severity || 0) + (item.evidenceStrength || 0) + (item.revenueProximity || 0) + (item.actionability || 0) - (item.uncertainty || 0);
+      return { ...item, priorityScore: score };
+    })
+    .sort((a, b) => {
+      if (b.priorityScore !== a.priorityScore) return b.priorityScore - a.priorityScore;
+      if ((b.supportCount || 0) !== (a.supportCount || 0)) return (b.supportCount || 0) - (a.supportCount || 0);
+      return (b.revenueProximity || 0) - (a.revenueProximity || 0);
+    })
+    .map((item, index, all) => ({
+      ...item,
+      rankExplanation: index === 0
+        ? `GO ranked this first because it has the strongest combination of evidence, proximity to bookings/revenue and a testable next action among the ${all.length} qualified patterns it found.`
+        : `GO ranked this behind #1 because its evidence, revenue proximity or certainty is weaker. GO would not work on it first unless connected data changes the picture.`
+    }));
 }
 
 function scorePublicProfile(ctx) {
@@ -343,7 +448,9 @@ function summarizeBusiness(ctx) {
   const offerText = ctx.offers.length ? `${ctx.offers.length} clear experience signal${ctx.offers.length === 1 ? "" : "s"}` : "a bookable experience business";
   const priceText = ctx.prices.length ? "public pricing" : "no obvious public pricing";
   const bookingText = ctx.bookingProvider.provider ? ctx.bookingProvider.label : "no OBP GO could confidently identify";
-  return `GO read this as ${offerText}, found ${priceText}, and detected ${bookingText}. The first recommendations below come from the live website itself; search rankings, review velocity, competitors and revenue remain separate evidence layers.`;
+  const context = ctx.businessContext || {};
+  const identity = [context.businessType, context.location].filter(Boolean).join(" in ");
+  return `GO reads ${ctx.businessName} as ${identity || "a tour and activity business"} with ${offerText}, ${priceText}, and ${bookingText}. Website evidence establishes the business context; search rankings, Google reviews and competitors are the next public layers GO needs before making market-level recommendations.`;
 }
 
 function extractBusinessName(markdown, url) {
@@ -374,7 +481,34 @@ function extractOffers(text, businessName) {
 
 function extractPrices(text) {
   const matches = text.match(/(?:US\$|USD\s*|CA\$|CI\$|£|€|\$)\s?\d{1,5}(?:[,.]\d{2})?/gi) || [];
-  return [...new Set(matches.map(value => value.replace(/\s+/g, " ").trim()))].slice(0, 8);
+  const unique = [...new Set(matches.map(value => value.replace(/\s+/g, " ").trim()))];
+  return unique.sort((a, b) => priceNumber(a) - priceNumber(b)).slice(0, 8);
+}
+
+function priceNumber(value) {
+  const match = String(value || "").replace(/,/g, "").match(/\d+(?:\.\d+)?/);
+  return match ? Number(match[0]) : Number.POSITIVE_INFINITY;
+}
+
+function inferBusinessContext(text, home, url) {
+  const haystack = `${home}\n${text}`;
+  const locations = [
+    ["Palm Springs, California", /palm springs(?:,?\s*(?:ca|california))?/i],
+    ["Palm Desert, California", /palm desert(?:,?\s*(?:ca|california))?/i],
+    ["Greater Palm Springs, California", /greater palm springs/i],
+    ["Joshua Tree, California", /joshua tree(?: national park)?/i],
+    ["Temecula, California", /temecula/i]
+  ];
+  const location = locations.find(([, regex]) => regex.test(haystack))?.[0] || extractLocation(text) || "";
+
+  const types = [
+    ["guided sightseeing tour operator", /(sightseeing|celebrity homes?|modernism|architecture|legends? and icons?|city tour)/i],
+    ["bus and private transportation tour operator", /(charter bus|motorcoach|sprinter|luxury van|transportation|bus tour)/i],
+    ["boat and water-experience operator", /(boat|snorkel|sailing|yacht|fishing|stingray|cruise)/i],
+    ["outdoor adventure tour operator", /(jeep|hummer|atv|utv|rafting|kayak|hiking|adventure tour)/i]
+  ];
+  const businessType = types.find(([, regex]) => regex.test(haystack))?.[0] || "tour and activity operator";
+  return { businessType, location, domain: domainLabel(url) };
 }
 
 function detectBookingProvider(text) {
@@ -474,12 +608,16 @@ function showResults(profile) {
     <article class="finding-card">
       <div class="finding-number">0${index + 1}</div>
       <div class="finding-copy">
-        <div class="finding-kicker"><span>${escapeHtml(item.icon || "↗")}</span><small>${escapeHtml((item.pillar || "Growth").toUpperCase())} · ${escapeHtml(String(item.confidence || "Medium").toUpperCase())} CONFIDENCE</small></div>
+        <div class="finding-kicker"><span>${escapeHtml(item.icon || "↗")}</span><small>${escapeHtml((item.pillar || "Growth").toUpperCase())} · ${escapeHtml(item.kind === "investigation" ? "INVESTIGATE FIRST" : "OPPORTUNITY")} · ${escapeHtml(String(item.confidence || "Medium").toUpperCase())} CONFIDENCE</small></div>
         <h3>${escapeHtml(item.title)}</h3>
         <p>${escapeHtml(item.problem)}</p>
+        <div class="reasoning-strip">
+          <div><small>WHY THIS RANKS HERE</small><p>${escapeHtml(item.rankExplanation || item.priorityReason || "GO ranked this against the other patterns it found.")}</p></div>
+          <div><small>WHAT COULD WEAKEN THIS</small><p>${escapeHtml(item.counterEvidence || "Connected data could change the priority.")}</p></div>
+        </div>
         <div class="source-stack">${(item.sources || []).map(source => `<div class="source-chip ${source.type === "operator" ? "operator" : "public"}"><b>${escapeHtml(source.label)}</b><span>${escapeHtml(source.detail)}</span></div>`).join("")}</div>
       </div>
-      <div class="finding-action"><small>WHAT GO WOULD DO</small><p>${escapeHtml(item.action)}</p><div><span>GO WOULD MEASURE</span><strong>${escapeHtml(item.metric)}</strong></div><em>${escapeHtml(item.moneyLabel || "Needs connected data")}</em></div>
+      <div class="finding-action"><small>${item.kind === "investigation" ? "WHAT GO WOULD VERIFY" : "WHAT GO WOULD DO"}</small><p>${escapeHtml(item.action)}</p><div><span>GO WOULD MEASURE</span><strong>${escapeHtml(item.metric)}</strong></div><em>${escapeHtml(item.moneyLabel || "Needs connected data")}</em></div>
     </article>
   `).join("") + renderWatchItems(profile.watchItems || []);
   scanPanel.hidden = true;
@@ -492,7 +630,7 @@ function renderProfileStrip(profile) {
   const offers = Array.isArray(profile.offers) && profile.offers.length ? profile.offers.slice(0, 3).join(" · ") : "Needs deeper crawl";
   const pricing = Array.isArray(profile.pricing) && profile.pricing.length ? profile.pricing.slice(0, 3).join(" · ") : "Not found publicly";
   document.getElementById("profile-strip").innerHTML = `
-    <div><small>GO THINKS THEY SELL</small><strong>${escapeHtml(offers)}</strong></div>
+    <div><small>GO UNDERSTANDS THE BUSINESS</small><strong>${escapeHtml([profile.businessContext?.businessType, profile.businessContext?.location].filter(Boolean).join(" · ") || offers)}</strong></div>
     <div><small>PUBLIC PRICING</small><strong>${escapeHtml(pricing)}</strong></div>
     <div><small>BOOKING HANDOFF</small><strong>${escapeHtml(profile.bookingProvider || "Needs verification")}</strong></div>
     <div><small>TRUST / CONTACT</small><strong>${escapeHtml([profile.trust, profile.contact].filter(Boolean).join(" · ") || "Needs verification")}</strong></div>

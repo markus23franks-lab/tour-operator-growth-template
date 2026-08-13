@@ -228,4 +228,60 @@ The benchmark is whether GO routinely produces findings specific enough to creat
 
 "How did GO know that?"
 
-reaction.
+reaction.## Build 027 — Evidence Synthesis + Priority Reasoning
+
+### Objective
+Move Universal Public Scan from individual website observations toward stronger business judgment using the evidence GO already collects.
+
+### What Changed
+- Preserved the live public website scan introduced in Build 026.
+- Added evidence synthesis so related public signals can contribute to a larger business conclusion.
+- Added counter-evidence so GO can recognize when evidence weakens or qualifies a potential recommendation.
+- Improved business classification and context before generating findings.
+- Improved prioritization so findings are ranked by likely business importance rather than simply by detected issues.
+- Added clearer reasoning for why a finding ranks where it does.
+- Added "what could weaken this" reasoning to expose uncertainty rather than hide it.
+- Improved distinction between:
+  - publicly verified evidence
+  - GO inference/judgment
+  - evidence that still requires connected or external data
+- Improved restraint so GO can recommend investigation or measurement before changing something that may already be working.
+- Corrected public pricing presentation into logical low-to-high order.
+- Reframed the Growth Score as a provisional public-evidence score rather than a complete diagnosis.
+- Improved Analyzer → Growth Snapshot continuity so the same reasoning survives into the prospect-facing Snapshot.
+
+### FSA Benchmark
+Build 027 was tested against Simply the Best Tours / fsatours.com.
+
+GO correctly identified the company as a guided sightseeing tour operator in Palm Springs, California rather than misclassifying the business from unrelated historical test context.
+
+The public scan recognized:
+- multiple experience signals
+- public pricing around $125–$145
+- FareHarbor
+- booking-oriented calls to action
+- public trust signals
+
+More importantly, GO did not manufacture a major website problem from those signals.
+
+Instead, it concluded that:
+1. The visible booking path appears functional enough that GO should measure the FareHarbor handoff before recommending a redesign.
+2. The buying fundamentals appear healthy enough that GO should benchmark FSA against the Palm Springs market before recommending pricing or positioning changes.
+
+### Key Learning
+Build 027 improved GO's reasoning, but also exposed the next constraint:
+
+**GO's reasoning is beginning to exceed the evidence available from the operator's own website.**
+
+Facts such as pricing, booking provider, review widgets or website structure are not valuable merely because GO detected them.
+
+Every major finding needs a meaningful "so what?"
+
+The next major intelligence leap requires GO to compare the operator against the market it competes in.
+
+### Build 027 Status
+COMPLETE
+
+Build 027 established the reasoning foundation for deeper market intelligence.
+
+Next: Build 028.

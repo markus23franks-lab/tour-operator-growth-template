@@ -411,3 +411,75 @@ The next intelligence layer should make findings more specific, better justified
 Do not add complexity simply to make the scan look more sophisticated.
 
 The goal is the operator's reaction, not the number of data points collected.
+## Customer-Ready Private Beta
+
+Growth Operator's next major company milestone is not "finish the software."
+
+The milestone is:
+
+**A real operator can discover GO, understand its value, become a customer, give GO appropriate access, have GO identify and execute useful work, and see what happened afterward.**
+
+Target direction: approximately 4–6 weeks toward an initial private/design-partner beta, subject to what implementation and testing reveal.
+
+Three workstreams should increasingly progress in parallel.
+
+### Product
+
+Operator Analyzer / Market Intelligence
+→ Growth Snapshot
+→ Growth Review
+→ Connected First-Party Intelligence
+→ Persistent GO Work Queue / Operator Memory
+→ First Execution Capability
+→ Measurement / Proof
+→ Continuous Improvement
+
+The minimum meaningful product loop is:
+
+**FIND → UNDERSTAND → PRIORITIZE → EXPLAIN → FIX → MEASURE → LEARN → REPEAT**
+
+GO does not need every planned execution engine before the first design partners.
+
+It needs at least one credible end-to-end loop where GO can diagnose something, act on it and measure what happened.
+
+### Company / GTM
+
+Before accepting paying customers, Growth Operator also needs sufficient company infrastructure, including:
+
+- Growth Operator marketing website
+- clear positioning and initial offer
+- Analyzer → Snapshot → Growth Review acquisition funnel
+- pricing
+- payment processing
+- appropriate customer agreements / Terms
+- Privacy Policy and data-handling expectations
+- authorization around customer-system changes
+- onboarding and offboarding
+- support/contact process
+- analytics and acquisition attribution
+
+Commodity infrastructure should generally be integrated rather than reinvented.
+
+### Growth Operator Account #1 / Flywheel
+
+Growth Operator's own website and acquisition funnel should establish measurement baselines early.
+
+Track signals such as:
+
+- website traffic
+- acquisition source
+- search visibility
+- Analyzer starts
+- completed analyses
+- Snapshot views
+- Growth Review requests
+- customers
+- revenue where defensibly attributable
+
+As GO capabilities become production-ready, progressively turn them onto Growth Operator itself.
+
+This creates the intended self-use and learning flywheel:
+
+**GO learns from itself → operators → itself → operators.**
+
+Product development, company readiness and the Account #1 flywheel should converge at the first real customer rather than being treated as sequential projects.

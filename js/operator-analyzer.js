@@ -3,6 +3,7 @@
 const READER_ENDPOINT = "https://r.jina.ai/";
 const MAX_EXTRA_PAGES = 3;
 const MAX_MARKET_QUERIES = 3;
+const MAX_DEMAND_CANDIDATES = 8;
 const MAX_COMPETITORS_TO_READ = 5;
 const MAX_PUBLIC_DISCOVERY_DOCS = 8;
 const PUBLIC_SEARCH_ROUTES = [
@@ -214,6 +215,9 @@ function buildWebsiteContext(url, pages) {
 function emptyMarket() {
   return {
     queries: [],
+    demandPlan: [],
+    demandFamilies: [],
+    selectedDemand: null,
     searchPages: [],
     discoveryDocs: [],
     competitors: [],
@@ -319,7 +323,8 @@ async function investigatePublicMarket(ctx) {
 
 
 async function readProfessionalMarket(ctx) {
-  const queries = buildMarketQueries(ctx).slice(0, MAX_MARKET_QUERIES);
+  const demandPlan = buildDemandPlan(ctx);
+  const queries = demandPlan.slice(0, MAX_MARKET_QUERIES).map(item => item.query);
   if (!queries.length || !ctx.businessContext?.location) return null;
 
   try {
@@ -338,19 +343,20 @@ async function readProfessionalMarket(ctx) {
     const payload = await response.json();
     if (!payload?.ok || !payload.market) return null;
 
-    return normalizeProfessionalMarket(payload.market, queries);
+    return normalizeProfessionalMarket(payload.market, demandPlan);
   } catch (error) {
     console.warn('GO professional market layer unavailable; falling back to public discovery.', error);
     return null;
   }
 }
 
-function normalizeProfessionalMarket(raw, queries) {
+function normalizeProfessionalMarket(raw, demandPlan) {
   const market = emptyMarket();
   market.provider = raw.provider || 'SerpApi';
   market.professional = true;
   market.observedAt = raw.observedAt || '';
-  market.queries = queries;
+  market.demandPlan = demandPlan;
+  market.queries = demandPlan.slice(0, MAX_MARKET_QUERIES).map(item => item.query);
   market.target = raw.target || null;
   market.queryResults = Array.isArray(raw.queries) ? raw.queries : [];
   market.searchPages = market.queryResults.map(row => ({
@@ -386,9 +392,26 @@ function normalizeProfessionalMarket(raw, queries) {
         player.reviews ? `${Number(player.reviews).toLocaleString()} reviews` : null
       ].filter(Boolean).join(' · ') || 'No structured trust metrics returned.'
     },
-    specialization: detectMarketSpecialization(`${player.name || ''} ${(player.queries || []).join(' ')}`, queries),
+    specialization: detectMarketSpecialization(`${player.name || ''} ${(player.queries || []).join(' ')}`, market.queries),
     sources: player.sources || []
   }));
+
+  market.demandFamilies = scoreDemandFamilies({
+    demandPlan,
+    queryResults: market.queryResults,
+    competitors: market.competitors
+  });
+  market.selectedDemand = market.demandFamilies[0] || null;
+
+  if (market.selectedDemand) {
+    market.queries = [
+      market.selectedDemand.query,
+      ...market.demandFamilies
+        .slice(1)
+        .map(item => item.query)
+        .filter(query => query !== market.selectedDemand.query)
+    ];
+  }
 
   market.marketEntities = market.competitors;
   market.reviewSignals = market.competitors
@@ -401,30 +424,304 @@ function normalizeProfessionalMarket(raw, queries) {
       detail: `${item.name}: ${item.trust.summary}`
     }));
   market.evidence = buildMarketEvidenceSummary(market);
-  market.retrievalNote = `GO verified ${market.queryResults.length} localized Google market searches through ${market.provider} and separated direct operators, marketplaces and destination authorities before reasoning.`;
+  market.retrievalNote = market.selectedDemand
+    ? `GO compared ${market.demandFamilies.length} traveler-demand families through ${market.provider} and prioritized ${market.selectedDemand.label} based on operator relevance plus external market evidence.`
+    : `GO verified ${market.queryResults.length} localized Google market searches through ${market.provider} and separated direct operators, marketplaces and destination authorities before reasoning.`;
   return market;
 }
 
 function buildMarketQueries(ctx) {
-  const location = String(ctx.businessContext?.location || "")
-    .replace(/,\s*(California|Florida|Utah|Nevada|Arizona|Hawaii|Texas|New York).*$/i, "")
+  return buildDemandPlan(ctx)
+    .slice(0, MAX_MARKET_QUERIES)
+    .map(item => item.query);
+}
+
+function buildDemandPlan(ctx) {
+  const location = String(ctx.businessContext?.location || '')
+    .replace(/,\s*(California|Florida|Utah|Nevada|Arizona|Hawaii|Texas|New York).*$/i, '')
     .trim();
   if (!location) return [];
 
-  const text = `${ctx.offers.join(" ")} ${ctx.combined}`.toLowerCase();
-  const intents = [];
-  const add = value => { if (value && !intents.includes(value)) intents.push(value); };
+  const offers = Array.isArray(ctx.offers) ? ctx.offers : [];
+  const offerText = offers.join(' ').toLowerCase();
+  const bodyText = String(ctx.combined || '').toLowerCase();
 
-  if (/architect|modernism|midcentury|mid-century/.test(text)) add("architecture tours");
-  if (/celebrity|stars? homes?|legends? and icons?/.test(text)) add("celebrity homes tours");
-  if (/sightseeing|city tour|history tour/.test(text)) add("sightseeing tours");
-  if (/food|culinary/.test(text)) add("food tours");
-  if (/wine|winery/.test(text)) add("wine tours");
-  if (/boat|snorkel|sailing|yacht|cruise/.test(text)) add("boat tours");
-  if (/atv|utv|jeep|hummer|off-road/.test(text)) add("adventure tours");
-  if (!intents.length) add("tours");
+  const families = [
+    {
+      id: 'celebrity-homes',
+      label: 'Celebrity homes & Hollywood history',
+      intent: 'celebrity homes tours',
+      pattern: /celebrity|movie stars?|movie star homes?|stars? homes?|hollywood|legends? and icons?|famous homes?/gi,
+      aliases: ['celebrity homes', 'movie star homes', 'Hollywood history']
+    },
+    {
+      id: 'architecture-modernism',
+      label: 'Architecture & modernism',
+      intent: 'architecture tours',
+      pattern: /architect(?:ure|ural)?|modernism|midcentury|mid-century|modern homes?/gi,
+      aliases: ['architecture', 'modernism', 'mid-century modern']
+    },
+    {
+      id: 'sightseeing',
+      label: 'General sightseeing & city history',
+      intent: 'sightseeing tours',
+      pattern: /sightseeing|city tour|history tour|historical tour|landmarks?|guided city|city highlights?/gi,
+      aliases: ['sightseeing', 'city history', 'landmarks']
+    },
+    {
+      id: 'food',
+      label: 'Food & culinary experiences',
+      intent: 'food tours',
+      pattern: /food tour|culinary|tasting tour|restaurant tour|foodie/gi,
+      aliases: ['food', 'culinary', 'tastings']
+    },
+    {
+      id: 'wine',
+      label: 'Wine & winery experiences',
+      intent: 'wine tours',
+      pattern: /wine tour|winery|vineyard|wine tasting/gi,
+      aliases: ['wine', 'winery', 'vineyard']
+    },
+    {
+      id: 'fishing',
+      label: 'Fishing charters',
+      intent: 'fishing charters',
+      pattern: /fishing charter|fishing trip|deep sea fishing|sportfishing|fly fishing/gi,
+      aliases: ['fishing', 'charter', 'sportfishing']
+    },
+    {
+      id: 'water',
+      label: 'Boat, snorkel & water experiences',
+      intent: 'boat tours',
+      pattern: /boat tour|snorkel|sailing|yacht|cruise|dolphin|whale watching|sunset cruise/gi,
+      aliases: ['boat', 'snorkel', 'sailing']
+    },
+    {
+      id: 'adventure',
+      label: 'Outdoor adventure tours',
+      intent: 'adventure tours',
+      pattern: /atv|utv|jeep|hummer|off-road|rafting|kayak|zipline|horseback|hiking tour/gi,
+      aliases: ['adventure', 'ATV/UTV', 'outdoor tours']
+    }
+  ];
 
-  return intents.slice(0, MAX_MARKET_QUERIES).map(intent => `${location} ${intent}`);
+  const candidates = families.map(family => {
+    const offerMatches = countPatternMatches(offerText, family.pattern);
+    const bodyMatches = countPatternMatches(bodyText, family.pattern);
+    if (!offerMatches && !bodyMatches) return null;
+
+    const websiteScore = (offerMatches * 8) + Math.min(8, bodyMatches) + (offerMatches ? 3 : 0);
+    const evidence = [];
+    if (offerMatches) evidence.push(`${offerMatches} matching product/offer signal${offerMatches === 1 ? '' : 's'}`);
+    if (bodyMatches) evidence.push(`${bodyMatches} supporting website mention${bodyMatches === 1 ? '' : 's'}`);
+
+    const resolvedIntent = resolveDemandIntent(family, offerText, bodyText);
+
+    return {
+      id: family.id,
+      label: family.label,
+      intent: resolvedIntent,
+      query: `${location} ${resolvedIntent}`,
+      aliases: family.aliases,
+      websiteScore,
+      productSignalCount: offerMatches,
+      websiteMentionCount: bodyMatches,
+      websiteEvidence: evidence.join(' · ')
+    };
+  }).filter(Boolean);
+
+  // Broad sightseeing is a useful comparison market for operators selling guided city experiences,
+  // but it should not automatically beat a more specific product family.
+  if (!candidates.length || /tour|sightseeing|guided|experience/.test(bodyText)) {
+    if (!candidates.some(item => item.id === 'sightseeing')) {
+      candidates.push({
+        id: 'general-tours',
+        label: 'General destination tours',
+        intent: 'tours',
+        query: `${location} tours`,
+        aliases: ['tours', 'things to do'],
+        websiteScore: 4,
+        websiteEvidence: 'Broad tour-market comparison'
+      });
+    }
+  }
+
+  return candidates
+    .sort((a, b) => b.websiteScore - a.websiteScore)
+    .slice(0, MAX_DEMAND_CANDIDATES);
+}
+
+function resolveDemandIntent(family, offerText, bodyText) {
+  const text = `${offerText} ${bodyText}`;
+  if (family.id === 'water') {
+    if (/stingray/.test(text)) return 'stingray tours';
+    if (/snorkel|reef|coral/.test(text)) return 'snorkeling tours';
+    if (/whale watching/.test(text)) return 'whale watching tours';
+    if (/dolphin/.test(text)) return 'dolphin tours';
+    if (/sunset cruise/.test(text)) return 'sunset cruises';
+  }
+  if (family.id === 'adventure') {
+    if (/rafting/.test(text)) return 'rafting tours';
+    if (/atv|utv/.test(text)) return 'ATV tours';
+    if (/kayak/.test(text)) return 'kayak tours';
+    if (/zipline/.test(text)) return 'zipline tours';
+  }
+  return family.intent;
+}
+
+function countPatternMatches(text, pattern) {
+  const flags = pattern.flags.includes('g') ? pattern.flags : `${pattern.flags}g`;
+  const regex = new RegExp(pattern.source, flags);
+  return (String(text || '').match(regex) || []).length;
+}
+
+function scoreDemandFamilies({ demandPlan, queryResults, competitors }) {
+  return demandPlan
+    .slice(0, MAX_MARKET_QUERIES)
+    .map(candidate => {
+      const row = queryResults.find(item => item.query === candidate.query) || {};
+      const players = competitors.filter(item => (item.queries || []).includes(candidate.query));
+      const direct = players.filter(item => item.category === 'direct');
+      const authorities = players.filter(item => item.category === 'authority');
+      const marketplaces = players.filter(item => item.category === 'marketplace');
+
+      const localChecked = row.localResultsChecked || row.localResults?.length || 0;
+      const organicChecked = row.organicResultsChecked || row.organicResults?.length || 0;
+      const targetLocal = row.targetLocalPosition ?? null;
+      const targetOrganic = row.targetOrganicPosition ?? null;
+      const targetObserved = targetLocal != null || targetOrganic != null;
+      const visibilityGap = !targetObserved && (localChecked >= 3 || organicChecked >= 5);
+
+      // Build 029 — Commercial Intent / Demand Prioritization.
+      // Search-result abundance is evidence, not the objective. GO should prefer demand that
+      // is tightly connected to a bookable product unless broader demand has materially
+      // stronger evidence. This is generic logic: no operator names or destination exceptions.
+      const broadDemand = candidate.id === 'general-tours' || candidate.intent === 'tours';
+      const productSignals = Number(candidate.productSignalCount || 0);
+      const websiteMentions = Number(candidate.websiteMentionCount || 0);
+      const specificityScore = broadDemand ? 0 : 3;
+      const inventoryFitScore = broadDemand
+        ? 0
+        : Math.min(5, (productSignals * 2) + (websiteMentions > 0 ? 1 : 0));
+      const commercialIntentScore = specificityScore + inventoryFitScore;
+
+      const marketValidationScore =
+        Math.min(6, direct.length * 2) +
+        Math.min(2, authorities.length) +
+        Math.min(2, marketplaces.length) +
+        (localChecked >= 3 ? 2 : 0) +
+        (organicChecked >= 5 ? 1 : 0);
+      const opportunityScore = visibilityGap ? 3 : (targetObserved ? 2 : 0);
+
+      // Broad discovery remains useful context, but receives a small distance-to-booking
+      // penalty so a generic SERP cannot win solely because it contains more businesses.
+      const breadthPenalty = broadDemand ? 4 : 0;
+      const priorityScore =
+        candidate.websiteScore +
+        marketValidationScore +
+        opportunityScore +
+        commercialIntentScore -
+        breadthPenalty;
+
+      return {
+        ...candidate,
+        directCompetitors: direct.length,
+        authorityResults: authorities.length,
+        marketplaceResults: marketplaces.length,
+        targetLocalPosition: targetLocal,
+        targetOrganicPosition: targetOrganic,
+        localResultsChecked: localChecked,
+        organicResultsChecked: organicChecked,
+        targetObserved,
+        visibilityGap,
+        marketValidationScore,
+        opportunityScore,
+        commercialIntentScore,
+        breadthPenalty,
+        priorityScore,
+        reason: buildDemandReason({
+          candidate,
+          directCount: direct.length,
+          authorityCount: authorities.length,
+          marketplaceCount: marketplaces.length,
+          targetObserved,
+          visibilityGap,
+          commercialIntentScore,
+          broadDemand
+        })
+      };
+    })
+    .sort((a, b) => {
+      if (b.priorityScore !== a.priorityScore) return b.priorityScore - a.priorityScore;
+      if (b.commercialIntentScore !== a.commercialIntentScore) return b.commercialIntentScore - a.commercialIntentScore;
+      if (b.websiteScore !== a.websiteScore) return b.websiteScore - a.websiteScore;
+      return b.marketValidationScore - a.marketValidationScore;
+    });
+}
+
+function buildDemandReason({
+  candidate,
+  directCount,
+  authorityCount,
+  marketplaceCount,
+  targetObserved,
+  visibilityGap,
+  commercialIntentScore = 0,
+  broadDemand = false
+}) {
+  const parts = [];
+  if (candidate.websiteEvidence) parts.push(candidate.websiteEvidence);
+  parts.push(broadDemand ? 'broad discovery demand' : 'specific bookable demand');
+  if (commercialIntentScore > 0) parts.push('strong operator-to-demand fit');
+  if (directCount) parts.push(`${directCount} direct operator${directCount === 1 ? '' : 's'} surfaced`);
+  if (authorityCount) parts.push(`${authorityCount} destination/category authority result${authorityCount === 1 ? '' : 's'}`);
+  if (marketplaceCount) parts.push(`${marketplaceCount} marketplace result${marketplaceCount === 1 ? '' : 's'}`);
+  if (visibilityGap) parts.push('operator underrepresented in checked results');
+  else if (targetObserved) parts.push('operator visibility verified');
+  return parts.filter(Boolean).join(' · ');
+}
+
+
+function buildCheckedSearchRows(rows, demandFamilies) {
+  return (rows || []).map(row => {
+    const family = (demandFamilies || []).find(item => item.query === row.query) || null;
+    const localChecked = row.localResultsChecked || row.localResults?.length || 0;
+    const organicChecked = row.organicResultsChecked || row.organicResults?.length || 0;
+    const localPosition = row.targetLocalPosition ?? null;
+    const organicPosition = row.targetOrganicPosition ?? null;
+
+    return {
+      query: row.query || '',
+      demandLabel: family?.label || 'Relevant traveler demand',
+      localPosition,
+      organicPosition,
+      localChecked,
+      organicChecked,
+      localStatus: localPosition != null
+        ? `#${localPosition}`
+        : localChecked
+          ? `Not observed in ${localChecked}`
+          : 'No local set',
+      organicStatus: organicPosition != null
+        ? `#${organicPosition}`
+        : organicChecked
+          ? `Not observed in ${organicChecked}`
+          : 'No organic set'
+    };
+  });
+}
+
+function explainCheckedSearches(rows, demandFamilies) {
+  const count = (rows || []).length;
+  const searchedFamilies = (rows || [])
+    .map(row => (demandFamilies || []).find(item => item.query === row.query)?.label)
+    .filter(Boolean);
+
+  const familyText = searchedFamilies.length
+    ? ` The searches represent ${searchedFamilies.join(', ')}.`
+    : '';
+
+  return `GO created these ${count} search${count === 1 ? '' : 'es'} from the operator's location and the experiences/products it found on the website.${familyText} It chose the strongest website-supported demand families to test, then used commercial intent, operator fit, competitive evidence and visibility gaps to decide which opportunity mattered most. These are not claimed to be the highest-volume searches; verified search-volume data is not part of Analyzer V1 yet.`;
 }
 
 async function readPublicSearch(query) {
@@ -774,16 +1071,16 @@ function escapeRegExp(value) {
 function buildProfessionalMarketFinding(ctx) {
   const market = ctx.market || emptyMarket();
   const rows = Array.isArray(market.queryResults) ? market.queryResults : [];
-  const direct = (market.competitors || []).filter(item => item.category === "direct");
-  const authorities = (market.competitors || []).filter(item => item.category === "authority");
-  if (!rows.length || !direct.length) return null;
+  const direct = (market.competitors || []).filter(item => item.category === 'direct');
+  const authorities = (market.competitors || []).filter(item => item.category === 'authority');
+  const demandFamilies = Array.isArray(market.demandFamilies) ? market.demandFamilies : [];
+  const selected = market.selectedDemand || demandFamilies[0] || null;
+  if (!rows.length || !direct.length || !selected) return null;
 
-  const architectureRow = rows.find(row => /architect|modern|midcentury/i.test(row.query || ""));
-  const sightseeingRow = rows.find(row => /sightseeing/i.test(row.query || ""));
-  const focusRow = architectureRow || sightseeingRow || rows[0];
+  const focusRow = rows.find(row => row.query === selected.query) || rows[0];
   if (!focusRow) return null;
 
-  const focusQuery = focusRow.query || market.queries?.[0] || "the highest-intent market search GO tested";
+  const focusQuery = focusRow.query || selected.query;
   const targetLocal = focusRow.targetLocalPosition ?? null;
   const targetOrganic = focusRow.targetOrganicPosition ?? null;
   const localChecked = focusRow.localResultsChecked || focusRow.localResults?.length || 0;
@@ -805,13 +1102,13 @@ function buildProfessionalMarketFinding(ctx) {
       ? `local #${item.bestLocalPosition}`
       : item.bestOrganicPosition
         ? `organic #${item.bestOrganicPosition}`
-        : "visible";
+        : 'visible';
     const trust = [
       item.rating ? `${Number(item.rating).toFixed(1)}★` : null,
       item.reviews ? `${Number(item.reviews).toLocaleString()} reviews` : null
-    ].filter(Boolean).join(" · ");
-    return `${item.name} (${position}${trust ? ` · ${trust}` : ""})`;
-  }).join("; ");
+    ].filter(Boolean).join(' · ');
+    return `${item.name} (${position}${trust ? ` · ${trust}` : ''})`;
+  }).join('; ');
 
   const authorityNames = authorities
     .filter(item => (item.queries || []).includes(focusQuery))
@@ -819,9 +1116,9 @@ function buildProfessionalMarketFinding(ctx) {
     .map(item => item.name)
     .filter(Boolean);
 
-  const snippetText = rows.flatMap(row => row.organicResults || [])
-    .map(item => `${item.title || ""} ${item.snippet || ""}`)
-    .join("\n");
+  const snippetText = (focusRow.organicResults || [])
+    .map(item => `${item.title || ''} ${item.snippet || ''}`)
+    .join('\n');
   const marketPrices = extractPrices(snippetText).slice(0, 6);
   const operatorPrices = (ctx.prices || []).slice(0, 4);
   const operatorNumbers = operatorPrices.map(priceNumber).filter(Number.isFinite);
@@ -834,82 +1131,106 @@ function buildProfessionalMarketFinding(ctx) {
   const notObservedOrganically = targetOrganic == null && organicChecked >= 5;
   const visibilityGap = notObservedLocally || notObservedOrganically;
 
-  let title = "Specialists are owning the discovery moment around one of your strongest products";
-  if (priceEvidenceWeakensDiscountTheory) {
-    title = "Your architecture product looks under-discovered before it looks overpriced";
-  } else if (!visibilityGap) {
-    title = "Your market position is real — but specialists are still defining the category around you";
+  const comparedFamilies = demandFamilies.slice(0, 3).map(item => item.label);
+  const alternatives = demandFamilies.slice(1, 3);
+  const demandLabel = selected.label;
+  const demandShort = demandLabel.replace(/\s*&\s*/g, ' / ').toLowerCase();
+  const checkedSearches = buildCheckedSearchRows(rows, demandFamilies);
+  const searchSelectionWhy = explainCheckedSearches(rows, demandFamilies);
+
+  let title = `Competitors are easier to find for ${demandShort}`;
+  if (!visibilityGap) {
+    title = `You are visible for ${demandShort} — now GO would find why competitors still stand out`;
   }
 
-  const observationParts = [];
+  const searchProof = [];
   if (notObservedLocally) {
-    observationParts.push(`${ctx.businessName} was not observed in the ${localChecked} local results GO checked for “${focusQuery}”.`);
+    searchProof.push(`${ctx.businessName} was not observed in the ${localChecked} local listings returned for “${focusQuery}”`);
   } else if (targetLocal) {
-    observationParts.push(`${ctx.businessName} appeared at local position #${targetLocal} for “${focusQuery}” in this localized check.`);
+    searchProof.push(`${ctx.businessName} appeared at local position #${targetLocal} for “${focusQuery}”`);
   }
   if (notObservedOrganically) {
-    observationParts.push(`It also was not observed in the ${organicChecked} organic results GO checked for that query.`);
+    searchProof.push(`it was also not observed in the ${organicChecked} organic listings returned for that search`);
   } else if (targetOrganic) {
-    observationParts.push(`Its site appeared at organic position #${targetOrganic} for the same query.`);
+    searchProof.push(`its website appeared at organic position #${targetOrganic}`);
   }
-  observationParts.push(`The businesses surfaced around that demand included ${leaderSummary}.`);
-  if (authorityNames.length) {
-    observationParts.push(`Destination/category authorities such as ${authorityNames.join(", ")} also occupy the discovery landscape.`);
-  }
+
+  const operatorProblem = visibilityGap
+    ? `Travelers looking for ${demandShort} are finding competing operators while ${ctx.businessName} is less visible in the search results GO checked. ${searchProof.length ? searchProof.join('; ') + '. ' : ''}Competitors showing up around this demand include ${leaderSummary}.`
+    : `${ctx.businessName} is already showing up around ${demandShort}, but competing operators such as ${leaderSummary} are also defining this category. GO would now determine which visibility and trust signals are helping those competitors stand out.`;
+
+  const whyItMatters = `${demandLabel} is closely tied to an experience ${ctx.businessName} actually sells, so this is not generic traffic. Better visibility here can put the business in front of more travelers already looking for something they can book.`;
+
   if (priceEvidenceWeakensDiscountTheory) {
-    observationParts.push(`FSA's observed public pricing is ${formatPriceRange(operatorPrices)}, while search snippets in the same market surfaced offers up to ${formatPriceRange(marketPrices)}. That weakens the idea that FSA must discount before fixing discovery.`);
+    // Keep pricing as supporting evidence, but do not make the operator interpret it in the lead story.
   }
 
   const action = visibilityGap
-    ? `GO would first strengthen ${ctx.businessName}'s relevance for the specific ${focusQuery.replace(/^Palm Springs\s+/i, "")} demand it already serves: verify the Google Business Profile entity/category alignment, strengthen the matching experience page and on-page entity signals, earn the destination/industry citations competitors benefit from, and then monitor this same localized query set to see whether FSA enters and climbs the results.`
-    : `GO would compare the pages, Google entity signals, destination citations and review profile of the specialists surrounding ${focusQuery}, then strengthen whichever relevance signals explain why travelers still encounter those businesses as the category leaders.`;
+    ? `GO would strengthen the pages that sell this experience, make the offer and location clearer to Google and AI discovery systems, improve the business signals that connect ${ctx.businessName} to this demand, and build the authority signals competitors are benefiting from. Then GO would keep checking this same market to see whether visibility improves.`
+    : `GO would compare the pages, business signals, reviews and authority of the competitors standing out for this experience, identify the strongest gaps, improve those signals for ${ctx.businessName}, and keep measuring the same market to see whether the gap closes.`;
 
-  const counter = market.target?.identityVerified
-    ? "GO matched the operator to a Google local entity before comparing the market, reducing the risk of mistaking a DBA/name variation for absence. Rankings still vary by location, device and time, so this is a localized evidence check rather than a universal rank claim."
-    : "GO did not fully verify a matching Google local entity. Before making a stronger absence claim, GO should confirm the operator's Google Business Profile / DBA identity and rerun the localized checks.";
+  const counter = `${market.target?.identityVerified
+    ? "GO matched the operator to a Google local entity before comparing the market."
+    : "GO did not fully verify a matching Google local entity, so stronger absence claims still need entity confirmation."} This demand prioritization is based on website relevance plus observed competitive search evidence — not search-volume data. ${alternatives.length ? `GO also evaluated ${alternatives.map(item => item.label).join(' and ')}, and those should remain in the watchlist.` : ''}`;
 
   const sources = [
     {
-      type: "public",
-      label: "Localized Google check",
-      detail: observationParts.slice(0, 2).join(" ")
+      type: 'public',
+      label: 'Why GO chose this demand',
+      detail: `${demandLabel}: ${selected.reason}`
     },
     {
-      type: "public",
-      label: "Direct market leaders",
+      type: 'public',
+      label: 'Demand families compared',
+      detail: demandFamilies.slice(0, 3).map(item => `${item.label} (${item.priorityScore})`).join(' · ')
+    },
+    {
+      type: 'public',
+      label: 'Localized Google check',
+      detail: [
+        targetLocal ? `Local #${targetLocal}` : (notObservedLocally ? `Not observed in ${localChecked} local results checked` : null),
+        targetOrganic ? `Organic #${targetOrganic}` : (notObservedOrganically ? `Not observed in ${organicChecked} organic results checked` : null)
+      ].filter(Boolean).join(' · ')
+    },
+    {
+      type: 'public',
+      label: 'Direct market leaders',
       detail: leaderSummary
     },
     ...(authorityNames.length ? [{
-      type: "public",
-      label: "Destination / category authority",
-      detail: authorityNames.join(" · ")
+      type: 'public',
+      label: 'Destination / category authority',
+      detail: authorityNames.join(' · ')
     }] : []),
     ...(priceEvidenceWeakensDiscountTheory ? [{
-      type: "public",
-      label: "Price counter-evidence",
+      type: 'public',
+      label: 'Price counter-evidence',
       detail: `Operator: ${formatPriceRange(operatorPrices)} · Market snippets: ${formatPriceRange(marketPrices)}`
     }] : []),
     {
-      type: "operator",
-      label: "GO judgment",
+      type: 'operator',
+      label: 'GO judgment',
       detail: visibilityGap
-        ? "The stronger first hypothesis is category visibility/relevance, not a broken booking path or an obvious need to lower price."
-        : "The operator is visible, so GO would study why specialist competitors still define the category before changing price or checkout."
+        ? `GO would investigate ${demandLabel.toLowerCase()} visibility/relevance before changing the booking handoff or lowering price.`
+        : `GO verified operator visibility in the prioritized demand family, so the next question is why competitors still define the category.`
     }
   ];
 
   return {
-    kind: "opportunity",
-    pillar: "Visibility",
-    icon: "⌖",
+    kind: 'opportunity',
+    pillar: 'Visibility',
+    icon: '⌖',
     title,
-    problem: observationParts.join(" "),
+    problem: operatorProblem,
+    whyItMatters,
+    checkedSearches,
+    searchSelectionWhy,
     action,
-    metric: "Target-query local/organic visibility → qualified visits → booking starts → completed bookings",
-    moneyLabel: "Real market gap · revenue needs connected data",
-    confidence: market.target?.identityVerified ? "High" : "Medium-high",
-    priorityReason: `This outranks the website-only findings because GO used localized external market evidence for “${focusQuery}” and found a competitive discovery pattern that can change what the operator works on first.`,
-    rankExplanation: `GO ranked this first because live market evidence now changes the diagnosis: the first question is whether FSA is being discovered and understood for a product it already sells, not whether the existing FareHarbor handoff should be redesigned.`,
+    metric: 'Visibility for this experience → qualified visits → booking starts → completed bookings',
+    moneyLabel: 'Demand opportunity found · revenue needs connected data',
+    confidence: market.target?.identityVerified ? 'High' : 'Medium-high',
+    priorityReason: `GO compared ${demandFamilies.length} demand families and chose ${demandLabel} because it is closer to a bookable product and has stronger commercial relevance to this operator than broader discovery demand.`,
+    rankExplanation: `GO chose this first because it matches something ${ctx.businessName} actually sells, travelers can book it, competitors are showing up around it, and GO found a visibility opportunity it can act on.`,
     counterEvidence: counter,
     severity: 3,
     evidenceStrength: market.target?.identityVerified ? 4 : 3,
@@ -1072,7 +1393,7 @@ function buildUniversalProfile(url, pages, market = emptyMarket()) {
     marketEvidence: market,
     opportunities,
     watchItems: [
-      { title: "Exact Google / Maps rank", detail: (market.searchPages.length || market.discoveryDocs.length) ? "Build 028 can verify public market presence and competitor evidence across independent discovery surfaces, but it does not convert that evidence into a universal Google or Maps rank. Local results vary by location and surface." : "Public market retrieval was limited in this scan, so GO is not claiming search position." },
+      { title: "Exact Google / Maps rank", detail: (market.searchPages.length || market.discoveryDocs.length) ? "Build 029 can verify public market presence and competitor evidence across independent discovery surfaces, but it does not convert that evidence into a universal Google or Maps rank. Local results vary by location and surface." : "Public market retrieval was limited in this scan, so GO is not claiming search position." },
       { title: "Google review velocity", detail: market.reviewSignals.length ? "GO found public rating/review references in market evidence, but review velocity still requires dated review history." : "GO can see trust proof shown on websites, but reliable public review velocity remains a separate evidence layer." },
       { title: "Actual conversion + revenue", detail: "Analytics and booking data are required before GO can prove where visitors drop out or attach dollars to an improvement." }
     ]
@@ -1297,7 +1618,7 @@ function summarizeBusiness(ctx) {
   const identity = [context.businessType, context.location].filter(Boolean).join(" in ");
   if ((ctx.market?.searchPages?.length || ctx.market?.discoveryDocs?.length) && ctx.market?.competitors?.length) {
     const names = ctx.market.competitors.slice(0, 3).map(item => item.name).filter(Boolean).join(", ");
-    return `GO reads ${ctx.businessName} as ${identity || "a tour and activity business"} with ${offerText}, ${priceText}, and ${bookingText}. Build 028 then moved outside the website and found external market evidence around the same demand, including ${names}. GO can now use that evidence to decide whether market position deserves attention before changing the buying experience.`;
+    return `GO reads ${ctx.businessName} as ${identity || "a tour and activity business"} with ${offerText}, ${priceText}, and ${bookingText}. Build 029 then moved outside the website and found external market evidence around the same demand, including ${names}. GO can now use that evidence to decide whether market position deserves attention before changing the buying experience.`;
   }
   return `GO reads ${ctx.businessName} as ${identity || "a tour and activity business"} with ${offerText}, ${priceText}, and ${bookingText}. Website evidence establishes the business context; the public market layer could not be verified strongly enough in this scan, so GO withheld market-level claims.`;
 }
@@ -1473,23 +1794,67 @@ function priceNumber(value) {
 
 function inferBusinessContext(text, home, url) {
   const haystack = `${home}\n${text}`;
-  const locations = [
-    ["Palm Springs, California", /palm springs(?:,?\s*(?:ca|california))?/i],
-    ["Palm Desert, California", /palm desert(?:,?\s*(?:ca|california))?/i],
-    ["Greater Palm Springs, California", /greater palm springs/i],
-    ["Joshua Tree, California", /joshua tree(?: national park)?/i],
-    ["Temecula, California", /temecula/i]
-  ];
-  const location = locations.find(([, regex]) => regex.test(haystack))?.[0] || extractLocation(text) || "";
+  const location = inferDestinationLocation(haystack) || extractLocation(text) || "";
 
   const types = [
     ["guided sightseeing tour operator", /(sightseeing|celebrity homes?|modernism|architecture|legends? and icons?|city tour)/i],
     ["bus and private transportation tour operator", /(charter bus|motorcoach|sprinter|luxury van|transportation|bus tour)/i],
-    ["boat and water-experience operator", /(boat|snorkel|sailing|yacht|fishing|stingray|cruise)/i],
+    ["boat and water-experience operator", /(boat|snorkel|sailing|yacht|fishing|stingray|starfish|reef|cruise)/i],
     ["outdoor adventure tour operator", /(jeep|hummer|atv|utv|rafting|kayak|hiking|adventure tour)/i]
   ];
   const businessType = types.find(([, regex]) => regex.test(haystack))?.[0] || "tour and activity operator";
   return { businessType, location, domain: domainLabel(url) };
+}
+
+function inferDestinationLocation(text) {
+  const source = String(text || "");
+  const candidates = new Map();
+
+  const add = (value, weight = 1) => {
+    const cleaned = cleanText(value || "")
+      .replace(/^(the|in|at|from|near)\s+/i, "")
+      .replace(/\s+(tours?|adventures?|excursions?|activities|experiences?)$/i, "")
+      .replace(/[|–—].*$/, "")
+      .trim();
+    if (!cleaned || cleaned.length < 3 || cleaned.length > 70) return;
+    if (/^(home|contact|book now|about us|privacy|terms)$/i.test(cleaned)) return;
+    const key = cleaned.toLowerCase();
+    const current = candidates.get(key) || { value: cleaned, score: 0 };
+    current.score += weight;
+    candidates.set(key, current);
+  };
+
+  const explicitPatterns = [
+    /(?:located in|based in|serving|departing from|departure from|meet us at|visit us at|tours? in|experiences? in)\s+([^\n.!?]{3,70})/gi,
+    /(?:destination|location|address)[:\s]+([^\n]{3,80})/gi
+  ];
+  explicitPatterns.forEach(pattern => {
+    let match;
+    while ((match = pattern.exec(source)) !== null) add(match[1], 6);
+  });
+
+  // Capture destination-shaped place names without requiring a hand-maintained city list.
+  const placePattern = /\b((?:[A-Z][A-Za-z'.-]+\s+){0,3}[A-Z][A-Za-z'.-]+\s+(?:Islands?|Beach|Bay|Harbour|Harbor|Springs|Valley|Coast|County|City|Village|Keys|Cays?|National Park))\b/g;
+  let placeMatch;
+  while ((placeMatch = placePattern.exec(source)) !== null) add(placeMatch[1], 3);
+
+  // Repeated title/heading geography is useful for destinations such as "Grand Cayman"
+  // that do not contain a generic suffix like "Island" or "City".
+  const titleHeadingText = [
+    ...(source.match(/^Title:\s*(.+)$/gmi) || []),
+    ...(source.match(/^#{1,3}\s+(.+)$/gm) || [])
+  ].join("\n");
+  const repeatedPlacePattern = /\b([A-Z][A-Za-z'.-]+(?:\s+[A-Z][A-Za-z'.-]+){1,2})\b/g;
+  const counts = new Map();
+  let repeatedMatch;
+  while ((repeatedMatch = repeatedPlacePattern.exec(titleHeadingText)) !== null) {
+    const value = cleanText(repeatedMatch[1]);
+    if (/Growth Operator|Book Now|Learn More|Cayman Ocean Adventures/i.test(value)) continue;
+    counts.set(value, (counts.get(value) || 0) + 1);
+  }
+  counts.forEach((count, value) => { if (count >= 2) add(value, Math.min(5, count)); });
+
+  return [...candidates.values()].sort((a, b) => b.score - a.score)[0]?.value || "";
 }
 
 function detectBookingProvider(text) {
@@ -1592,6 +1957,8 @@ function showResults(profile) {
         <div class="finding-kicker"><span>${escapeHtml(item.icon || "↗")}</span><small>${escapeHtml((item.pillar || "Growth").toUpperCase())} · ${escapeHtml(item.kind === "investigation" ? "INVESTIGATE FIRST" : "OPPORTUNITY")} · ${escapeHtml(String(item.confidence || "Medium").toUpperCase())} CONFIDENCE</small></div>
         <h3>${escapeHtml(item.title)}</h3>
         <p>${escapeHtml(item.problem)}</p>
+        ${item.whyItMatters ? `<div class="operator-why"><small>WHY IT MATTERS</small><p>${escapeHtml(item.whyItMatters)}</p></div>` : ""}
+        ${renderSearchEvidence(item)}
         <div class="reasoning-strip">
           <div><small>WHY THIS RANKS HERE</small><p>${escapeHtml(item.rankExplanation || item.priorityReason || "GO ranked this against the other patterns it found.")}</p></div>
           <div><small>WHAT COULD WEAKEN THIS</small><p>${escapeHtml(item.counterEvidence || "Connected data could change the priority.")}</p></div>
@@ -1605,6 +1972,48 @@ function showResults(profile) {
   unsupported.hidden = true;
   results.hidden = false;
   results.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+
+function renderSearchEvidence(item) {
+  const rows = Array.isArray(item.checkedSearches) ? item.checkedSearches : [];
+  if (!rows.length) return '';
+
+  const rowHtml = rows.map(row => {
+    const localClass = row.localPosition != null ? 'found' : 'not-observed';
+    const organicClass = row.organicPosition != null ? 'found' : 'not-observed';
+    return `
+      <div class="search-evidence-row">
+        <div class="search-query-cell">
+          <strong>${escapeHtml(row.query)}</strong>
+          <small>${escapeHtml(row.demandLabel || '')}</small>
+        </div>
+        <div class="search-status-cell ${localClass}">
+          <small>LOCAL / MAPS</small>
+          <strong>${escapeHtml(row.localStatus)}</strong>
+        </div>
+        <div class="search-status-cell ${organicClass}">
+          <small>ORGANIC</small>
+          <strong>${escapeHtml(row.organicStatus)}</strong>
+        </div>
+      </div>`;
+  }).join('');
+
+  return `
+    <div class="search-evidence">
+      <div class="search-evidence-heading">
+        <div>
+          <small>SEARCHES GO ACTUALLY CHECKED</small>
+          <strong>Here is what GO observed for each search.</strong>
+        </div>
+        <span>${rows.length} SEARCH${rows.length === 1 ? '' : 'ES'}</span>
+      </div>
+      <div class="search-evidence-grid">${rowHtml}</div>
+      <div class="search-evidence-why">
+        <small>WHY GO CHOSE THESE SEARCHES</small>
+        <p>${escapeHtml(item.searchSelectionWhy || 'GO selected searches that match the operator\'s products, location and commercially relevant traveler intent.')}</p>
+      </div>
+    </div>`;
 }
 
 function renderProfileStrip(profile) {
@@ -1676,7 +2085,7 @@ function normalizeUrl(value) {
   } catch { return null; }
 }
 
-function isCayman(url) { return /caymanoceanadventures|stingraycitycaymantours/i.test(url); }
+function isCayman(url) { return false; }
 function domainLabel(url) { try { return new URL(url).hostname.replace(/^www\./, "").split(".")[0].replace(/[-_]/g, " ").replace(/\b\w/g, char => char.toUpperCase()); } catch { return "This Business"; } }
 function countMatches(text, regex) { return (text.match(regex) || []).length; }
 function cleanText(value) { return String(value || "").replace(/\[(.*?)\]\([^)]*\)/g, "$1").replace(/[*_`>#]/g, " ").replace(/\s+/g, " ").trim(); }

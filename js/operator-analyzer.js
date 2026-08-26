@@ -3,6 +3,7 @@
 const READER_ENDPOINT = "https://r.jina.ai/";
 const MAX_EXTRA_PAGES = 3;
 const MAX_MARKET_QUERIES = 3;
+const REPRESENTATIVE_SEARCH_TARGET = 8;
 const MAX_DEMAND_CANDIDATES = 8;
 const MAX_COMPETITORS_TO_READ = 5;
 const MAX_PUBLIC_DISCOVERY_DOCS = 8;
@@ -343,11 +344,106 @@ async function readProfessionalMarket(ctx) {
     const payload = await response.json();
     if (!payload?.ok || !payload.market) return null;
 
-    return normalizeProfessionalMarket(payload.market, demandPlan);
+    const discoveryMarket = normalizeProfessionalMarket(payload.market, demandPlan);
+    const portfolio = buildRepresentativeSearchPortfolio(ctx, discoveryMarket.selectedDemand, demandPlan);
+
+    // Analyzer V1 uses the first small discovery pass to choose the commercially relevant
+    // demand family, then checks a representative portfolio around that demand. This keeps
+    // the operator experience broad enough to be credible without becoming a keyword tracker.
+    if (portfolio.length > marketQueriesFromRaw(payload.market).length) {
+      const portfolioResponse = await fetch('/.netlify/functions/market-intelligence', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          businessName: ctx.businessName,
+          website: ctx.url,
+          location: ctx.businessContext.location,
+          queries: portfolio
+        })
+      });
+      if (portfolioResponse.ok) {
+        const portfolioPayload = await portfolioResponse.json();
+        if (portfolioPayload?.ok && portfolioPayload.market) {
+          return normalizeRepresentativeMarket(portfolioPayload.market, discoveryMarket, demandPlan);
+        }
+      }
+    }
+
+    return discoveryMarket;
   } catch (error) {
     console.warn('GO professional market layer unavailable; falling back to public discovery.', error);
     return null;
   }
+}
+
+function marketQueriesFromRaw(raw) {
+  return Array.isArray(raw?.queries) ? raw.queries.map(row => row.query).filter(Boolean) : [];
+}
+
+function buildRepresentativeSearchPortfolio(ctx, selectedDemand, demandPlan) {
+  const location = String(ctx.businessContext?.location || '').split(',')[0].trim();
+  if (!location || !selectedDemand) return marketQueriesFromRaw({ queries: (demandPlan || []).slice(0, MAX_MARKET_QUERIES) });
+
+  const text = `${(ctx.offers || []).join(' ')} ${ctx.combined || ''}`.toLowerCase();
+  const intents = [];
+  const add = intent => {
+    const clean = String(intent || '').replace(/\s+/g, ' ').trim();
+    if (clean && !intents.some(item => item.toLowerCase() === clean.toLowerCase())) intents.push(clean);
+  };
+
+  add(selectedDemand.intent);
+
+  const rules = {
+    'water': [
+      [/stingray/, 'stingray tours'], [/snorkel|reef|coral/, 'snorkeling tours'],
+      [/private|charter/, 'private boat charters'], [/boat|cruise|sailing|yacht/, 'boat tours'],
+      [/catamaran/, 'catamaran tours'], [/sunset/, 'sunset cruises']
+    ],
+    'celebrity-homes': [
+      [/celebrity|famous homes?/, 'celebrity homes tours'], [/movie stars?|movie star homes?/, 'movie star tours'],
+      [/hollywood/, 'Hollywood tours'], [/sightseeing|city tour|guided tour/, 'sightseeing tours'],
+      [/history|historical/, 'history tours']
+    ],
+    'architecture-modernism': [
+      [/architect/, 'architecture tours'], [/modernism|midcentury|mid-century/, 'modernism tours'],
+      [/homes?/, 'modern homes tours'], [/sightseeing|guided tour/, 'sightseeing tours']
+    ],
+    'sightseeing': [[/sightseeing/, 'sightseeing tours'], [/history|historical/, 'history tours'], [/city tour|guided city/, 'city tours']],
+    'adventure': [[/atv|utv/, 'ATV tours'], [/jeep|hummer|off-road/, 'off-road tours'], [/rafting/, 'rafting tours'], [/kayak/, 'kayak tours'], [/zipline/, 'zipline tours']],
+    'fishing': [[/fishing/, 'fishing charters'], [/deep sea/, 'deep sea fishing charters'], [/sportfishing/, 'sportfishing charters']],
+    'food': [[/food/, 'food tours'], [/culinary/, 'culinary tours'], [/tasting/, 'tasting tours']],
+    'wine': [[/wine/, 'wine tours'], [/winery/, 'winery tours'], [/tasting/, 'wine tasting tours']]
+  };
+
+  (rules[selectedDemand.id] || []).forEach(([pattern, intent]) => { if (pattern.test(text)) add(intent); });
+  (selectedDemand.aliases || []).forEach(alias => add(`${alias} tours`.replace(/tours tours$/i, 'tours')));
+
+  // Add one closely related secondary family when the website supports it. Broad destination
+  // demand is context only and is intentionally capped so it cannot dominate the portfolio.
+  (demandPlan || []).filter(item => item.id !== selectedDemand.id && item.id !== 'general-tours').slice(0, 2).forEach(item => add(item.intent));
+  add('tours');
+
+  const variants = [];
+  const push = q => { if (q && !variants.some(x => x.toLowerCase() === q.toLowerCase())) variants.push(q); };
+  intents.forEach(intent => push(`${location} ${intent}`));
+
+  // Natural destination-last variants increase representative coverage without inventing
+  // unrelated keywords. They are still grounded in the same operator-supported intent.
+  intents.filter(intent => intent !== 'tours').forEach(intent => push(`${intent} ${location}`));
+
+  return variants.slice(0, REPRESENTATIVE_SEARCH_TARGET);
+}
+
+function normalizeRepresentativeMarket(raw, discoveryMarket, demandPlan) {
+  const market = normalizeProfessionalMarket(raw, demandPlan);
+  market.discoveryDemandFamilies = discoveryMarket.demandFamilies;
+  market.demandFamilies = discoveryMarket.demandFamilies;
+  market.selectedDemand = discoveryMarket.selectedDemand;
+  market.queries = marketQueriesFromRaw(raw);
+  market.retrievalNote = market.selectedDemand
+    ? `GO prioritized ${market.selectedDemand.label}, then checked ${market.queryResults.length} representative commercial searches around the experiences this operator actually sells.`
+    : market.retrievalNote;
+  return market;
 }
 
 function normalizeProfessionalMarket(raw, demandPlan) {
@@ -682,7 +778,7 @@ function buildDemandReason({
 }
 
 
-function buildCheckedSearchRows(rows, demandFamilies) {
+function buildCheckedSearchRows(rows, demandFamilies, selectedDemand = null) {
   return (rows || []).map(row => {
     const family = (demandFamilies || []).find(item => item.query === row.query) || null;
     const localChecked = row.localResultsChecked || row.localResults?.length || 0;
@@ -692,36 +788,28 @@ function buildCheckedSearchRows(rows, demandFamilies) {
 
     return {
       query: row.query || '',
-      demandLabel: family?.label || 'Relevant traveler demand',
+      demandLabel: family?.label || selectedDemand?.label || 'Relevant traveler demand',
       localPosition,
       organicPosition,
       localChecked,
       organicChecked,
       localStatus: localPosition != null
-        ? `#${localPosition}`
+        ? `This business was #${localPosition} in the Google Maps results GO checked.`
         : localChecked
-          ? `Not observed in ${localChecked}`
-          : 'No local set',
+          ? `GO checked the first ${localChecked} business${localChecked === 1 ? '' : 'es'} Google showed in Maps. This business wasn't one of them.`
+          : 'GO did not receive Google Maps results for this search.',
       organicStatus: organicPosition != null
-        ? `#${organicPosition}`
+        ? `This website was #${organicPosition} in the regular Google results GO checked.`
         : organicChecked
-          ? `Not observed in ${organicChecked}`
-          : 'No organic set'
+          ? `GO checked the first ${organicChecked} regular Google result${organicChecked === 1 ? '' : 's'}. This website wasn't one of them.`
+          : 'GO did not receive regular Google results for this search.'
     };
   });
 }
 
 function explainCheckedSearches(rows, demandFamilies) {
   const count = (rows || []).length;
-  const searchedFamilies = (rows || [])
-    .map(row => (demandFamilies || []).find(item => item.query === row.query)?.label)
-    .filter(Boolean);
-
-  const familyText = searchedFamilies.length
-    ? ` The searches represent ${searchedFamilies.join(', ')}.`
-    : '';
-
-  return `GO created these ${count} search${count === 1 ? '' : 'es'} from the operator's location and the experiences/products it found on the website.${familyText} It chose the strongest website-supported demand families to test, then used commercial intent, operator fit, competitive evidence and visibility gaps to decide which opportunity mattered most. These are not claimed to be the highest-volume searches; verified search-volume data is not part of Analyzer V1 yet.`;
+  return `GO selected these ${count} search${count === 1 ? '' : 'es'} from where the business operates and the experiences it actually sells. They represent realistic ways a traveler could search when looking to book a business like this one. GO favors specific, bookable demand and keeps broader destination searches as context. These are representative searches, not a claim about the market's highest-volume keywords; verified search-volume data is not part of Analyzer V1 yet.`;
 }
 
 async function readPublicSearch(query) {
@@ -1135,7 +1223,7 @@ function buildProfessionalMarketFinding(ctx) {
   const alternatives = demandFamilies.slice(1, 3);
   const demandLabel = selected.label;
   const demandShort = demandLabel.replace(/\s*&\s*/g, ' / ').toLowerCase();
-  const checkedSearches = buildCheckedSearchRows(rows, demandFamilies);
+  const checkedSearches = buildCheckedSearchRows(rows, demandFamilies, market.selectedDemand);
   const searchSelectionWhy = explainCheckedSearches(rows, demandFamilies);
 
   let title = `Competitors are easier to find for ${demandShort}`;
@@ -1989,11 +2077,11 @@ function renderSearchEvidence(item) {
           <small>${escapeHtml(row.demandLabel || '')}</small>
         </div>
         <div class="search-status-cell ${localClass}">
-          <small>LOCAL / MAPS</small>
+          <small>GOOGLE MAPS RESULTS</small>
           <strong>${escapeHtml(row.localStatus)}</strong>
         </div>
         <div class="search-status-cell ${organicClass}">
-          <small>ORGANIC</small>
+          <small>REGULAR GOOGLE RESULTS</small>
           <strong>${escapeHtml(row.organicStatus)}</strong>
         </div>
       </div>`;

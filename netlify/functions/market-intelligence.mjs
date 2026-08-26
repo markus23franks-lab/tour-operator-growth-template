@@ -1,5 +1,5 @@
 const SERP_ENDPOINT = "https://serpapi.com/search.json";
-const MAX_QUERIES = 3;
+const MAX_QUERIES = 10;
 const MAX_ORGANIC = 10;
 const MAX_LOCAL = 10;
 

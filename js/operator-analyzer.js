@@ -1,9 +1,10 @@
 "use strict";
 
 const READER_ENDPOINT = "https://r.jina.ai/";
-const MAX_EXTRA_PAGES = 3;
-const MAX_MARKET_QUERIES = 3;
+const MAX_EXTRA_PAGES = 6;
+const MAX_MARKET_QUERIES = 5;
 const REPRESENTATIVE_SEARCH_TARGET = 8;
+const MIN_REPRESENTATIVE_SEARCHES = 5;
 const MAX_DEMAND_CANDIDATES = 8;
 const MAX_COMPETITORS_TO_READ = 5;
 const MAX_PUBLIC_DISCOVERY_DOCS = 8;
@@ -134,7 +135,12 @@ async function runAnalysis(rawUrl) {
 
     setStage("search", "active", "DISCOVERING");
     setProgress(44);
-    const websiteContext = buildWebsiteContext(url, [home, ...extraPages]);
+
+    // Booking providers frequently live behind external checkout links rather than in the
+    // readable body copy. Preserve those public link destinations as evidence before GO
+    // decides that no OBP is present.
+    const bookingLinkEvidence = collectBookingLinkEvidence([home, ...extraPages]);
+    const websiteContext = buildWebsiteContext(url, [home, ...extraPages], bookingLinkEvidence);
     const market = await investigatePublicMarket(websiteContext);
     if (token !== scanToken) return;
     setStage("search", market.searchPages.length ? "done" : "partial", market.searchPages.length ? "PUBLIC WEB" : "LIMITED");
@@ -151,7 +157,7 @@ async function runAnalysis(rawUrl) {
     setProgress(86);
 
     setStage("operator", "active", "SYNTHESIZING");
-    const profile = buildUniversalProfile(url, [home, ...extraPages], market);
+    const profile = buildUniversalProfile(url, [home, ...extraPages], market, bookingLinkEvidence);
     await wait(240);
     setStage("operator", "done", "COMPLETE");
     setProgress(100);
@@ -186,31 +192,56 @@ async function runCaymanBenchmark() {
 
 async function readPublicPage(url) {
   const endpoint = `${READER_ENDPOINT}${url}`;
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 16000);
-  try {
-    const response = await fetch(endpoint, {
-      method: "GET",
-      headers: { "Accept": "text/plain" },
-      signal: controller.signal
-    });
-    if (!response.ok) throw new Error(`Reader returned ${response.status}`);
-    const markdown = await response.text();
-    if (!markdown || markdown.trim().length < 120) throw new Error("Not enough readable content");
-    return { url, markdown: markdown.slice(0, 120000) };
-  } finally {
-    clearTimeout(timer);
+  let lastError = null;
+
+  // Public readers occasionally fail transiently. One automatic retry is materially better
+  // than asking the operator to click Analyze again, while still failing safely if evidence
+  // genuinely cannot be retrieved.
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 16000);
+    try {
+      const response = await fetch(endpoint, {
+        method: "GET",
+        headers: { "Accept": "text/plain" },
+        signal: controller.signal
+      });
+      if (!response.ok) throw new Error(`Reader returned ${response.status}`);
+      const markdown = await response.text();
+      if (!markdown || markdown.trim().length < 120) throw new Error("Not enough readable content");
+      return { url, markdown: markdown.slice(0, 120000) };
+    } catch (error) {
+      lastError = error;
+      if (attempt === 0) await wait(350);
+    } finally {
+      clearTimeout(timer);
+    }
   }
+
+  throw lastError || new Error("Unable to read public page");
 }
 
 
-function buildWebsiteContext(url, pages) {
-  const combined = pages.map(page => page.markdown).join("\n\n");
+function buildWebsiteContext(url, pages, bookingLinkEvidence = "") {
+  const combined = `${pages.map(page => page.markdown).join("\n\n")}\n\n${bookingLinkEvidence}`;
   const home = pages[0]?.markdown || combined;
   const businessName = extractBusinessName(home, url);
   const offers = extractOffers(combined, businessName);
   const businessContext = inferBusinessContext(combined, home, url);
-  return { url, businessName, offers, businessContext, combined };
+  const semanticModel = buildSemanticOperatorModel(combined, offers, businessContext, businessName);
+
+  // Foundational facts must pass semantic-role validation before GO uses them downstream.
+  // A product/service label must never silently become geography.
+  if (semanticModel.geography?.value) {
+    businessContext.location = semanticModel.geography.value;
+    businessContext.locationConfidence = semanticModel.geography.confidence;
+  } else if (semanticModel.geography?.rejectedCandidate) {
+    businessContext.location = "";
+    businessContext.locationConfidence = "Low";
+  }
+
+  const preflight = buildOperatorPreflight(combined, offers, businessContext);
+  return { url, businessName, offers, businessContext, semanticModel, preflight, combined };
 }
 
 function emptyMarket() {
@@ -384,7 +415,7 @@ function buildRepresentativeSearchPortfolio(ctx, selectedDemand, demandPlan) {
   const location = String(ctx.businessContext?.location || '').split(',')[0].trim();
   if (!location || !selectedDemand) return marketQueriesFromRaw({ queries: (demandPlan || []).slice(0, MAX_MARKET_QUERIES) });
 
-  const text = `${(ctx.offers || []).join(' ')} ${ctx.combined || ''}`.toLowerCase();
+  const text = `${(ctx.offers || []).join(' ')} ${(ctx.preflight?.primarySignals || []).join(' ')}`.toLowerCase();
   const intents = [];
   const add = intent => {
     const clean = String(intent || '').replace(/\s+/g, ' ').trim();
@@ -392,6 +423,17 @@ function buildRepresentativeSearchPortfolio(ctx, selectedDemand, demandPlan) {
   };
 
   add(selectedDemand.intent);
+
+  // Preserve one anchor search from each material inventory family before expanding the
+  // winning family into variants. That makes the portfolio representative of the business,
+  // while Commercial Intent still determines which family receives the deepest coverage.
+  const anchoredFamilies = new Set([selectedDemand.coverageFamily || selectedDemand.id]);
+  (demandPlan || []).forEach(item => {
+    const family = item.coverageFamily || item.id;
+    if (item.id === 'general-tours' || item.verifiedProductFamily === false || anchoredFamilies.has(family)) return;
+    add(item.intent);
+    anchoredFamilies.add(family);
+  });
 
   const rules = {
     'water': [
@@ -409,7 +451,7 @@ function buildRepresentativeSearchPortfolio(ctx, selectedDemand, demandPlan) {
       [/homes?/, 'modern homes tours'], [/sightseeing|guided tour/, 'sightseeing tours']
     ],
     'sightseeing': [[/sightseeing/, 'sightseeing tours'], [/history|historical/, 'history tours'], [/city tour|guided city/, 'city tours']],
-    'adventure': [[/atv|utv/, 'ATV tours'], [/jeep|hummer|off-road/, 'off-road tours'], [/rafting/, 'rafting tours'], [/kayak/, 'kayak tours'], [/zipline/, 'zipline tours']],
+    'adventure': [[/horseback|horse riding|trail ride|trail riding|equestrian/, 'horseback riding tours'], [/atv|utv/, 'ATV tours'], [/jeep|hummer|off-road/, 'off-road tours'], [/rafting/, 'rafting tours'], [/kayak/, 'kayak tours'], [/zipline/, 'zipline tours']],
     'fishing': [[/fishing/, 'fishing charters'], [/deep sea/, 'deep sea fishing charters'], [/sportfishing/, 'sportfishing charters']],
     'food': [[/food/, 'food tours'], [/culinary/, 'culinary tours'], [/tasting/, 'tasting tours']],
     'wine': [[/wine/, 'wine tours'], [/winery/, 'winery tours'], [/tasting/, 'wine tasting tours']]
@@ -418,9 +460,20 @@ function buildRepresentativeSearchPortfolio(ctx, selectedDemand, demandPlan) {
   (rules[selectedDemand.id] || []).forEach(([pattern, intent]) => { if (pattern.test(text)) add(intent); });
   (selectedDemand.aliases || []).forEach(alias => add(`${alias} tours`.replace(/tours tours$/i, 'tours')));
 
-  // Add one closely related secondary family when the website supports it. Broad destination
-  // demand is context only and is intentionally capped so it cannot dominate the portfolio.
-  (demandPlan || []).filter(item => item.id !== selectedDemand.id && item.id !== 'general-tours').slice(0, 2).forEach(item => add(item.intent));
+  // Preflight coverage: preserve one representative intent from every material product family
+  // GO discovered before adding broad destination context. Commercial prioritization can still
+  // rank one family first, but it cannot erase another meaningful part of the operator's inventory.
+  (demandPlan || [])
+    .filter(item => item.id !== selectedDemand.id && item.id !== 'general-tours' && item.verifiedProductFamily !== false)
+    .forEach(item => add(item.intent));
+
+  // Evidence-sufficiency recovery: when the first pass has only a thin set of commercial
+  // intents, derive additional searches only from product language GO already verified on
+  // the operator's own site. This prevents a sparse site from collapsing into one generic
+  // "tours" query while still refusing to invent unrelated activities.
+  if (intents.filter(intent => intent !== 'tours').length < MIN_REPRESENTATIVE_SEARCHES) {
+    buildRecoveryIntents(ctx, selectedDemand).forEach(add);
+  }
   add('tours');
 
   const variants = [];
@@ -432,6 +485,31 @@ function buildRepresentativeSearchPortfolio(ctx, selectedDemand, demandPlan) {
   intents.filter(intent => intent !== 'tours').forEach(intent => push(`${intent} ${location}`));
 
   return variants.slice(0, REPRESENTATIVE_SEARCH_TARGET);
+}
+
+function buildRecoveryIntents(ctx, selectedDemand) {
+  const source = `${(ctx.offers || []).join(' ')} ${(ctx.preflight?.primarySignals || []).join(' ')} ${(ctx.preflight?.materialFamilies || []).flatMap(item => item.primaryEvidence || []).join(' ')}`.toLowerCase();
+  const rules = [
+    [/horseback|horse riding|trail ride|trail riding|equestrian/, ['horseback riding', 'trail rides']],
+    [/catamaran/, ['catamaran tours']],
+    [/private[^\n]{0,30}(boat|charter)|boat charter|private charter/, ['private boat charters']],
+    [/boat|powerboat|cruise|sailing|yacht/, ['boat tours']],
+    [/snorkel|reef|coral/, ['snorkeling tours']],
+    [/fishing|sportfishing|deep sea/, ['fishing charters']],
+    [/jeep|safari/, ['jeep tours', 'island safari tours']],
+    [/atv|utv/, ['ATV tours']],
+    [/sightseeing|city tour|guided tour/, ['sightseeing tours']],
+    [/celebrity|movie star|famous homes/, ['celebrity homes tours']],
+    [/architect|modernism|mid-century|midcentury/, ['architecture tours']]
+  ];
+  const out = [];
+  rules.forEach(([pattern, intents]) => {
+    if (!pattern.test(source)) return;
+    intents.forEach(intent => {
+      if (!out.some(existing => existing.toLowerCase() === intent.toLowerCase())) out.push(intent);
+    });
+  });
+  return out.filter(intent => intent !== selectedDemand?.intent).slice(0, 6);
 }
 
 function normalizeRepresentativeMarket(raw, discoveryMarket, demandPlan) {
@@ -533,134 +611,128 @@ function buildMarketQueries(ctx) {
 }
 
 function buildDemandPlan(ctx) {
-  const location = String(ctx.businessContext?.location || '')
-    .replace(/,\s*(California|Florida|Utah|Nevada|Arizona|Hawaii|Texas|New York).*$/i, '')
-    .trim();
+  const location = String(ctx.businessContext?.location || '').trim();
   if (!location) return [];
 
+  const semanticProducts = Array.isArray(ctx.semanticModel?.primaryProducts)
+    ? ctx.semanticModel.primaryProducts
+    : [];
+
+  const candidates = [];
+  const seenQueries = new Set();
+  const add = candidate => {
+    if (!candidate?.query) return;
+    const key = candidate.query.toLowerCase().replace(/\s+/g, ' ').trim();
+    if (seenQueries.has(key)) return;
+    seenQueries.add(key);
+    candidates.push(candidate);
+  };
+
+  // OPEN-ENDED PRODUCT MODEL
+  // Primary bookable products discovered from first-party booking actions/pages become demand
+  // candidates directly. GO does not need the activity type to exist in a hardcoded taxonomy.
+  semanticProducts.forEach((product, index) => {
+    const intent = primaryProductIntent(product.name);
+    if (!intent) return;
+    const id = `product-${intent.replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || index}`;
+    add({
+      id,
+      coverageFamily: id,
+      label: product.name,
+      intent,
+      query: `${location} ${intent}`,
+      aliases: [],
+      verifiedProductFamily: true,
+      semanticProduct: true,
+      websiteScore: Math.min(40, 16 + Number(product.score || 0)),
+      productSignalCount: Math.max(1, product.evidence?.length || 1),
+      websiteMentionCount: 0,
+      websiteEvidence: `Primary bookable product verified from first-party ${product.evidence?.join(' + ') || 'website evidence'}.`
+    });
+  });
+
+  // Known families remain a SUPPLEMENTARY interpretation layer for useful search variants.
+  // They can no longer define the operator when open-ended primary-product evidence exists.
   const offers = Array.isArray(ctx.offers) ? ctx.offers : [];
   const offerText = offers.join(' ').toLowerCase();
   const bodyText = String(ctx.combined || '').toLowerCase();
-
   const families = [
-    {
-      id: 'celebrity-homes',
-      label: 'Celebrity homes & Hollywood history',
-      intent: 'celebrity homes tours',
-      pattern: /celebrity|movie stars?|movie star homes?|stars? homes?|hollywood|legends? and icons?|famous homes?/gi,
-      aliases: ['celebrity homes', 'movie star homes', 'Hollywood history']
-    },
-    {
-      id: 'architecture-modernism',
-      label: 'Architecture & modernism',
-      intent: 'architecture tours',
-      pattern: /architect(?:ure|ural)?|modernism|midcentury|mid-century|modern homes?/gi,
-      aliases: ['architecture', 'modernism', 'mid-century modern']
-    },
-    {
-      id: 'sightseeing',
-      label: 'General sightseeing & city history',
-      intent: 'sightseeing tours',
-      pattern: /sightseeing|city tour|history tour|historical tour|landmarks?|guided city|city highlights?/gi,
-      aliases: ['sightseeing', 'city history', 'landmarks']
-    },
-    {
-      id: 'food',
-      label: 'Food & culinary experiences',
-      intent: 'food tours',
-      pattern: /food tour|culinary|tasting tour|restaurant tour|foodie/gi,
-      aliases: ['food', 'culinary', 'tastings']
-    },
-    {
-      id: 'wine',
-      label: 'Wine & winery experiences',
-      intent: 'wine tours',
-      pattern: /wine tour|winery|vineyard|wine tasting/gi,
-      aliases: ['wine', 'winery', 'vineyard']
-    },
-    {
-      id: 'fishing',
-      label: 'Fishing charters',
-      intent: 'fishing charters',
-      pattern: /fishing charter|fishing trip|deep sea fishing|sportfishing|fly fishing/gi,
-      aliases: ['fishing', 'charter', 'sportfishing']
-    },
-    {
-      id: 'water',
-      label: 'Boat, snorkel & water experiences',
-      intent: 'boat tours',
-      pattern: /boat tour|snorkel|sailing|yacht|cruise|dolphin|whale watching|sunset cruise/gi,
-      aliases: ['boat', 'snorkel', 'sailing']
-    },
-    {
-      id: 'adventure',
-      label: 'Outdoor adventure tours',
-      intent: 'adventure tours',
-      pattern: /atv|utv|jeep|hummer|off-road|rafting|kayak|zipline|horseback|hiking tour/gi,
-      aliases: ['adventure', 'ATV/UTV', 'outdoor tours']
-    }
+    { id: 'celebrity-homes', coverageFamily: 'sightseeing', label: 'Celebrity homes & Hollywood history', intent: 'celebrity homes tours', pattern: /celebrity|movie stars?|movie star homes?|stars? homes?|hollywood|famous homes?/gi, aliases: ['celebrity homes', 'movie star homes'] },
+    { id: 'architecture-modernism', coverageFamily: 'sightseeing', label: 'Architecture & modernism', intent: 'architecture tours', pattern: /architect(?:ure|ural)?|modernism|midcentury|mid-century|modern homes?/gi, aliases: ['architecture', 'modernism'] },
+    { id: 'sightseeing', coverageFamily: 'sightseeing', label: 'General sightseeing & city history', intent: 'sightseeing tours', pattern: /sightseeing|city tour|history tour|historical tour|landmarks?|guided city/gi, aliases: ['sightseeing', 'city history'] },
+    { id: 'food', coverageFamily: 'food', label: 'Food & culinary experiences', intent: 'food tours', pattern: /food tour|culinary|tasting tour|restaurant tour|foodie/gi, aliases: ['food', 'culinary'] },
+    { id: 'wine', coverageFamily: 'wine', label: 'Wine & winery experiences', intent: 'wine tours', pattern: /wine tour|winery|vineyard|wine tasting/gi, aliases: ['wine', 'winery'] },
+    { id: 'fishing', coverageFamily: 'fishing', label: 'Fishing charters', intent: 'fishing charters', pattern: /fishing charter|fishing trip|deep sea fishing|sportfishing|fly fishing/gi, aliases: ['fishing', 'charter'] },
+    { id: 'water', coverageFamily: 'water', label: 'Boat, snorkel & water experiences', intent: 'boat tours', pattern: /boat tour|boat trip|powerboat|catamaran|snorkel|sailing|yacht|cruise|dolphin|whale watching|sunset cruise/gi, aliases: ['boat', 'catamaran', 'sailing'] },
+    { id: 'adventure', coverageFamily: 'adventure', label: 'Outdoor adventure tours', intent: 'adventure tours', pattern: /atv|utv|jeep|hummer|off-road|rafting|kayak|zipline|horseback|hiking tour/gi, aliases: ['adventure', 'outdoor tours'] }
   ];
 
-  const candidates = families.map(family => {
+  families.forEach(family => {
     const offerMatches = countPatternMatches(offerText, family.pattern);
-    const bodyMatches = countPatternMatches(bodyText, family.pattern);
-    if (!offerMatches && !bodyMatches) return null;
+    const preflightFamily = (ctx.preflight?.materialFamilies || []).find(item => item.id === family.coverageFamily);
+    if (!offerMatches && !preflightFamily?.verifiedProductFamily) return;
 
-    const websiteScore = (offerMatches * 8) + Math.min(8, bodyMatches) + (offerMatches ? 3 : 0);
-    const evidence = [];
-    if (offerMatches) evidence.push(`${offerMatches} matching product/offer signal${offerMatches === 1 ? '' : 's'}`);
-    if (bodyMatches) evidence.push(`${bodyMatches} supporting website mention${bodyMatches === 1 ? '' : 's'}`);
-
-    const resolvedIntent = resolveDemandIntent(family, offerText, bodyText);
-
-    return {
+    const resolvedIntent = resolveDemandIntent(family, offerText, bodyText, preflightFamily);
+    add({
       id: family.id,
+      coverageFamily: family.coverageFamily,
       label: family.label,
       intent: resolvedIntent,
       query: `${location} ${resolvedIntent}`,
       aliases: family.aliases,
-      websiteScore,
-      productSignalCount: offerMatches,
-      websiteMentionCount: bodyMatches,
-      websiteEvidence: evidence.join(' · ')
-    };
-  }).filter(Boolean);
+      verifiedProductFamily: true,
+      semanticProduct: false,
+      websiteScore: 8 + (offerMatches * 4) + Math.min(8, Math.round((preflightFamily?.strength || 0) / 5)),
+      productSignalCount: Math.max(1, offerMatches),
+      websiteMentionCount: 0,
+      websiteEvidence: preflightFamily?.primaryMatches
+        ? `${preflightFamily.primaryMatches} supporting product/category signals`
+        : `${offerMatches} supporting offer signals`
+    });
+  });
 
-  // Broad sightseeing is a useful comparison market for operators selling guided city experiences,
-  // but it should not automatically beat a more specific product family.
-  if (!candidates.length || /tour|sightseeing|guided|experience/.test(bodyText)) {
-    if (!candidates.some(item => item.id === 'sightseeing')) {
-      candidates.push({
-        id: 'general-tours',
-        label: 'General destination tours',
-        intent: 'tours',
-        query: `${location} tours`,
-        aliases: ['tours', 'things to do'],
-        websiteScore: 4,
-        websiteEvidence: 'Broad tour-market comparison'
-      });
-    }
-  }
+  // Broad destination demand is context only and can never displace verified products.
+  add({
+    id: 'general-tours',
+    coverageFamily: 'general',
+    label: 'General destination tours',
+    intent: 'tours',
+    query: `${location} tours`,
+    aliases: ['tours'],
+    verifiedProductFamily: false,
+    semanticProduct: false,
+    websiteScore: 2,
+    productSignalCount: 0,
+    websiteMentionCount: 0,
+    websiteEvidence: 'Broad market context only'
+  });
 
   return candidates
-    .sort((a, b) => b.websiteScore - a.websiteScore)
+    .sort((a, b) => {
+      if (Boolean(b.semanticProduct) !== Boolean(a.semanticProduct)) return b.semanticProduct ? 1 : -1;
+      return (b.websiteScore || 0) - (a.websiteScore || 0);
+    })
     .slice(0, MAX_DEMAND_CANDIDATES);
 }
-
-function resolveDemandIntent(family, offerText, bodyText) {
-  const text = `${offerText} ${bodyText}`;
+function resolveDemandIntent(family, offerText, bodyText, preflightFamily = null) {
+  // Specific search intent must come from primary product/category evidence, not incidental copy.
+  const productText = `${offerText} ${(preflightFamily?.primaryEvidence || []).join(' ')}`.toLowerCase();
   if (family.id === 'water') {
-    if (/stingray/.test(text)) return 'stingray tours';
-    if (/snorkel|reef|coral/.test(text)) return 'snorkeling tours';
-    if (/whale watching/.test(text)) return 'whale watching tours';
-    if (/dolphin/.test(text)) return 'dolphin tours';
-    if (/sunset cruise/.test(text)) return 'sunset cruises';
+    if (/catamaran/.test(productText)) return 'catamaran tours';
+    if (/boat|powerboat|charter|cruise|sailing|yacht/.test(productText)) return 'boat tours';
+    if (/snorkel|reef|coral/.test(productText)) return 'snorkeling tours';
+    if (/stingray/.test(productText)) return 'stingray tours';
+    if (/whale watching/.test(productText)) return 'whale watching tours';
+    if (/dolphin/.test(productText)) return 'dolphin tours';
+    if (/sunset cruise/.test(productText)) return 'sunset cruises';
   }
   if (family.id === 'adventure') {
-    if (/rafting/.test(text)) return 'rafting tours';
-    if (/atv|utv/.test(text)) return 'ATV tours';
-    if (/kayak/.test(text)) return 'kayak tours';
-    if (/zipline/.test(text)) return 'zipline tours';
+    if (/jeep|hummer|off-road|safari|buggy/.test(productText)) return /jeep|safari/.test(productText) ? 'island safari tours' : 'off-road tours';
+    if (/atv|utv/.test(productText)) return 'ATV tours';
+    if (/horseback|horse riding|trail ride|trail riding|equestrian/.test(productText)) return 'horseback riding tours';
+    if (/rafting/.test(productText)) return 'rafting tours';
+    if (/kayak/.test(productText)) return 'kayak tours';
+    if (/zipline/.test(productText)) return 'zipline tours';
   }
   return family.intent;
 }
@@ -1430,14 +1502,16 @@ function safeHost(url) {
   try { return new URL(url).hostname.replace(/^www\./, ""); } catch { return ""; }
 }
 
-function buildUniversalProfile(url, pages, market = emptyMarket()) {
-  const combined = pages.map(page => page.markdown).join("\n\n");
+function buildUniversalProfile(url, pages, market = emptyMarket(), bookingLinkEvidence = "") {
+  const combined = `${pages.map(page => page.markdown).join("\n\n")}\n\n${bookingLinkEvidence}`;
   const home = pages[0]?.markdown || combined;
   const businessName = extractBusinessName(home, url);
   const offers = extractOffers(combined, businessName);
   const prices = extractPrices(combined);
   const businessContext = inferBusinessContext(combined, home, url);
   const bookingProvider = detectBookingProvider(combined);
+  const marketplaces = detectMarketplacePresence(combined);
+  const preflight = buildOperatorPreflight(combined, offers, businessContext);
   const trust = detectTrust(combined);
   const contacts = detectContacts(combined);
   const location = extractLocation(combined);
@@ -1468,6 +1542,8 @@ function buildUniversalProfile(url, pages, market = emptyMarket()) {
       offers: offers.slice(0, 5),
       pricing: prices.slice(0, 4),
       bookingProvider: bookingProvider.label,
+      marketplaces,
+      inventoryFamilies: preflight.materialFamilies.map(item => item.label),
       trust: trust.summary,
       contact: contacts.summary,
       location: businessContext.location || location || "Location needs verification",
@@ -1885,13 +1961,266 @@ function inferBusinessContext(text, home, url) {
   const location = inferDestinationLocation(haystack) || extractLocation(text) || "";
 
   const types = [
-    ["guided sightseeing tour operator", /(sightseeing|celebrity homes?|modernism|architecture|legends? and icons?|city tour)/i],
-    ["bus and private transportation tour operator", /(charter bus|motorcoach|sprinter|luxury van|transportation|bus tour)/i],
-    ["boat and water-experience operator", /(boat|snorkel|sailing|yacht|fishing|stingray|starfish|reef|cruise)/i],
-    ["outdoor adventure tour operator", /(jeep|hummer|atv|utv|rafting|kayak|hiking|adventure tour)/i]
+    ["guided sightseeing", /(sightseeing|celebrity homes?|modernism|architecture|legends? and icons?|city tour)/i],
+    ["transportation / bus tours", /(charter bus|motorcoach|sprinter|luxury van|transportation|bus tour)/i],
+    ["boat / water experiences", /(boat|powerboat|catamaran|snorkel|sailing|yacht|fishing|stingray|starfish|reef|cruise)/i],
+    ["outdoor adventure", /(jeep|hummer|atv|utv|off-road|rafting|kayak|hiking|adventure tour)/i]
   ];
-  const businessType = types.find(([, regex]) => regex.test(haystack))?.[0] || "tour and activity operator";
-  return { businessType, location, domain: domainLabel(url) };
+  const matchedTypes = types.filter(([, regex]) => regex.test(haystack)).map(([label]) => label);
+  const businessType = matchedTypes.length > 1
+    ? `multi-segment tour operator (${matchedTypes.slice(0, 3).join(" + ")})`
+    : matchedTypes.length === 1
+      ? `${matchedTypes[0]} operator`
+      : "tour and activity operator";
+  return { businessType, businessTypes: matchedTypes, location, domain: domainLabel(url) };
+}
+
+
+function buildSemanticOperatorModel(text, offers, businessContext, businessName) {
+  const raw = String(text || "");
+  const primaryProducts = extractPrimaryProductModel(raw, offers, businessName);
+  const geography = extractValidatedGeography(raw, businessContext?.location || "", primaryProducts);
+
+  return {
+    primaryProducts,
+    geography,
+    commerce: {
+      bookingEvidencePresent: /BOOKING LINK:|book now|book a |book your|reserve|check availability/i.test(raw),
+      marketplacePresence: detectMarketplacePresence(raw)
+    },
+    readyForMarket: Boolean(geography?.value && primaryProducts.length)
+  };
+}
+
+function extractPrimaryProductModel(text, offers, businessName) {
+  const raw = String(text || "");
+  const links = extractMarkdownLinks(raw);
+  const headings = (raw.match(/^#{1,4}\s+.+$/gm) || [])
+    .map(line => cleanText(line.replace(/^#{1,4}\s+/, "")));
+  const candidates = new Map();
+
+  const add = (value, score, source, url = "") => {
+    const name = normalizePrimaryProductName(value, businessName);
+    if (!name || !looksLikeBookableProductName(name)) return;
+    const key = name.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+    if (!key) return;
+
+    const current = candidates.get(key) || {
+      name,
+      score: 0,
+      evidence: [],
+      urls: []
+    };
+    current.score += score;
+    if (source && !current.evidence.includes(source)) current.evidence.push(source);
+    if (url && !current.urls.includes(url)) current.urls.push(url);
+    candidates.set(key, current);
+  };
+
+  // Explicit calls to book/reserve are the strongest open-ended signal because they tell GO
+  // what the customer can actually transact on without requiring a predefined activity list.
+  links.forEach(link => {
+    const label = cleanText(link.label || "");
+    const href = String(link.url || "");
+    if (/^(book|reserve|check availability|buy tickets?|schedule)\b/i.test(label)) {
+      add(label, 14, "booking action", href);
+    } else if (/\/(tour|tours|experience|experiences|activity|activities|ride|rides|lesson|lessons|charter|charters|cruise|cruises|rental|rentals|trip|trips|ticket|tickets)\b/i.test(href)) {
+      add(label, 10, "product page", href);
+    }
+  });
+
+  // Existing offer extraction is useful evidence, but is no longer the sole ontology.
+  (offers || []).forEach(offer => add(offer, 9, "offer inventory"));
+
+  // Headings that repeat in booking/product evidence are promoted without knowing the activity type.
+  headings.forEach(heading => {
+    const normalized = normalizePrimaryProductName(heading, businessName);
+    if (!normalized) return;
+    const lower = normalized.toLowerCase();
+    const linkedOrOffered = [...candidates.values()].some(item => {
+      const itemLower = item.name.toLowerCase();
+      return itemLower.includes(lower) || lower.includes(itemLower);
+    });
+    if (linkedOrOffered) add(normalized, 6, "product heading");
+  });
+
+  // Merge near-duplicates such as "Trail Ride" / "Trail Rides" and retain the strongest wording.
+  const ranked = [...candidates.values()]
+    .filter(item => item.score >= 9)
+    .sort((a, b) => b.score - a.score);
+
+  const deduped = [];
+  ranked.forEach(item => {
+    const compact = item.name.toLowerCase().replace(/[^a-z0-9]/g, "").replace(/s$/, "");
+    const existing = deduped.find(row => {
+      const other = row.name.toLowerCase().replace(/[^a-z0-9]/g, "").replace(/s$/, "");
+      return compact === other || compact.includes(other) || other.includes(compact);
+    });
+    if (!existing) deduped.push(item);
+    else {
+      existing.score += Math.round(item.score / 2);
+      item.evidence.forEach(e => { if (!existing.evidence.includes(e)) existing.evidence.push(e); });
+      item.urls.forEach(u => { if (!existing.urls.includes(u)) existing.urls.push(u); });
+    }
+  });
+
+  return deduped.slice(0, 10);
+}
+
+function normalizePrimaryProductName(value, businessName = "") {
+  let text = cleanText(String(value || ""))
+    .replace(/^(book|reserve|schedule|buy|check availability(?: for)?|learn more about)\s+(?:a|an|the|your)?\s*/i, "")
+    .replace(/\b(book now|reserve now|learn more|details|more info)\b/gi, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  if (businessName) {
+    const escaped = escapeRegExp(businessName);
+    text = text.replace(new RegExp(`\\b${escaped}\\b`, "ig"), " ").replace(/\s+/g, " ").trim();
+  }
+
+  text = text
+    .replace(/^[|–—:;\-]+|[|–—:;\-]+$/g, "")
+    .replace(/\b(?:from|starting at)\s*[$€£]\s*\d[\d,.]*/gi, "")
+    .trim();
+
+  if (text.length < 3 || text.length > 75) return "";
+  return text;
+}
+
+function looksLikeBookableProductName(value) {
+  const text = String(value || "").trim();
+  if (!text) return false;
+  if (/^(home|about|contact|services?|activities|tours?|experiences?|book|booking|reserve|gallery|faq|reviews?|donate|shop|menu|search)$/i.test(text)) return false;
+  if (/privacy|terms|cookie|newsletter|sign in|log in|cart|gift card/i.test(text)) return false;
+  if (/^[\d\s$€£.,-]+$/.test(text)) return false;
+
+  // A product does not need to belong to a known activity taxonomy. It only needs to look like
+  // a meaningful customer-facing noun phrase rather than navigation or prose.
+  const words = text.split(/\s+/).filter(Boolean);
+  return words.length <= 10 && /[A-Za-z]/.test(text);
+}
+
+function primaryProductIntent(name) {
+  return String(name || "")
+    .replace(/\b(?:guided|basic|beginner|private appointment|appointment)\b/gi, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .toLowerCase();
+}
+
+function extractValidatedGeography(text, inferredCandidate, primaryProducts) {
+  const raw = String(text || "");
+  const candidates = [];
+
+  const add = (value, score, source) => {
+    const clean = cleanText(value || "").replace(/\s+/g, " ").trim();
+    if (!clean || clean.length < 2 || clean.length > 80) return;
+    if (isProductLikeGeography(clean, primaryProducts)) return;
+    candidates.push({ value: clean, score, source });
+  };
+
+  // Strongest signal: city/state or city/region inside an explicit street address.
+  const addressPatterns = [
+    /\b\d{1,6}\s+[A-Za-z0-9.'#\- ]{3,60}\s+(?:Rd|Road|St|Street|Ave|Avenue|Blvd|Boulevard|Dr|Drive|Ln|Lane|Way|Hwy|Highway|Pkwy|Parkway)\.?(?:[^,\n]{0,35}),?\s+([A-Z][A-Za-z.' -]{2,35}),\s*([A-Z]{2})\s+\d{5}(?:-\d{4})?/g,
+    /(?:located at|address(?: is)?|location(?: address)?(?: is)?|visit us at)\s*:?\s*[^\n]{0,90}?\b([A-Z][A-Za-z.' -]{2,35}),\s*([A-Z]{2})\s+\d{5}(?:-\d{4})?/gi
+  ];
+  addressPatterns.forEach(pattern => {
+    let match;
+    while ((match = pattern.exec(raw)) !== null) add(`${match[1]}, ${match[2]}`, 20, "street address");
+  });
+
+  // Explicit destination language is stronger than an inferred title phrase.
+  const explicitPatterns = [
+    /(?:located in|based in|serving|tours? in|experiences? in|rides? in|activities? in)\s+([A-Z][^\n.!?]{2,60})/gi,
+    /(?:destination|city|region|location)\s*[:\-]\s*([A-Z][^\n]{2,60})/gi
+  ];
+  explicitPatterns.forEach(pattern => {
+    let match;
+    while ((match = pattern.exec(raw)) !== null) add(match[1], 12, "explicit geography");
+  });
+
+  if (inferredCandidate && !isProductLikeGeography(inferredCandidate, primaryProducts)) {
+    add(inferredCandidate, 5, "inferred geography");
+  }
+
+  candidates.sort((a, b) => b.score - a.score);
+  if (candidates.length) {
+    return { value: candidates[0].value, confidence: candidates[0].score >= 15 ? "High" : "Medium-high", source: candidates[0].source };
+  }
+
+  return {
+    value: "",
+    confidence: "Low",
+    rejectedCandidate: inferredCandidate || "",
+    source: "No validated geography"
+  };
+}
+
+function isProductLikeGeography(value, primaryProducts) {
+  const candidate = cleanText(value || "").toLowerCase();
+  if (!candidate) return true;
+
+  // Semantic-role guardrail: if the candidate substantially overlaps something the customer
+  // can book, it cannot simultaneously be trusted as geography.
+  const overlap = (primaryProducts || []).some(product => {
+    const productName = String(product?.name || "").toLowerCase();
+    return productName && (candidate.includes(productName) || productName.includes(candidate));
+  });
+  if (overlap) return true;
+
+  return /\b(tour|tours|ride|rides|riding|lesson|lessons|charter|charters|cruise|cruises|rental|rentals|experience|experiences|adventure|adventures|excursion|excursions|activity|activities|safari|trip|trips)\b/i.test(candidate);
+}
+
+function buildOperatorPreflight(text, offers, businessContext) {
+  const raw = String(text || "");
+  const offerText = (offers || []).join(" ");
+  const links = extractMarkdownLinks(raw);
+  const headings = (raw.match(/^#{1,4}\s+.+$/gm) || []).map(line => cleanText(line.replace(/^#{1,4}\s+/, "")));
+
+  // Product hierarchy: GO separates things the operator appears to SELL from things merely
+  // INCLUDED in an experience. Only strong first-party product/category evidence can promote
+  // a specific activity into the representative search portfolio.
+  const productLike = value => /\b(tour|tours|charter|charters|cruise|cruises|excursion|excursions|safari|safaris|trip|trips|experience|experiences|rental|rentals)\b/i.test(value);
+  const productLinks = links
+    .filter(link => /\/(tour|tours|experience|experiences|excursion|excursions|activity|activities|charter|charters|cruise|cruises)\b/i.test(link.url) || productLike(link.label))
+    .map(link => cleanText(`${link.label} ${link.url}`));
+  const productHeadings = headings.filter(productLike);
+  const primarySignals = [...new Set([...productLinks, ...productHeadings, ...(offers || [])].map(cleanText).filter(Boolean))];
+
+  const families = [
+    { id: "water", label: "Boat / water experiences", pattern: /boat|powerboat|catamaran|snorkel|sail(?:ing)?|yacht|cruise|reef|sea tours?|water tours?|ocean|stingray|dolphin|whale/i },
+    { id: "adventure", label: "Outdoor adventure", pattern: /jeep|hummer|atv|utv|off-road|rafting|kayak|zipline|horseback|hiking|buggy|safari/i },
+    { id: "sightseeing", label: "Sightseeing / history", pattern: /sightseeing|city tour|history tour|historical|landmark|celebrity|architecture|modernism/i },
+    { id: "fishing", label: "Fishing", pattern: /fishing|sportfishing|deep sea|fly fishing/i },
+    { id: "food", label: "Food / culinary", pattern: /food tour|culinary|tasting tour|foodie/i },
+    { id: "wine", label: "Wine / winery", pattern: /wine tour|winery|vineyard|wine tasting/i }
+  ];
+
+  const materialFamilies = families.map(family => {
+    const primaryMatches = primarySignals.filter(signal => family.pattern.test(signal));
+    const offerMatches = countPatternMatches(offerText, family.pattern);
+    const bodyMatches = countPatternMatches(raw, family.pattern);
+    const strength = (primaryMatches.length * 10) + (offerMatches * 5) + Math.min(4, bodyMatches);
+    if (!strength) return null;
+    return {
+      id: family.id,
+      label: family.label,
+      strength,
+      primaryMatches: primaryMatches.length,
+      primaryEvidence: primaryMatches.slice(0, 6),
+      offerMatches,
+      bodyMatches,
+      verifiedProductFamily: primaryMatches.length > 0 || offerMatches > 0
+    };
+  }).filter(Boolean).sort((a, b) => b.strength - a.strength);
+
+  return {
+    materialFamilies,
+    primarySignals: primarySignals.slice(0, 24),
+    multiSegment: materialFamilies.filter(item => item.verifiedProductFamily).length > 1 || (businessContext?.businessTypes || []).length > 1,
+    coverageConfidence: materialFamilies.some(item => item.verifiedProductFamily) ? "High" : (materialFamilies.length ? "Medium-high" : "Medium")
+  };
 }
 
 function inferDestinationLocation(text) {
@@ -1945,10 +2274,27 @@ function inferDestinationLocation(text) {
   return [...candidates.values()].sort((a, b) => b.score - a.score)[0]?.value || "";
 }
 
+function collectBookingLinkEvidence(pages) {
+  const rows = [];
+  (pages || []).forEach(page => {
+    const markdown = String(page?.markdown || '');
+    for (const match of markdown.matchAll(/\[([^\]]*)\]\((https?:\/\/[^)]+)\)/g)) {
+      const label = cleanText(match[1]);
+      const href = match[2];
+      if (/book|reserve|availability|checkout|ticket|peek|fareharbor|junglebee|bokun|rezdy|xola|tripworks|checkfront|bookeo|rezgo|rocketrez/i.test(`${label} ${href}`)) {
+        rows.push(`BOOKING LINK: ${label} ${href}`);
+      }
+    }
+  });
+  return [...new Set(rows)].slice(0, 30).join('\n');
+}
+
 function detectBookingProvider(text) {
+  const raw = String(text || "");
   const providers = [
-    ["Peek Pro", /book\.peek\.com|peek\.com\/pro|peek pro/i],
+    ["Peek Pro", /book\.peek\.com|peek\.com\/pro|peekpro\.com|peek pro|powered by peek|book with peek/i],
     ["FareHarbor", /fareharbor\.com|fareharbor/i],
+    ["Junglebee", /junglebee\.(?:com|io)|powered by junglebee|junglebee booking/i],
     ["Bókun", /bokun\.io|bokun\.com|bokun/i],
     ["Rezdy", /rezdy\.com|rezdy/i],
     ["Xola", /xola\.com|xola/i],
@@ -1956,11 +2302,32 @@ function detectBookingProvider(text) {
     ["Checkfront", /checkfront\.com|checkfront/i],
     ["Bookeo", /bookeo\.com|bookeo/i],
     ["Rezgo", /rezgo\.com|rezgo/i],
-    ["RocketRez", /rocketrez\.com|rocketrez/i],
-    ["Tripadvisor / Viator", /tripadvisor\.com|viator\.com/i]
+    ["RocketRez", /rocketrez\.com|rocketrez/i]
   ];
-  for (const [label, regex] of providers) if (regex.test(text)) return { provider: label, label };
-  return { provider: null, label: "Booking provider not confidently detected" };
+  for (const [label, regex] of providers) {
+    if (regex.test(raw)) return { provider: label, label, kind: "direct-booking" };
+  }
+
+  // General fallback: if GO can verify a real booking/reservation path but the vendor name is
+  // not exposed publicly, report the verified fact instead of pretending no booking system exists.
+  const hasBookingFlow = /BOOKING LINK:|book now|book a |book your|reserve now|reserve your|check availability|payment is due at (?:the )?time of booking/i.test(raw);
+  if (hasBookingFlow) {
+    return {
+      provider: "Direct booking flow",
+      label: "Direct booking flow detected · provider not publicly exposed",
+      kind: "direct-booking-unknown-provider"
+    };
+  }
+
+  return { provider: null, label: "Booking provider not confidently detected", kind: "unknown" };
+}
+function detectMarketplacePresence(text) {
+  const marketplaces = [
+    ["Viator", /viator\.com|\bviator\b/i],
+    ["Tripadvisor", /tripadvisor\.com|\btripadvisor\b/i],
+    ["GetYourGuide", /getyourguide\.com|\bgetyourguide\b/i]
+  ];
+  return marketplaces.filter(([, regex]) => regex.test(text)).map(([label]) => label);
 }
 
 function detectTrust(text) {
@@ -2015,21 +2382,55 @@ function assessSearchFoundation(home, businessName, location, offers) {
 }
 
 function discoverUsefulLinks(markdown, baseUrl) {
-  const matches = [...markdown.matchAll(/\[[^\]]+\]\((https?:\/\/[^)]+)\)/g)].map(match => match[1]);
+  const matches = [...markdown.matchAll(/\[([^\]]+)\]\((https?:\/\/[^)]+)\)/g)]
+    .map(match => ({ label: cleanText(match[1]), url: match[2] }));
   let origin;
   try { origin = new URL(baseUrl).origin; } catch { return []; }
-  const keywords = /(tour|charter|cruise|rental|adventure|experience|activities|activity|trip|ride|product|book|snorkel|dive|fishing|sailing|yacht|rafting|kayak|atv|utv|lesson)/i;
-  const unique = [];
-  for (const link of matches) {
+
+  const familyRules = [
+    ["water", /boat|powerboat|catamaran|snorkel|sail|yacht|cruise|reef|sea|ocean|fishing|stingray|dolphin|whale/i],
+    ["adventure", /jeep|hummer|atv|utv|off-road|rafting|kayak|zipline|horse|hiking|adventure/i],
+    ["sightseeing", /sightseeing|city|history|historical|celebrity|architecture|modernism|landmark/i],
+    ["food-wine", /food|culinary|tasting|wine|winery|vineyard/i],
+    ["general", /tour|charter|experience|activities|activity|trip|ride|product|book/i]
+  ];
+  const candidates = [];
+  const seen = new Set();
+
+  for (const item of matches) {
     try {
-      const parsed = new URL(link);
-      if (parsed.origin !== origin || !keywords.test(parsed.pathname) || /#|mailto:|tel:/i.test(link)) continue;
+      const parsed = new URL(item.url);
+      if (parsed.origin !== origin || /#|mailto:|tel:/i.test(item.url)) continue;
+      const signal = `${item.label} ${parsed.pathname}`;
+      const family = familyRules.find(([, regex]) => regex.test(signal))?.[0];
+      if (!family) continue;
       parsed.hash = "";
       const clean = parsed.toString();
-      if (!unique.includes(clean) && clean !== baseUrl) unique.push(clean);
+      if (clean === baseUrl || seen.has(clean)) continue;
+      seen.add(clean);
+      const depth = parsed.pathname.split('/').filter(Boolean).length;
+      const score = (family === 'general' ? 1 : 5) + (/tour|charter|cruise|experience|activity|product/i.test(signal) ? 2 : 0) - Math.max(0, depth - 3);
+      candidates.push({ url: clean, family, score });
     } catch {}
   }
-  return unique;
+
+  // Preflight coverage: read across materially different product families before taking
+  // multiple pages from the same family. This prevents an easy-to-crawl segment from
+  // becoming GO's entire mental model of a multi-segment operator.
+  const selected = [];
+  const usedFamilies = new Set();
+  candidates.sort((a, b) => b.score - a.score);
+  for (const item of candidates) {
+    if (item.family === 'general' || usedFamilies.has(item.family)) continue;
+    selected.push(item.url);
+    usedFamilies.add(item.family);
+    if (selected.length >= MAX_EXTRA_PAGES) return selected;
+  }
+  for (const item of candidates) {
+    if (!selected.includes(item.url)) selected.push(item.url);
+    if (selected.length >= MAX_EXTRA_PAGES) break;
+  }
+  return selected;
 }
 
 function showResults(profile) {

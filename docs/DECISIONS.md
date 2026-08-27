@@ -20,4 +20,33 @@ Customer-facing language should use:
 - Growth Operator recommends
 - Our analysis shows
 
-Growth Operator is the relationship. Atlas is the intelligence behind it.
+Growth Operator is the relationship. Atlas is the intelligence behind it.## Decision — Analyzer V1 Requires Cold Generalization, Not Perfection
+**Date:** August 26, 2026
+
+Growth Operator will not continue indefinitely improving Operator Analyzer before progressing through the broader product.
+
+However, Founder does not want Analyzer abandoned at a point where successful analyses depend heavily on known/tested operators.
+
+Decision:
+
+Before freezing Analyzer V1, GO should demonstrate credible first-run performance across approximately five unfamiliar and diverse operators.
+
+Target acceptance threshold:
+
+Approximately 4/5 analyses should be credible enough to discuss with the operator without operator-specific tuning.
+
+After that threshold:
+
+Analyzer V1 freezes and development moves into Growth Review, Connected Intelligence, Growth Score, Missions, Execution and Measurement.
+
+Analyzer then becomes a continuously improving product subsystem rather than the primary development phase.
+
+Future design-partner data will be used to compare public GO hypotheses against connected business truth and improve Analyzer V1.1.
+
+Rationale:
+
+Attempting to make public Analyzer as knowledgeable as connected Growth Operator would prevent the company from ever progressing beyond Analyzer.
+
+Analyzer is the cold-start brain.
+
+Connected GO is the deeper operating brain.

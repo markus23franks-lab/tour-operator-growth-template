@@ -482,4 +482,83 @@ This creates the intended self-use and learning flywheel:
 
 **GO learns from itself → operators → itself → operators.**
 
-Product development, company readiness and the Account #1 flywheel should converge at the first real customer rather than being treated as sequential projects.
+Product development, company readiness and the Account #1 flywheel should converge at the first real customer rather than being treated as sequential projects.## Immediate Milestone — Analyzer V1 Freeze
+
+Build 029 remains the active Analyzer milestone.
+
+Remaining work is intentionally constrained.
+
+### Final Diagnostic Work
+
+1. Instrument the intelligence pipeline.
+2. Identify where Shaggy's Diving's correct diving/operator understanding becomes generic market demand.
+3. Eliminate stale cross-operator state/context leakage.
+4. Inspect unresolved OBP evidence detection.
+5. Make one structural correction based on observed pipeline evidence.
+
+### Final Cold Validation
+
+After the diagnosed defect is corrected:
+
+Run approximately five genuinely unfamiliar operators across diverse business types.
+
+Do not tune between tests unless a generalized/core-trust defect is discovered.
+
+Target approximately 4/5 credible first-run analyses.
+
+If achieved:
+
+FREEZE ANALYZER V1.
+
+### After Freeze
+
+Move development focus into the broader Growth Operator customer journey:
+
+Growth Review
+↓
+Connected Baseline
+↓
+Growth Score V1
+↓
+Dashboard Activation
+↓
+GO Missions / Work
+↓
+First Execution Capability
+↓
+Measurement / Proof
+
+Analyzer remains alive through regression testing and future product learning but should no longer monopolize the development roadmap.
+
+### Analyzer V1.1 — Design Partner Intelligence Upgrade
+
+After GO begins working with design partners, compare:
+
+PUBLIC ANALYZER HYPOTHESIS
+
+vs
+
+CONNECTED BUSINESS TRUTH
+
+using evidence such as:
+
+- Search Console
+- Analytics
+- Google Business Profile
+- reviews
+- booking data
+- revenue
+- capacity
+- product performance
+- customer/channel data where available
+
+Use discrepancies between public inference and connected truth to improve future public Analyzer intelligence.
+
+This creates an internal intelligence flywheel:
+
+PUBLIC HYPOTHESIS
+→ CONNECTED TRUTH
+→ EXECUTION
+→ MEASURED RESULT
+→ LEARNING
+→ BETTER FUTURE PUBLIC HYPOTHESIS

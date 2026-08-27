@@ -116,19 +116,48 @@ async function runAnalysis(rawUrl) {
   setProgress(10);
 
   try {
-    const home = await readPublicPage(url);
+    const readerHome = await readPublicPage(url).catch(() => null);
     if (token !== scanToken) return;
-    setStage("website", "done", "VERIFIED");
+
+    // Site acquisition is a distinct integrity layer. Do not let a challenge page or
+    // thin reader response become GO's mental model of the operator. The server can
+    // recover direct HTML and indexed first-party pages independently.
+    const acquisition = await acquireFirstPartyEvidence(url).catch(() => null);
+    const recoveredPages = normalizeAcquiredPages(acquisition, url);
+    const readerUsable = readerHome && isMeaningfulBusinessContent(readerHome.markdown);
+    const recoveredHome = recoveredPages.find(page => samePage(page.url, url)) || null;
+
+    // IMPORTANT: direct/server recovery and the public reader are complementary evidence
+    // sources. The previous implementation preferred the recovered homepage and then dropped
+    // the reader copy when both represented the same URL. On JS-heavy sites that silently
+    // discarded the richer rendered navigation, product headings and external booking links.
+    // Merge same-page evidence before operator modeling instead of choosing one winner.
+    const home = mergeFirstPartyPageEvidence(
+      recoveredHome,
+      readerUsable ? readerHome : null,
+      url
+    ) || recoveredPages[0];
+
+    if (!home || !isMeaningfulBusinessContent(home.markdown)) {
+      throw new Error("GO could not establish a sufficient first-party website foundation");
+    }
+
+    setStage("website", "done", acquisition?.sufficient ? "RECOVERED + VERIFIED" : "VERIFIED");
     setProgress(30);
 
-    const pageLinks = discoverUsefulLinks(home.markdown, url).slice(0, MAX_EXTRA_PAGES);
-    const extraPages = [];
+    const extraPages = recoveredPages.filter(page => !samePage(page.url, home.url));
+    if (readerUsable && !samePage(readerHome.url, home.url)) extraPages.unshift(readerHome);
+
+    // Use reader-discovered links as a supplement, not the sole crawl plan.
+    const pageLinks = discoverUsefulLinks(readerHome?.markdown || home.markdown, url).slice(0, MAX_EXTRA_PAGES);
     for (const link of pageLinks) {
+      if (extraPages.length >= Math.max(MAX_EXTRA_PAGES, 6)) break;
+      if ([home, ...extraPages].some(page => samePage(page.url, link))) continue;
       try {
         const page = await readPublicPage(link);
-        extraPages.push(page);
+        if (isMeaningfulBusinessContent(page.markdown)) extraPages.push(page);
       } catch (error) {
-        // A single blocked internal page should not kill the entire business scan.
+        // One blocked internal page should not kill a business scan.
       }
     }
     if (token !== scanToken) return;
@@ -190,6 +219,70 @@ async function runCaymanBenchmark() {
   showResults(caymanProfile);
 }
 
+async function acquireFirstPartyEvidence(url) {
+  const response = await fetch('/.netlify/functions/market-intelligence', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ action: 'acquire', website: url })
+  });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok || !payload.ok) throw new Error(payload.error || 'First-party acquisition failed');
+  return payload.acquisition || null;
+}
+
+function mergeFirstPartyPageEvidence(primary, secondary, fallbackUrl = "") {
+  if (!primary && !secondary) return null;
+  if (!primary) return secondary;
+  if (!secondary) return primary;
+
+  const chunks = [];
+  const seen = new Set();
+  for (const source of [primary.markdown, secondary.markdown]) {
+    const value = String(source || "").trim();
+    if (!value) continue;
+    // Keep both representations, but avoid exact duplicate payloads.
+    const key = value.replace(/\s+/g, " ").slice(0, 12000);
+    if (seen.has(key)) continue;
+    seen.add(key);
+    chunks.push(value);
+  }
+
+  return {
+    url: primary.url || secondary.url || fallbackUrl,
+    markdown: chunks.join("\n\n--- GO FIRST-PARTY SOURCE MERGE ---\n\n").slice(0, 180000),
+    acquisitionSource: `${primary.acquisitionSource || "recovered"}+${secondary.acquisitionSource || "reader"}`
+  };
+}
+
+function normalizeAcquiredPages(acquisition, website) {
+  const targetHost = safeHost(website);
+  const pages = Array.isArray(acquisition?.pages) ? acquisition.pages : [];
+  return pages
+    .filter(page => page && page.url && page.markdown && safeHost(page.url) === targetHost)
+    .filter(page => isMeaningfulBusinessContent(page.markdown))
+    .map(page => ({ url: page.url, markdown: String(page.markdown).slice(0, 120000), acquisitionSource: page.source || 'recovered' }));
+}
+
+function isMeaningfulBusinessContent(text) {
+  const value = String(text || '').trim();
+  if (value.length < 180) return false;
+  if (/robot challenge|captcha|verify you are human|access denied|checking your browser|enable javascript and cookies/i.test(value)) return false;
+  const businessSignals = (value.match(/book|tour|charter|ride|rental|dive|cruise|experience|activity|trip|lesson|adventure|excursion|reserve|price|about|contact/gi) || []).length;
+  return value.length >= 700 || businessSignals >= 3;
+}
+
+function samePage(a, b) {
+  try {
+    const left = new URL(a);
+    const right = new URL(b);
+    return left.host === right.host && left.pathname.replace(/\/$/, '') === right.pathname.replace(/\/$/, '');
+  } catch { return a === b; }
+}
+
+function safeHost(value) {
+  try { return new URL(value).hostname.replace(/^www\./i, '').toLowerCase(); } catch { return ''; }
+}
+
 async function readPublicPage(url) {
   const endpoint = `${READER_ENDPOINT}${url}`;
   let lastError = null;
@@ -228,7 +321,8 @@ function buildWebsiteContext(url, pages, bookingLinkEvidence = "") {
   const businessName = extractBusinessName(home, url);
   const offers = extractOffers(combined, businessName);
   const businessContext = inferBusinessContext(combined, home, url);
-  const semanticModel = buildSemanticOperatorModel(combined, offers, businessContext, businessName);
+  const siteArchitecture = buildSiteArchitectureModel(pages, url, businessName);
+  const semanticModel = buildSemanticOperatorModel(combined, offers, businessContext, businessName, siteArchitecture);
 
   // Foundational facts must pass semantic-role validation before GO uses them downstream.
   // A product/service label must never silently become geography.
@@ -240,8 +334,8 @@ function buildWebsiteContext(url, pages, bookingLinkEvidence = "") {
     businessContext.locationConfidence = "Low";
   }
 
-  const preflight = buildOperatorPreflight(combined, offers, businessContext);
-  return { url, businessName, offers, businessContext, semanticModel, preflight, combined };
+  const preflight = buildOperatorPreflight(combined, offers, businessContext, siteArchitecture);
+  return { url, businessName, offers, businessContext, semanticModel, preflight, siteArchitecture, combined };
 }
 
 function emptyMarket() {
@@ -614,10 +708,6 @@ function buildDemandPlan(ctx) {
   const location = String(ctx.businessContext?.location || '').trim();
   if (!location) return [];
 
-  const semanticProducts = Array.isArray(ctx.semanticModel?.primaryProducts)
-    ? ctx.semanticModel.primaryProducts
-    : [];
-
   const candidates = [];
   const seenQueries = new Set();
   const add = candidate => {
@@ -628,10 +718,11 @@ function buildDemandPlan(ctx) {
     candidates.push(candidate);
   };
 
-  // OPEN-ENDED PRODUCT MODEL
-  // Primary bookable products discovered from first-party booking actions/pages become demand
-  // candidates directly. GO does not need the activity type to exist in a hardcoded taxonomy.
-  semanticProducts.forEach((product, index) => {
+  // BUILD 029 — OPERATOR MODEL -> MARKET HANDOFF
+  // This is the only place primary market demand should be born. Pull from the validated
+  // commercial model first, not loose page copy or a predefined tourism taxonomy.
+  const primaryProducts = collectValidatedCommercialProducts(ctx);
+  primaryProducts.forEach((product, index) => {
     const intent = primaryProductIntent(product.name);
     if (!intent) return;
     const id = `product-${intent.replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || index}`;
@@ -644,15 +735,16 @@ function buildDemandPlan(ctx) {
       aliases: [],
       verifiedProductFamily: true,
       semanticProduct: true,
-      websiteScore: Math.min(40, 16 + Number(product.score || 0)),
+      websiteScore: Math.min(48, 22 + Number(product.score || 0)),
       productSignalCount: Math.max(1, product.evidence?.length || 1),
       websiteMentionCount: 0,
-      websiteEvidence: `Primary bookable product verified from first-party ${product.evidence?.join(' + ') || 'website evidence'}.`
+      websiteEvidence: `Validated primary product from ${product.evidence?.join(' + ') || 'first-party commercial structure'}.`
     });
   });
 
-  // Known families remain a SUPPLEMENTARY interpretation layer for useful search variants.
-  // They can no longer define the operator when open-ended primary-product evidence exists.
+  // Known families are now enrichment only. They may add a useful adjacent interpretation
+  // when FIRST-PARTY product evidence supports the family, but they can never replace or
+  // outrank the open-ended product model simply because a keyword appeared in body copy.
   const offers = Array.isArray(ctx.offers) ? ctx.offers : [];
   const offerText = offers.join(' ').toLowerCase();
   const bodyText = String(ctx.combined || '').toLowerCase();
@@ -668,44 +760,50 @@ function buildDemandPlan(ctx) {
   ];
 
   families.forEach(family => {
-    const offerMatches = countPatternMatches(offerText, family.pattern);
     const preflightFamily = (ctx.preflight?.materialFamilies || []).find(item => item.id === family.coverageFamily);
-    if (!offerMatches && !preflightFamily?.verifiedProductFamily) return;
+    const primaryEvidence = String((preflightFamily?.primaryEvidence || []).join(' '));
+    const familyHasPrimaryEvidence = Boolean(preflightFamily?.verifiedProductFamily && primaryEvidence.trim());
+    if (!familyHasPrimaryEvidence) return;
 
     const resolvedIntent = resolveDemandIntent(family, offerText, bodyText, preflightFamily);
+    // Avoid duplicating an open-ended product query with a weaker family abstraction.
+    const familyQuery = `${location} ${resolvedIntent}`;
+    if (seenQueries.has(familyQuery.toLowerCase().replace(/\s+/g, ' ').trim())) return;
+
     add({
       id: family.id,
       coverageFamily: family.coverageFamily,
       label: family.label,
       intent: resolvedIntent,
-      query: `${location} ${resolvedIntent}`,
+      query: familyQuery,
       aliases: family.aliases,
       verifiedProductFamily: true,
       semanticProduct: false,
-      websiteScore: 8 + (offerMatches * 4) + Math.min(8, Math.round((preflightFamily?.strength || 0) / 5)),
-      productSignalCount: Math.max(1, offerMatches),
+      websiteScore: 9 + Math.min(8, Math.round((preflightFamily?.strength || 0) / 5)),
+      productSignalCount: Math.max(1, preflightFamily?.primaryMatches || 1),
       websiteMentionCount: 0,
-      websiteEvidence: preflightFamily?.primaryMatches
-        ? `${preflightFamily.primaryMatches} supporting product/category signals`
-        : `${offerMatches} supporting offer signals`
+      websiteEvidence: `${preflightFamily?.primaryMatches || 1} supporting first-party product/category signals`
     });
   });
 
-  // Broad destination demand is context only and can never displace verified products.
-  add({
-    id: 'general-tours',
-    coverageFamily: 'general',
-    label: 'General destination tours',
-    intent: 'tours',
-    query: `${location} tours`,
-    aliases: ['tours'],
-    verifiedProductFamily: false,
-    semanticProduct: false,
-    websiteScore: 2,
-    productSignalCount: 0,
-    websiteMentionCount: 0,
-    websiteEvidence: 'Broad market context only'
-  });
+  // Broad destination demand is fallback only. If GO understands even one validated commercial
+  // product, a generic "[destination] tours" query cannot enter the initial competition.
+  if (!candidates.some(item => item.semanticProduct)) {
+    add({
+      id: 'general-tours',
+      coverageFamily: 'general',
+      label: 'General destination tours',
+      intent: 'tours',
+      query: `${location} tours`,
+      aliases: ['tours'],
+      verifiedProductFamily: false,
+      semanticProduct: false,
+      websiteScore: 1,
+      productSignalCount: 0,
+      websiteMentionCount: 0,
+      websiteEvidence: 'Broad market context only because validated primary inventory was insufficient.'
+    });
+  }
 
   return candidates
     .sort((a, b) => {
@@ -714,6 +812,47 @@ function buildDemandPlan(ctx) {
     })
     .slice(0, MAX_DEMAND_CANDIDATES);
 }
+
+function collectValidatedCommercialProducts(ctx) {
+  const rows = [];
+  const seen = new Map();
+  const reject = value => /^(adventures?|courses?|rates?|services?|activities?|experiences?|tours?|book now|learn more|stay with us|dive with us)$/i.test(value)
+    || /\b(with us|why choose|what to expect|our story|our team|safe with us|top rated|best in|copyright|image)\b/i.test(value);
+
+  const add = (name, score = 0, evidence = [], urls = []) => {
+    const clean = normalizePrimaryProductName(name, ctx.businessName);
+    if (!clean || reject(clean) || !looksLikeBookableProductName(clean)) return;
+    const intent = primaryProductIntent(clean);
+    if (!intent || intent === 'tours') return;
+    const key = intent.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+    if (!key) return;
+    const current = seen.get(key) || { name: clean, score: 0, evidence: [], urls: [] };
+    current.score = Math.max(current.score, Number(score || 0));
+    (Array.isArray(evidence) ? evidence : [evidence]).filter(Boolean).forEach(item => {
+      if (!current.evidence.includes(item)) current.evidence.push(item);
+    });
+    (Array.isArray(urls) ? urls : [urls]).filter(Boolean).forEach(item => {
+      if (!current.urls.includes(item)) current.urls.push(item);
+    });
+    seen.set(key, current);
+  };
+
+  (ctx.semanticModel?.primaryProducts || []).forEach(product => add(product.name, product.score, product.evidence, product.urls));
+  (ctx.siteArchitecture?.commercialPages || []).forEach(product => add(product.name, product.score, product.evidence, product.url));
+  (ctx.siteArchitecture?.internalProducts || []).forEach(product => add(product.name, product.score, product.evidence, product.url));
+
+  // Structured commercial sections are valuable when the site exposes products as plain text
+  // rather than links/cards. They remain subordinate to explicit product pages but are allowed
+  // to recover open-ended inventory without a predefined activity dictionary.
+  extractStructuredProductPhrases(ctx.combined || '').forEach(product => add(product.name, product.score, product.evidence));
+
+  rows.push(...seen.values());
+  return rows
+    .filter(item => item.score >= 10 || item.evidence.some(e => /commercial detail page|repeated internal product link|internal product link|structured commercial section|product page/i.test(e)))
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 10);
+}
+
 function resolveDemandIntent(family, offerText, bodyText, preflightFamily = null) {
   // Specific search intent must come from primary product/category evidence, not incidental copy.
   const productText = `${offerText} ${(preflightFamily?.primaryEvidence || []).join(' ')}`.toLowerCase();
@@ -1004,9 +1143,79 @@ function countExternalDiscoveryLinks(markdown) {
   }).length;
 }
 
-function extractMarkdownLinks(markdown) {
-  return [...String(markdown || "").matchAll(/\[([^\]]{2,160})\]\((https?:\/\/[^)\s]+)\)/g)]
-    .map(match => ({ label: cleanText(match[1]), url: match[2].replace(/[.,]+$/, "") }));
+function extractMarkdownLinks(markdown, baseUrl = "") {
+  const rows = [];
+  for (const match of String(markdown || "").matchAll(/\[([^\]]{1,200})\]\(([^)\s]+)\)/g)) {
+    const label = cleanText(match[1]);
+    let target = String(match[2] || "").replace(/[.,]+$/, "").trim();
+    if (!target || /^(#|mailto:|tel:|javascript:)/i.test(target)) continue;
+    try {
+      const url = baseUrl ? new URL(target, baseUrl).href : (/^https?:\/\//i.test(target) ? target : "");
+      if (!url || !/^https?:\/\//i.test(url)) continue;
+      rows.push({ label, url });
+    } catch {}
+  }
+  return rows;
+}
+
+
+function buildSiteArchitectureModel(pages, rootUrl, businessName = "") {
+  const rootHost = safeHost(rootUrl);
+  const linkMap = new Map();
+  const commercialPages = [];
+  const sectionHeadings = [];
+
+  const utility = /^(home|about|contact|faq|faqs|blog|news|gallery|reviews?|privacy|terms|policy|login|sign in|cart|checkout|donate|shop|search|menu)$/i;
+  const commercialAction = /\b(book|reserve|check availability|pricing|price|from \$|starting at|per person|per guest|buy tickets?|schedule)\b/i;
+
+  for (const page of pages || []) {
+    const markdown = String(page?.markdown || "");
+    const pageUrl = page?.url || rootUrl;
+    const headings = (markdown.match(/^#{1,4}\s+.+$/gm) || []).map(line => cleanText(line.replace(/^#{1,4}\s+/, ""))).filter(Boolean);
+    headings.forEach(h => { if (!utility.test(h) && !sectionHeadings.includes(h)) sectionHeadings.push(h); });
+
+    const links = extractMarkdownLinks(markdown, pageUrl);
+    for (const link of links) {
+      if (safeHost(link.url) !== rootHost) continue;
+      let parsed;
+      try { parsed = new URL(link.url); } catch { continue; }
+      const path = parsed.pathname.replace(/\/$/, "") || "/";
+      if (path === "/" || /\/(privacy|terms|policy|contact|about|faq|blog|news|gallery|login|account|cart|checkout|donate|shop)(?:\/|$)/i.test(path)) continue;
+      const label = normalizePrimaryProductName(link.label, businessName);
+      if (!label || utility.test(label) || !looksLikeBookableProductName(label)) continue;
+      const key = `${path.toLowerCase()}|${label.toLowerCase()}`;
+      const row = linkMap.get(key) || { label, url: parsed.href, path, occurrences: 0, sourcePages: new Set(), score: 0 };
+      row.occurrences += 1;
+      row.sourcePages.add(pageUrl);
+      row.score += 2;
+      if (samePage(pageUrl, rootUrl)) row.score += 3;
+      if (label.split(/\s+/).length >= 2) row.score += 2;
+      if (commercialAction.test(markdown)) row.score += 1;
+      linkMap.set(key, row);
+    }
+
+    if (!samePage(pageUrl, rootUrl)) {
+      const title = cleanText((markdown.match(/^Title:\s*(.+)$/mi) || [])[1] || "");
+      const h1 = headings[0] || "";
+      const candidate = normalizePrimaryProductName(h1 || title, businessName);
+      const hasCommercialEvidence = commercialAction.test(markdown);
+      if (candidate && looksLikeBookableProductName(candidate) && hasCommercialEvidence) {
+        commercialPages.push({ name: candidate, url: pageUrl, score: 14, evidence: "commercial detail page" });
+      }
+    }
+  }
+
+  const internalProducts = [...linkMap.values()]
+    .map(row => ({
+      name: row.label,
+      url: row.url,
+      score: row.score + Math.min(6, row.occurrences * 2),
+      evidence: row.occurrences > 1 ? `repeated internal product link (${row.occurrences})` : "internal product link"
+    }))
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 24);
+
+  return { internalProducts, commercialPages, sectionHeadings: sectionHeadings.slice(0, 40) };
 }
 
 function discoverCompetitorCandidates(discoveryDocs, operatorUrl, ctx) {
@@ -1963,7 +2172,7 @@ function inferBusinessContext(text, home, url) {
   const types = [
     ["guided sightseeing", /(sightseeing|celebrity homes?|modernism|architecture|legends? and icons?|city tour)/i],
     ["transportation / bus tours", /(charter bus|motorcoach|sprinter|luxury van|transportation|bus tour)/i],
-    ["boat / water experiences", /(boat|powerboat|catamaran|snorkel|sailing|yacht|fishing|stingray|starfish|reef|cruise)/i],
+    ["boat / water / diving experiences", /(boat|powerboat|catamaran|snorkel|scuba|div(?:e|ing)|sailing|yacht|fishing|stingray|starfish|reef|cruise)/i],
     ["outdoor adventure", /(jeep|hummer|atv|utv|off-road|rafting|kayak|hiking|adventure tour)/i]
   ];
   const matchedTypes = types.filter(([, regex]) => regex.test(haystack)).map(([label]) => label);
@@ -1976,9 +2185,9 @@ function inferBusinessContext(text, home, url) {
 }
 
 
-function buildSemanticOperatorModel(text, offers, businessContext, businessName) {
+function buildSemanticOperatorModel(text, offers, businessContext, businessName, siteArchitecture = null) {
   const raw = String(text || "");
-  const primaryProducts = extractPrimaryProductModel(raw, offers, businessName);
+  const primaryProducts = extractPrimaryProductModel(raw, offers, businessName, siteArchitecture);
   const geography = extractValidatedGeography(raw, businessContext?.location || "", primaryProducts);
 
   return {
@@ -1992,7 +2201,7 @@ function buildSemanticOperatorModel(text, offers, businessContext, businessName)
   };
 }
 
-function extractPrimaryProductModel(text, offers, businessName) {
+function extractPrimaryProductModel(text, offers, businessName, siteArchitecture = null) {
   const raw = String(text || "");
   const links = extractMarkdownLinks(raw);
   const headings = (raw.match(/^#{1,4}\s+.+$/gm) || [])
@@ -2029,8 +2238,20 @@ function extractPrimaryProductModel(text, offers, businessName) {
     }
   });
 
-  // Existing offer extraction is useful evidence, but is no longer the sole ontology.
-  (offers || []).forEach(offer => add(offer, 9, "offer inventory"));
+  // Site information architecture is first-class evidence. A product does not need to contain
+  // a tourism keyword; its role as a repeated internal commercial link/detail page is enough.
+  (siteArchitecture?.internalProducts || []).forEach(item => add(item.name, Math.max(11, Number(item.score || 0)), item.evidence || "site architecture", item.url));
+  (siteArchitecture?.commercialPages || []).forEach(item => add(item.name, Math.max(14, Number(item.score || 0)), item.evidence || "commercial detail page", item.url));
+
+  // STRUCTURED FIRST-PARTY COPY FALLBACK
+  // Some sites expose their real inventory as short bullets/cards under commercial sections
+  // rather than clean product URLs. Preserve that information architecture without requiring
+  // an activity dictionary. This is intentionally role-based: short customer-facing items
+  // beneath headings such as Experiences / Services / Discover / "... with us" are candidates.
+  extractStructuredProductPhrases(raw).forEach(item => add(item.name, item.score, item.evidence));
+
+  // Existing offer extraction is useful supporting evidence, but is no longer the sole ontology.
+  (offers || []).forEach(offer => add(offer, 7, "offer inventory"));
 
   // Headings that repeat in booking/product evidence are promoted without knowing the activity type.
   headings.forEach(heading => {
@@ -2067,6 +2288,47 @@ function extractPrimaryProductModel(text, offers, businessName) {
   return deduped.slice(0, 10);
 }
 
+function extractStructuredProductPhrases(text) {
+  const lines = String(text || "").split(/\n+/);
+  const out = [];
+  let commercialSectionDepth = 0;
+  let sectionBudget = 0;
+
+  const sectionSignal = value => /\b(experiences?|services?|activities|adventures?|things to do|discover|explore|choose|with us|our tours?|our trips?|our charters?|our rides?|our courses?|our rentals?)\b/i.test(value);
+  const reject = value => /^(home|about|contact|faq|gallery|rates?|pricing|reviews?|testimonials?|follow us|menu|close menu|book now|learn more)$/i.test(value)
+    || /privacy|terms|copyright|all rights reserved|call or whatsapp|newsletter|social/i.test(value);
+
+  for (const rawLine of lines) {
+    const line = cleanText(rawLine);
+    if (!line) continue;
+    const heading = rawLine.match(/^\s*(#{1,4})\s+(.+)$/);
+    if (heading) {
+      const depth = heading[1].length;
+      const label = cleanText(heading[2]);
+      if (sectionSignal(label)) {
+        commercialSectionDepth = depth;
+        sectionBudget = 14;
+      } else if (commercialSectionDepth && depth <= commercialSectionDepth) {
+        commercialSectionDepth = 0;
+        sectionBudget = 0;
+      }
+      continue;
+    }
+
+    if (!commercialSectionDepth || sectionBudget <= 0) continue;
+    sectionBudget -= 1;
+
+    const candidate = line.replace(/^[-*•]+\s*/, "").trim();
+    if (reject(candidate) || candidate.length < 3 || candidate.length > 70) continue;
+    const words = candidate.split(/\s+/).filter(Boolean);
+    if (words.length > 9 || /[.!?]$/.test(candidate)) continue;
+    if (/^(small groups?|experienced|professional|safety|all |our |the |you |we |get in touch|total flexibility|expert guidance|intimate groups)/i.test(candidate)) continue;
+    out.push({ name: candidate, score: 12, evidence: "structured commercial section" });
+  }
+
+  return out.slice(0, 24);
+}
+
 function normalizePrimaryProductName(value, businessName = "") {
   let text = cleanText(String(value || ""))
     .replace(/^(book|reserve|schedule|buy|check availability(?: for)?|learn more about)\s+(?:a|an|the|your)?\s*/i, "")
@@ -2095,18 +2357,25 @@ function looksLikeBookableProductName(value) {
   if (/privacy|terms|cookie|newsletter|sign in|log in|cart|gift card/i.test(text)) return false;
   if (/^[\d\s$€£.,-]+$/.test(text)) return false;
 
+  // Reject marketing/editorial headings. These are meaningful website copy, but they are not
+  // inventory and must never become traveler demand (e.g. "Dive Safe With Us").
+  if (/\b(with us|why choose|our story|meet (?:the|our)|what to expect|safe(?:ty)?|welcome|top rated|best in|about our|our team|our crew|learn more|read more|blog|news)\b/i.test(text)) return false;
+  if (/^(the|our|your|we|you|why|how|what)\b/i.test(text) && !/\b(tour|charter|cruise|rental|ride|lesson|course|diving|dive|snorkel|fishing|sailing|excursion|trip|experience)\b/i.test(text)) return false;
+
   // A product does not need to belong to a known activity taxonomy. It only needs to look like
-  // a meaningful customer-facing noun phrase rather than navigation or prose.
+  // a concise customer-facing noun phrase rather than navigation or prose.
   const words = text.split(/\s+/).filter(Boolean);
-  return words.length <= 10 && /[A-Za-z]/.test(text);
+  return words.length <= 8 && /[A-Za-z]/.test(text);
 }
 
 function primaryProductIntent(name) {
-  return String(name || "")
+  const intent = String(name || "")
     .replace(/\b(?:guided|basic|beginner|private appointment|appointment)\b/gi, " ")
     .replace(/\s+/g, " ")
     .trim()
     .toLowerCase();
+  if (!intent || /\b(with us|why choose|our story|what to expect|safe with us)\b/i.test(intent)) return "";
+  return intent;
 }
 
 function extractValidatedGeography(text, inferredCandidate, primaryProducts) {
@@ -2172,7 +2441,7 @@ function isProductLikeGeography(value, primaryProducts) {
   return /\b(tour|tours|ride|rides|riding|lesson|lessons|charter|charters|cruise|cruises|rental|rentals|experience|experiences|adventure|adventures|excursion|excursions|activity|activities|safari|trip|trips)\b/i.test(candidate);
 }
 
-function buildOperatorPreflight(text, offers, businessContext) {
+function buildOperatorPreflight(text, offers, businessContext, siteArchitecture = null) {
   const raw = String(text || "");
   const offerText = (offers || []).join(" ");
   const links = extractMarkdownLinks(raw);
@@ -2186,7 +2455,11 @@ function buildOperatorPreflight(text, offers, businessContext) {
     .filter(link => /\/(tour|tours|experience|experiences|excursion|excursions|activity|activities|charter|charters|cruise|cruises)\b/i.test(link.url) || productLike(link.label))
     .map(link => cleanText(`${link.label} ${link.url}`));
   const productHeadings = headings.filter(productLike);
-  const primarySignals = [...new Set([...productLinks, ...productHeadings, ...(offers || [])].map(cleanText).filter(Boolean))];
+  const architectureSignals = [
+    ...(siteArchitecture?.internalProducts || []).map(item => cleanText(`${item.name} ${item.url || ""}`)),
+    ...(siteArchitecture?.commercialPages || []).map(item => cleanText(`${item.name} ${item.url || ""}`))
+  ];
+  const primarySignals = [...new Set([...architectureSignals, ...productLinks, ...productHeadings, ...(offers || [])].map(cleanText).filter(Boolean))];
 
   const families = [
     { id: "water", label: "Boat / water experiences", pattern: /boat|powerboat|catamaran|snorkel|sail(?:ing)?|yacht|cruise|reef|sea tours?|water tours?|ocean|stingray|dolphin|whale/i },
@@ -2278,9 +2551,9 @@ function collectBookingLinkEvidence(pages) {
   const rows = [];
   (pages || []).forEach(page => {
     const markdown = String(page?.markdown || '');
-    for (const match of markdown.matchAll(/\[([^\]]*)\]\((https?:\/\/[^)]+)\)/g)) {
-      const label = cleanText(match[1]);
-      const href = match[2];
+    for (const link of extractMarkdownLinks(markdown, page?.url || '')) {
+      const label = cleanText(link.label || '');
+      const href = link.url;
       if (/book|reserve|availability|checkout|ticket|peek|fareharbor|junglebee|bokun|rezdy|xola|tripworks|checkfront|bookeo|rezgo|rocketrez/i.test(`${label} ${href}`)) {
         rows.push(`BOOKING LINK: ${label} ${href}`);
       }
@@ -2382,55 +2655,34 @@ function assessSearchFoundation(home, businessName, location, offers) {
 }
 
 function discoverUsefulLinks(markdown, baseUrl) {
-  const matches = [...markdown.matchAll(/\[([^\]]+)\]\((https?:\/\/[^)]+)\)/g)]
-    .map(match => ({ label: cleanText(match[1]), url: match[2] }));
   let origin;
   try { origin = new URL(baseUrl).origin; } catch { return []; }
 
-  const familyRules = [
-    ["water", /boat|powerboat|catamaran|snorkel|sail|yacht|cruise|reef|sea|ocean|fishing|stingray|dolphin|whale/i],
-    ["adventure", /jeep|hummer|atv|utv|off-road|rafting|kayak|zipline|horse|hiking|adventure/i],
-    ["sightseeing", /sightseeing|city|history|historical|celebrity|architecture|modernism|landmark/i],
-    ["food-wine", /food|culinary|tasting|wine|winery|vineyard/i],
-    ["general", /tour|charter|experience|activities|activity|trip|ride|product|book/i]
-  ];
+  const utility = /^(home|about|contact|faq|faqs|blog|news|gallery|reviews?|privacy|terms|policy|login|sign in|cart|checkout|donate|shop|search|menu)$/i;
   const candidates = [];
   const seen = new Set();
 
-  for (const item of matches) {
+  for (const item of extractMarkdownLinks(markdown, baseUrl)) {
     try {
       const parsed = new URL(item.url);
-      if (parsed.origin !== origin || /#|mailto:|tel:/i.test(item.url)) continue;
-      const signal = `${item.label} ${parsed.pathname}`;
-      const family = familyRules.find(([, regex]) => regex.test(signal))?.[0];
-      if (!family) continue;
+      if (parsed.origin !== origin) continue;
       parsed.hash = "";
       const clean = parsed.toString();
-      if (clean === baseUrl || seen.has(clean)) continue;
+      const label = cleanText(item.label || "");
+      if (!label || utility.test(label) || clean === baseUrl || seen.has(clean)) continue;
+      if (/\/(privacy|terms|policy|contact|about|faq|blog|news|gallery|login|account|cart|checkout|donate|shop)(?:\/|$)/i.test(parsed.pathname)) continue;
+      if (!looksLikeBookableProductName(label)) continue;
       seen.add(clean);
       const depth = parsed.pathname.split('/').filter(Boolean).length;
-      const score = (family === 'general' ? 1 : 5) + (/tour|charter|cruise|experience|activity|product/i.test(signal) ? 2 : 0) - Math.max(0, depth - 3);
-      candidates.push({ url: clean, family, score });
+      let score = 4;
+      if (label.split(/\s+/).length >= 2) score += 2;
+      if (depth >= 1 && depth <= 3) score += 2;
+      if (/\/(tours?|experiences?|activities?|services?|products?|book)(?:\/|$)/i.test(parsed.pathname)) score += 3;
+      candidates.push({ url: clean, score });
     } catch {}
   }
 
-  // Preflight coverage: read across materially different product families before taking
-  // multiple pages from the same family. This prevents an easy-to-crawl segment from
-  // becoming GO's entire mental model of a multi-segment operator.
-  const selected = [];
-  const usedFamilies = new Set();
-  candidates.sort((a, b) => b.score - a.score);
-  for (const item of candidates) {
-    if (item.family === 'general' || usedFamilies.has(item.family)) continue;
-    selected.push(item.url);
-    usedFamilies.add(item.family);
-    if (selected.length >= MAX_EXTRA_PAGES) return selected;
-  }
-  for (const item of candidates) {
-    if (!selected.includes(item.url)) selected.push(item.url);
-    if (selected.length >= MAX_EXTRA_PAGES) break;
-  }
-  return selected;
+  return candidates.sort((a, b) => b.score - a.score).slice(0, MAX_EXTRA_PAGES).map(item => item.url);
 }
 
 function showResults(profile) {

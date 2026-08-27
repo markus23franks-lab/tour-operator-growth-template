@@ -75,4 +75,105 @@ A market observation should eventually retain context such as:
 
 This enables GO to move from one-time analysis toward:
 
-**Baseline → Monitor → Act → Measure → Learn → Repeat**
+**Baseline → Monitor → Act → Measure → Learn → Repeat**## Intelligence Pipeline Observability — August 2026
+
+Build 029 testing established that Operator Analyzer failures cannot reliably be diagnosed from the final Growth Snapshot alone.
+
+The current conceptual intelligence pipeline is:
+
+FIRST-PARTY WEBSITE EVIDENCE
+↓
+OPERATOR TRUTH
+↓
+COMMERCIAL INVENTORY
+↓
+MARKET-INTELLIGENCE PAYLOAD
+↓
+DEMAND / SEARCH GENERATION
+↓
+EXTERNAL MARKET RESULTS
+↓
+COMMERCIAL / COMPETITOR QUALIFICATION
+↓
+FINDING INPUT
+↓
+GO JUDGMENT
+
+A critical architectural requirement is that commercial truth and evidence provenance survive each transition.
+
+Example:
+
+"This search exists because this confirmed primary product exists."
+
+"This competitor is included because GO found evidence that it sells a commercially comparable experience."
+
+"This finding exists because these specific pieces of evidence support it."
+
+Build 029 testing with Shaggy's Diving demonstrated why this matters.
+
+GO correctly understood the business as a Cayman Islands diving / boat / water-experience operator, yet downstream market investigation became overly generic and emphasized searches similar to "Cayman Islands tours."
+
+This indicates that correct operator understanding can be weakened during downstream handoff or demand generation.
+
+The next architectural step is therefore PIPELINE OBSERVABILITY rather than additional output-level heuristics.
+
+Temporary/internal diagnostic tooling should expose:
+
+1. Operator truth
+2. Inventory truth
+3. Market-intelligence input payload
+4. All generated demand candidates
+5. Selected searches and selection reasoning
+6. Raw external results
+7. Qualified commercial/competitor evidence
+8. Final evidence passed into finding generation
+
+This allows GO development to identify the exact seam where an incorrect conclusion originates rather than inferring upstream failures from final prose.
+
+### State Isolation
+
+Every Analyzer run must be isolated.
+
+No operator-specific information from a prior run may survive into a new analysis, including:
+
+- geography
+- business identity
+- competitors
+- pricing
+- search demand
+- market evidence
+- findings
+- fallback language
+
+A Shaggy's Diving test produced a Finding #3 containing Palm Springs language from prior FSA analysis.
+
+This is a hard evidence-integrity failure and must be treated as a regression condition.
+
+### Booking Technology Detection
+
+OBP detection should remain an independent evidence process rather than depending solely on readable website text.
+
+Potential evidence includes:
+
+- raw HTML
+- iframe URLs
+- script URLs
+- hrefs / booking links
+- redirects
+- known provider domains
+- known provider signatures
+- external booking-domain handoffs
+
+Direct booking infrastructure and marketplace distribution remain separate concepts.
+
+Examples of direct booking infrastructure may include:
+
+Peek, FareHarbor, Junglebee, Bokun, Rezdy, Checkfront, Xola and similar OBPs.
+
+Examples of marketplace/distribution surfaces include:
+
+Viator, GetYourGuide, Tripadvisor and other OTAs.
+
+GO should never claim an OBP without sufficient evidence.
+
+"Booking flow detected; provider not confidently identified" is an acceptable conclusion.

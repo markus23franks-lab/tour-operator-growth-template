@@ -30,6 +30,20 @@ export default async (request) => {
   const businessName = cleanText(body.businessName);
   const website = cleanUrl(body.website);
   const location = cleanText(body.location);
+
+  // Acquisition is intentionally separate from market judgment. The browser-side
+  // reader can occasionally return challenge/interstitial text; GO must recover
+  // first-party evidence before it tries to model or judge the operator.
+  if (body.action === "acquire") {
+    if (!website) return json(400, { ok: false, error: "website is required." });
+    try {
+      const acquisition = await acquireWebsiteEvidence({ website, apiKey });
+      return json(200, { ok: true, acquisition });
+    } catch (error) {
+      console.error("Website acquisition error", error);
+      return json(502, { ok: false, error: error instanceof Error ? error.message : "Website acquisition failed." });
+    }
+  }
   const queries = Array.isArray(body.queries)
     ? [...new Set(body.queries.map(cleanText).filter(Boolean))].slice(0, MAX_QUERIES)
     : [];
@@ -96,6 +110,146 @@ export default async (request) => {
     });
   }
 };
+
+async function acquireWebsiteEvidence({ website, apiKey }) {
+  const origin = new URL(website).origin;
+  const hostName = host(website);
+  const pages = [];
+  const seen = new Set();
+
+  const addPage = (url, text, source) => {
+    const clean = cleanTextBlock(text);
+    if (!url || !clean || clean.length < 180 || looksLikeChallenge(clean) || seen.has(url)) return;
+    seen.add(url);
+    pages.push({ url, markdown: clean.slice(0, 90000), source });
+  };
+
+  // 1) Server-side HTML retrieval. This is independent of Jina/browser rendering and
+  // often succeeds when a public reader is challenged.
+  const home = await fetchPublicHtml(website).catch(() => null);
+  if (home) {
+    addPage(website, htmlToEvidence(home.html, website), "direct-html");
+    const links = extractInternalLinks(home.html, origin).slice(0, 10);
+    for (const link of links.slice(0, 6)) {
+      const page = await fetchPublicHtml(link).catch(() => null);
+      if (page) addPage(link, htmlToEvidence(page.html, link), "direct-html");
+      if (pages.length >= 6) break;
+    }
+  }
+
+  // 2) Search-index recovery. This both validates that the domain represents the
+  // business and recovers product/page language when direct retrieval is thin.
+  let indexed = [];
+  if (apiKey && hostName) {
+    const payload = await serpSearch({ engine: "google", q: `site:${hostName}`, num: 10, hl: "en", api_key: apiKey }).catch(() => null);
+    indexed = normalizeOrganic(payload?.organic_results || []).filter(row => host(row.link) === hostName);
+    for (const row of indexed) {
+      addPage(row.link || website, `Title: ${row.title}\n${row.snippet}`, "google-index");
+    }
+  }
+
+  const directChars = pages.filter(p => p.source === "direct-html").reduce((n,p) => n + p.markdown.length, 0);
+  const meaningful = pages.some(p => /book|tour|charter|ride|rental|dive|cruise|experience|activity|trip|lesson|adventure/i.test(p.markdown));
+  return {
+    website,
+    pages: pages.slice(0, 10),
+    indexedPages: indexed.slice(0, 10),
+    sufficient: directChars >= 1200 && meaningful,
+    directChars,
+    note: pages.length ? "Recovered first-party website evidence before operator modeling." : "Could not recover sufficient first-party website evidence."
+  };
+}
+
+async function fetchPublicHtml(url) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 12000);
+  try {
+    const res = await fetch(url, {
+      redirect: "follow",
+      headers: {
+        Accept: "text/html,application/xhtml+xml",
+        "User-Agent": "Mozilla/5.0 (compatible; GrowthOperator/1.0; +public-business-analysis)"
+      },
+      signal: controller.signal
+    });
+    if (!res.ok) throw new Error(`Website returned ${res.status}`);
+    const html = await res.text();
+    if (!html || html.length < 200) throw new Error("Website returned too little content");
+    return { html };
+  } finally { clearTimeout(timer); }
+}
+
+function htmlToEvidence(html, url) {
+  const title = decodeEntities((html.match(/<title[^>]*>([\s\S]*?)<\/title>/i)?.[1] || "").replace(/<[^>]+>/g, " "));
+  const links = [];
+  for (const match of String(html || "").matchAll(/<a\b[^>]*href=["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi)) {
+    try {
+      const href = new URL(decodeEntities(match[1]), url).href;
+      const label = cleanTextBlock(decodeEntities(match[2].replace(/<[^>]+>/g, " ")));
+      if (label && /^https?:\/\//i.test(href)) links.push(`[${label}](${href})`);
+    } catch {}
+  }
+  const headingized = String(html || "")
+    .replace(/<h1[^>]*>([\s\S]*?)<\/h1>/gi, (_, value) => `\n# ${decodeEntities(value.replace(/<[^>]+>/g, " "))}\n`)
+    .replace(/<h2[^>]*>([\s\S]*?)<\/h2>/gi, (_, value) => `\n## ${decodeEntities(value.replace(/<[^>]+>/g, " "))}\n`)
+    .replace(/<h3[^>]*>([\s\S]*?)<\/h3>/gi, (_, value) => `\n### ${decodeEntities(value.replace(/<[^>]+>/g, " "))}\n`);
+  const providerUrls = [...new Set((String(html || "").match(/https?:\/\/[^\s"'<>]+(?:peek|fareharbor|junglebee|bokun|rezdy|xola|tripworks|checkfront|bookeo|rezgo|rocketrez)[^\s"'<>]*/gi) || []))]
+    .slice(0, 20)
+    .map(value => `BOOKING LINK: ${value}`);
+  const body = headingized
+    .replace(/<script[\s\S]*?<\/script>/gi, " ")
+    .replace(/<style[\s\S]*?<\/style>/gi, " ")
+    .replace(/<svg[\s\S]*?<\/svg>/gi, " ")
+    .replace(/<br\s*\/?\s*>/gi, "\n")
+    .replace(/<\/(p|div|section|article|li|nav|a)>/gi, "\n")
+    .replace(/<[^>]+>/g, " ");
+  return `URL: ${url}\nTitle: ${title}\n${links.join("\n")}\n${providerUrls.join("\n")}\n\n${decodeEntities(body)}`;
+}
+
+function extractInternalLinks(html, origin) {
+  const scored = [];
+  const seen = new Set();
+  const utilityLabel = /^(home|about|contact|faq|faqs|blog|news|gallery|reviews?|privacy|terms|policy|login|sign in|cart|checkout|donate|shop|search|menu)$/i;
+
+  for (const match of String(html || "").matchAll(/<a\b[^>]*href=["']([^"'#]+)["'][^>]*>([\s\S]*?)<\/a>/gi)) {
+    try {
+      const u = new URL(decodeEntities(match[1]), origin);
+      if (u.origin !== origin || seen.has(u.href)) continue;
+      const label = cleanTextBlock(decodeEntities(match[2].replace(/<[^>]+>/g, " ")));
+      const path = u.pathname.toLowerCase();
+      if (!label || utilityLabel.test(label)) continue;
+      if (/privacy|terms|policy|login|account|cart|checkout|blog|news|faq|contact|about|gallery|donate|shop/.test(path)) continue;
+      if (label.length < 3 || label.length > 100) continue;
+      seen.add(u.href);
+      const depth = u.pathname.split('/').filter(Boolean).length;
+      let score = 4;
+      if (label.split(/\s+/).length >= 2) score += 2;
+      if (depth >= 1 && depth <= 3) score += 2;
+      if (/\/(tours?|experiences?|activities?|services?|products?|book)(?:\/|$)/i.test(path)) score += 3;
+      if (/book|reserve|availability|pricing|price/i.test(label)) score += 2;
+      scored.push({ url: u.href, score });
+    } catch {}
+  }
+  return scored.sort((a,b) => b.score-a.score).map(x => x.url);
+}
+
+function looksLikeChallenge(text) {
+  return /robot challenge|captcha|verify you are human|access denied|checking your browser|enable javascript and cookies/i.test(text);
+}
+
+function cleanTextBlock(value) {
+  return decodeEntities(String(value || ""))
+    .replace(/\r/g, "")
+    .replace(/[ \t]+/g, " ")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
+function decodeEntities(value) {
+  return String(value || "")
+    .replace(/&nbsp;/gi, " ").replace(/&amp;/gi, "&").replace(/&quot;/gi, '"')
+    .replace(/&#39;|&apos;/gi, "'").replace(/&lt;/gi, "<").replace(/&gt;/gi, ">");
+}
 
 async function runMarketQuery({
   query,
@@ -337,6 +491,7 @@ function aggregatePlayers(
 
     row.organicResults.forEach((item) => {
       if (isLowValueOrganicDomain(item.domain)) return;
+      if (!isCommerciallyRelevantOrganicResult(item, row.query)) return;
 
       addPlayer(
         map,
@@ -449,6 +604,26 @@ function classifyPlayer(url, name) {
   }
 
   return "direct";
+}
+
+
+function isCommerciallyRelevantOrganicResult(item, query) {
+  const title = cleanText(item?.title || "");
+  const snippet = cleanText(item?.snippet || "");
+  const domain = String(item?.domain || "");
+  const text = `${title} ${snippet}`.toLowerCase();
+  if (!title && !domain) return false;
+
+  // Keep obvious operator/commerce results and tourism authorities/marketplaces.
+  if (/tour|charter|cruise|diving|dive|scuba|snorkel|fishing|sailing|excursion|adventure|rental|ride|trip|experience|activity|tickets?|booking|reserve/i.test(text)) return true;
+  if (/tripadvisor|viator|getyourguide|yelp|tourism|visit|chamber|museum/i.test(`${domain} ${text}`)) return true;
+
+  // Otherwise require meaningful overlap with the commercial part of the query. This blocks
+  // celebrity songs/images/editorial pages from being promoted as market competitors.
+  const stop = new Set(["the","and","for","with","from","near","best","top","islands","island","cayman","grand","tours","tour"]);
+  const terms = String(query || "").toLowerCase().split(/[^a-z0-9]+/).filter(t => t.length >= 4 && !stop.has(t));
+  const overlap = terms.filter(term => text.includes(term)).length;
+  return overlap >= Math.min(2, Math.max(1, terms.length));
 }
 
 function isLowValueOrganicDomain(domain) {

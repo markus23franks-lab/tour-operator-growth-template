@@ -1,8 +1,12 @@
 "use strict";
 
+const GO_FRONTEND_BUILD_ID = "B029-MARKET-HANDOFF-REPAIR-FE-20260831-2248";
+let GO_MARKET_HANDOFF_STATUS = { ok: false, buildId: "UNVERIFIED", status: "not-checked", error: "" };
+let GO_ACTIVE_RUN_ID = "";
+
 const READER_ENDPOINT = "https://r.jina.ai/";
 const MAX_EXTRA_PAGES = 6;
-const MAX_MARKET_QUERIES = 5;
+const MAX_MARKET_QUERIES = 8;
 const REPRESENTATIVE_SEARCH_TARGET = 8;
 const MIN_REPRESENTATIVE_SEARCHES = 5;
 const MAX_DEMAND_CANDIDATES = 8;
@@ -106,6 +110,7 @@ document.getElementById("try-supported").addEventListener("click", () => {
 
 async function runAnalysis(rawUrl) {
   const token = ++scanToken;
+  GO_ACTIVE_RUN_ID = `go-${Date.now()}-${token}`;
   const url = normalizeUrl(rawUrl);
   if (!url) return showUnsupported(rawUrl, "That does not look like a valid public website URL.");
 
@@ -168,8 +173,12 @@ async function runAnalysis(rawUrl) {
     // Booking providers frequently live behind external checkout links rather than in the
     // readable body copy. Preserve those public link destinations as evidence before GO
     // decides that no OBP is present.
-    const bookingLinkEvidence = collectBookingLinkEvidence([home, ...extraPages]);
+    const bookingLinkEvidence = [
+      collectBookingLinkEvidence([home, ...extraPages]),
+      String(acquisition?.bookingEvidence || "")
+    ].filter(Boolean).join("\n");
     const websiteContext = buildWebsiteContext(url, [home, ...extraPages], bookingLinkEvidence);
+    await verifyMarketFunctionRuntime();
     const market = await investigatePublicMarket(websiteContext);
     if (token !== scanToken) return;
     setStage("search", market.searchPages.length ? "done" : "partial", market.searchPages.length ? "PUBLIC WEB" : "LIMITED");
@@ -217,6 +226,23 @@ async function runCaymanBenchmark() {
   activeProfile = caymanProfile;
   localStorage.setItem("growthOperatorProspectProfile", JSON.stringify(caymanProfile));
   showResults(caymanProfile);
+}
+
+async function verifyMarketFunctionRuntime() {
+  try {
+    const response = await fetch('/.netlify/functions/market-intelligence', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'runtime', frontendBuildId: GO_FRONTEND_BUILD_ID, debugRunId: GO_ACTIVE_RUN_ID })
+    });
+    const payload = await response.json().catch(() => ({}));
+    const buildId = payload.runtimeBuildId || payload.buildId || 'MISSING';
+    GO_MARKET_HANDOFF_STATUS = { ok: Boolean(response.ok && payload.ok && buildId !== 'MISSING'), buildId, status: `${response.status}`, error: payload.error || '' };
+    return GO_MARKET_HANDOFF_STATUS;
+  } catch (error) {
+    GO_MARKET_HANDOFF_STATUS = { ok: false, buildId: 'UNREACHABLE', status: 'fetch-error', error: error?.message || String(error) };
+    return GO_MARKET_HANDOFF_STATUS;
+  }
 }
 
 async function acquireFirstPartyEvidence(url) {
@@ -323,6 +349,14 @@ function buildWebsiteContext(url, pages, bookingLinkEvidence = "") {
   const businessContext = inferBusinessContext(combined, home, url);
   const siteArchitecture = buildSiteArchitectureModel(pages, url, businessName);
   const semanticModel = buildSemanticOperatorModel(combined, offers, businessContext, businessName, siteArchitecture);
+  const commercialTruth = buildCommercialTruthModel({
+    businessName,
+    combined,
+    offers,
+    siteArchitecture,
+    semanticModel,
+    location: businessContext.location || ""
+  });
 
   // Foundational facts must pass semantic-role validation before GO uses them downstream.
   // A product/service label must never silently become geography.
@@ -335,7 +369,7 @@ function buildWebsiteContext(url, pages, bookingLinkEvidence = "") {
   }
 
   const preflight = buildOperatorPreflight(combined, offers, businessContext, siteArchitecture);
-  return { url, businessName, offers, businessContext, semanticModel, preflight, siteArchitecture, combined };
+  return { url, businessName, offers, businessContext, semanticModel, commercialTruth, preflight, siteArchitecture, combined };
 }
 
 function emptyMarket() {
@@ -444,6 +478,8 @@ async function investigatePublicMarket(ctx) {
   market.retrievalNote = verifiedSurfaceCount
     ? `GO verified external market evidence across ${verifiedSurfaceCount} public discovery surface${verifiedSurfaceCount === 1 ? "" : "s"} and surfaced ${market.competitors.length} relevant market player${market.competitors.length === 1 ? "" : "s"}.`
     : "GO could not verify an external public discovery surface during this scan, so it withheld market conclusions.";
+  market.handoffStatus = { ...GO_MARKET_HANDOFF_STATUS, fallbackUsed: true };
+  market.pipelineDebug = { ...(market.pipelineDebug || {}), marketHandoff: { ...GO_MARKET_HANDOFF_STATUS, fallbackUsed: true } };
   return market;
 }
 
@@ -461,15 +497,22 @@ async function readProfessionalMarket(ctx) {
         businessName: ctx.businessName,
         website: ctx.url,
         location: ctx.businessContext.location,
-        queries
+        queries,
+        debugRunId: GO_ACTIVE_RUN_ID,
+        frontendBuildId: GO_FRONTEND_BUILD_ID
       })
     });
 
-    if (!response.ok) return null;
-    const payload = await response.json();
-    if (!payload?.ok || !payload.market) return null;
+    const payload = await response.json().catch(() => ({}));
+    const responseBuildId = payload.runtimeBuildId || payload.buildId || payload?.market?.runtimeBuildId || payload?.market?.buildId || 'MISSING';
+    GO_MARKET_HANDOFF_STATUS = { ok: Boolean(response.ok && payload?.ok && payload?.market), buildId: responseBuildId, status: `${response.status}`, error: payload?.error || '' };
+    if (!GO_MARKET_HANDOFF_STATUS.ok) {
+      console.warn('GO professional market handoff failed', GO_MARKET_HANDOFF_STATUS);
+      return null;
+    }
 
     const discoveryMarket = normalizeProfessionalMarket(payload.market, demandPlan);
+    discoveryMarket.handoffStatus = { ...GO_MARKET_HANDOFF_STATUS };
     const portfolio = buildRepresentativeSearchPortfolio(ctx, discoveryMarket.selectedDemand, demandPlan);
 
     // Analyzer V1 uses the first small discovery pass to choose the commercially relevant
@@ -483,15 +526,20 @@ async function readProfessionalMarket(ctx) {
           businessName: ctx.businessName,
           website: ctx.url,
           location: ctx.businessContext.location,
-          queries: portfolio
+          queries: portfolio,
+          debugRunId: GO_ACTIVE_RUN_ID,
+          frontendBuildId: GO_FRONTEND_BUILD_ID
         })
       });
-      if (portfolioResponse.ok) {
-        const portfolioPayload = await portfolioResponse.json();
-        if (portfolioPayload?.ok && portfolioPayload.market) {
-          return normalizeRepresentativeMarket(portfolioPayload.market, discoveryMarket, demandPlan);
-        }
+      const portfolioPayload = await portfolioResponse.json().catch(() => ({}));
+      const portfolioBuildId = portfolioPayload.runtimeBuildId || portfolioPayload.buildId || portfolioPayload?.market?.runtimeBuildId || portfolioPayload?.market?.buildId || GO_MARKET_HANDOFF_STATUS.buildId || 'MISSING';
+      GO_MARKET_HANDOFF_STATUS = { ok: Boolean(portfolioResponse.ok && portfolioPayload?.ok && portfolioPayload?.market), buildId: portfolioBuildId, status: `${portfolioResponse.status}`, error: portfolioPayload?.error || '' };
+      if (GO_MARKET_HANDOFF_STATUS.ok) {
+        const normalized = normalizeRepresentativeMarket(portfolioPayload.market, discoveryMarket, demandPlan);
+        normalized.handoffStatus = { ...GO_MARKET_HANDOFF_STATUS };
+        return normalized;
       }
+      console.warn('GO representative market handoff failed', GO_MARKET_HANDOFF_STATUS);
     }
 
     return discoveryMarket;
@@ -506,77 +554,35 @@ function marketQueriesFromRaw(raw) {
 }
 
 function buildRepresentativeSearchPortfolio(ctx, selectedDemand, demandPlan) {
-  const location = String(ctx.businessContext?.location || '').split(',')[0].trim();
-  if (!location || !selectedDemand) return marketQueriesFromRaw({ queries: (demandPlan || []).slice(0, MAX_MARKET_QUERIES) });
-
-  const text = `${(ctx.offers || []).join(' ')} ${(ctx.preflight?.primarySignals || []).join(' ')}`.toLowerCase();
-  const intents = [];
-  const add = intent => {
-    const clean = String(intent || '').replace(/\s+/g, ' ').trim();
-    if (clean && !intents.some(item => item.toLowerCase() === clean.toLowerCase())) intents.push(clean);
-  };
-
-  add(selectedDemand.intent);
-
-  // Preserve one anchor search from each material inventory family before expanding the
-  // winning family into variants. That makes the portfolio representative of the business,
-  // while Commercial Intent still determines which family receives the deepest coverage.
-  const anchoredFamilies = new Set([selectedDemand.coverageFamily || selectedDemand.id]);
-  (demandPlan || []).forEach(item => {
-    const family = item.coverageFamily || item.id;
-    if (item.id === 'general-tours' || item.verifiedProductFamily === false || anchoredFamilies.has(family)) return;
-    add(item.intent);
-    anchoredFamilies.add(family);
-  });
-
-  const rules = {
-    'water': [
-      [/stingray/, 'stingray tours'], [/snorkel|reef|coral/, 'snorkeling tours'],
-      [/private|charter/, 'private boat charters'], [/boat|cruise|sailing|yacht/, 'boat tours'],
-      [/catamaran/, 'catamaran tours'], [/sunset/, 'sunset cruises']
-    ],
-    'celebrity-homes': [
-      [/celebrity|famous homes?/, 'celebrity homes tours'], [/movie stars?|movie star homes?/, 'movie star tours'],
-      [/hollywood/, 'Hollywood tours'], [/sightseeing|city tour|guided tour/, 'sightseeing tours'],
-      [/history|historical/, 'history tours']
-    ],
-    'architecture-modernism': [
-      [/architect/, 'architecture tours'], [/modernism|midcentury|mid-century/, 'modernism tours'],
-      [/homes?/, 'modern homes tours'], [/sightseeing|guided tour/, 'sightseeing tours']
-    ],
-    'sightseeing': [[/sightseeing/, 'sightseeing tours'], [/history|historical/, 'history tours'], [/city tour|guided city/, 'city tours']],
-    'adventure': [[/horseback|horse riding|trail ride|trail riding|equestrian/, 'horseback riding tours'], [/atv|utv/, 'ATV tours'], [/jeep|hummer|off-road/, 'off-road tours'], [/rafting/, 'rafting tours'], [/kayak/, 'kayak tours'], [/zipline/, 'zipline tours']],
-    'fishing': [[/fishing/, 'fishing charters'], [/deep sea/, 'deep sea fishing charters'], [/sportfishing/, 'sportfishing charters']],
-    'food': [[/food/, 'food tours'], [/culinary/, 'culinary tours'], [/tasting/, 'tasting tours']],
-    'wine': [[/wine/, 'wine tours'], [/winery/, 'winery tours'], [/tasting/, 'wine tasting tours']]
-  };
-
-  (rules[selectedDemand.id] || []).forEach(([pattern, intent]) => { if (pattern.test(text)) add(intent); });
-  (selectedDemand.aliases || []).forEach(alias => add(`${alias} tours`.replace(/tours tours$/i, 'tours')));
-
-  // Preflight coverage: preserve one representative intent from every material product family
-  // GO discovered before adding broad destination context. Commercial prioritization can still
-  // rank one family first, but it cannot erase another meaningful part of the operator's inventory.
-  (demandPlan || [])
-    .filter(item => item.id !== selectedDemand.id && item.id !== 'general-tours' && item.verifiedProductFamily !== false)
-    .forEach(item => add(item.intent));
-
-  // Evidence-sufficiency recovery: when the first pass has only a thin set of commercial
-  // intents, derive additional searches only from product language GO already verified on
-  // the operator's own site. This prevents a sparse site from collapsing into one generic
-  // "tours" query while still refusing to invent unrelated activities.
-  if (intents.filter(intent => intent !== 'tours').length < MIN_REPRESENTATIVE_SEARCHES) {
-    buildRecoveryIntents(ctx, selectedDemand).forEach(add);
-  }
-  add('tours');
+  const location = cleanMarketLocation(ctx.businessContext?.location || ctx.commercialTruth?.geography || '');
+  const plan = Array.isArray(demandPlan) ? demandPlan : [];
+  if (!location) return plan.slice(0, REPRESENTATIVE_SEARCH_TARGET).map(item => item.query).filter(Boolean);
 
   const variants = [];
-  const push = q => { if (q && !variants.some(x => x.toLowerCase() === q.toLowerCase())) variants.push(q); };
-  intents.forEach(intent => push(`${location} ${intent}`));
+  const seen = new Set();
+  const add = query => {
+    const clean = String(query || '').replace(/\s+/g, ' ').trim();
+    const key = clean.toLowerCase();
+    if (!clean || seen.has(key)) return;
+    seen.add(key); variants.push(clean);
+  };
 
-  // Natural destination-last variants increase representative coverage without inventing
-  // unrelated keywords. They are still grounded in the same operator-supported intent.
-  intents.filter(intent => intent !== 'tours').forEach(intent => push(`${intent} ${location}`));
+  // Put the winning commercially validated product first, then preserve breadth across other
+  // primary products. No generic destination query is added when real product truth exists.
+  const ordered = [selectedDemand, ...plan].filter(Boolean);
+  for (const item of ordered) {
+    if (!item.intent || item.intent === 'tours' || item.verifiedProductFamily === false) continue;
+    add(`${location} ${item.intent}`);
+    if (variants.length >= REPRESENTATIVE_SEARCH_TARGET) break;
+  }
+
+  // If there is still room, add destination-last variants of the strongest products. These
+  // remain the exact same first-party commercial intent, not invented keyword families.
+  for (const item of ordered.slice(0, 4)) {
+    if (!item?.intent || item.intent === 'tours') continue;
+    add(`${item.intent} ${location}`);
+    if (variants.length >= REPRESENTATIVE_SEARCH_TARGET) break;
+  }
 
   return variants.slice(0, REPRESENTATIVE_SEARCH_TARGET);
 }
@@ -623,6 +629,8 @@ function normalizeProfessionalMarket(raw, demandPlan) {
   market.provider = raw.provider || 'SerpApi';
   market.professional = true;
   market.observedAt = raw.observedAt || '';
+  market.runtimeBuildId = raw.runtimeBuildId || raw.buildId || '';
+  market.runtimeDebug = raw.runtimeDebug || null;
   market.demandPlan = demandPlan;
   market.queries = demandPlan.slice(0, MAX_MARKET_QUERIES).map(item => item.query);
   market.target = raw.target || null;
@@ -661,7 +669,8 @@ function normalizeProfessionalMarket(raw, demandPlan) {
       ].filter(Boolean).join(' · ') || 'No structured trust metrics returned.'
     },
     specialization: detectMarketSpecialization(`${player.name || ''} ${(player.queries || []).join(' ')}`, market.queries),
-    sources: player.sources || []
+    sources: player.sources || [],
+    qualificationReasons: Array.isArray(player.qualificationReasons) ? player.qualificationReasons : []
   }));
 
   market.demandFamilies = scoreDemandFamilies({
@@ -695,6 +704,19 @@ function normalizeProfessionalMarket(raw, demandPlan) {
   market.retrievalNote = market.selectedDemand
     ? `GO compared ${market.demandFamilies.length} traveler-demand families through ${market.provider} and prioritized ${market.selectedDemand.label} based on operator relevance plus external market evidence.`
     : `GO verified ${market.queryResults.length} localized Google market searches through ${market.provider} and separated direct operators, marketplaces and destination authorities before reasoning.`;
+  market.pipelineDebug = {
+    frontendBuildId: GO_FRONTEND_BUILD_ID,
+    marketFunctionBuildId: market.runtimeBuildId || GO_MARKET_HANDOFF_STATUS.buildId || "MISSING",
+    marketHandoff: { ...GO_MARKET_HANDOFF_STATUS },
+    runId: GO_ACTIVE_RUN_ID,
+    runtimeDebug: market.runtimeDebug || null,
+    demandPlan: demandPlan.map(item => ({ id: item.id, label: item.label, intent: item.intent, query: item.query, semanticProduct: !!item.semanticProduct, websiteEvidence: item.websiteEvidence })),
+    selectedDemand: market.selectedDemand ? { label: market.selectedDemand.label, intent: market.selectedDemand.intent, query: market.selectedDemand.query, priorityScore: market.selectedDemand.priorityScore, reason: market.selectedDemand.reason } : null,
+    selectedQueries: market.queries.slice(),
+    rawQueryResults: market.queryResults.map(row => ({ query: row.query, targetLocalPosition: row.targetLocalPosition, targetOrganicPosition: row.targetOrganicPosition, localResultsChecked: row.localResultsChecked, organicResultsChecked: row.organicResultsChecked })),
+    qualificationAudit: Array.isArray(raw.qualificationAudit) ? raw.qualificationAudit : [],
+    qualifiedPlayers: market.competitors.slice(0, 12).map(item => ({ name: item.name, category: item.category, queries: item.queries, bestLocalPosition: item.bestLocalPosition, bestOrganicPosition: item.bestOrganicPosition, reasons: item.qualificationReasons || [] }))
+  };
   return market;
 }
 
@@ -704,153 +726,282 @@ function buildMarketQueries(ctx) {
     .map(item => item.query);
 }
 
+
+function inferSpecificSearchLocation(ctx, truth) {
+  const base = cleanMarketLocation(ctx.businessContext?.location || truth?.geography || '');
+  const candidates = [];
+  const push = value => {
+    const v = cleanText(value || '').replace(/^[\s,\-]+|[\s,\-]+$/g, '');
+    if (!v || v.length < 3 || v.length > 60) return;
+    if (!candidates.some(x => x.toLowerCase() === v.toLowerCase())) candidates.push(v);
+  };
+  const sourceNames = [
+    ...(truth?.primaryProducts || []).map(x => x.name),
+    ...(truth?.segments || []).map(x => x.name),
+    ...(ctx.offers || []).slice(0, 20)
+  ];
+  for (const raw of sourceNames) {
+    const text = String(raw || '');
+    const m = text.match(/\b(?:in|near|around)\s+([A-Z][A-Za-z.'’\-]+(?:\s+[A-Z][A-Za-z.'’\-]+){0,3})\b/);
+    if (m) push(m[1]);
+  }
+  if (base) push(base);
+  // Prefer a more specific place phrase that still overlaps the validated geography.
+  const baseTokens = new Set(String(base || '').toLowerCase().split(/[^a-z0-9]+/).filter(x => x.length > 3));
+  const specific = candidates.find(c => {
+    const tokens = c.toLowerCase().split(/[^a-z0-9]+/).filter(x => x.length > 3);
+    return tokens.some(t => baseTokens.has(t)) && c.toLowerCase() !== String(base || '').toLowerCase();
+  });
+  return specific || base;
+}
+
+function cleanCommercialSearchIntent(value, searchLocation, validatedLocation) {
+  let text = canonicalCommercialIntent(value || '');
+  if (!text) return '';
+  const locationTokens = new Set(
+    `${searchLocation || ''} ${validatedLocation || ''}`
+      .toLowerCase().split(/[^a-z0-9]+/).filter(t => t.length > 3)
+  );
+  text = text.replace(/^(?:go|book|explore|discover|experience)\s+/i, ' ');
+  text = text.replace(/\b(?:in|near|around|at)\s+([a-z][a-z.'’\-]+(?:\s+[a-z][a-z.'’\-]+){0,3})$/i, (full, place) => {
+    const tokens = place.toLowerCase().split(/[^a-z0-9]+/).filter(t => t.length > 3);
+    return tokens.some(t => locationTokens.has(t)) ? ' ' : full;
+  });
+  for (const loc of [searchLocation, validatedLocation].filter(Boolean)) {
+    for (const token of String(loc).toLowerCase().split(/[^a-z0-9]+/).filter(t => t.length > 3)) {
+      text = text.replace(new RegExp(`\\b${escapeRegExp(token)}\\b`, 'ig'), ' ');
+    }
+  }
+  text = text
+    .replace(/\b(?:image|photo|gallery|package|packages)\s*\d*\b/gi, ' ')
+    .replace(/\s+/g, ' ').trim();
+  if (!text || isNonCommercialInventoryLabel(text)) return '';
+  // Search demand should be a concise thing a traveler could plausibly type.
+  const words = text.split(/\s+/).filter(Boolean);
+  if (words.length > 6) return '';
+  return text;
+}
+
+function intentSpecificityScore(intent) {
+  const words = String(intent || '').split(/\s+/).filter(Boolean);
+  const generic = /^(?:tours?|activities|experiences|adventures|things to do|excursions?)$/i.test(intent || '');
+  return (generic ? -20 : 0) + Math.min(words.length, 5) * 3 + (/\b(?:private|scuba|snorkel|charter|diving|dive|night|sunset|sailing|fishing|horseback|rafting|kayak|jeep|safari|food|wine|helicopter)\b/i.test(intent || '') ? 8 : 0);
+}
+
 function buildDemandPlan(ctx) {
-  const location = String(ctx.businessContext?.location || '').trim();
+  const location = cleanMarketLocation(ctx.businessContext?.location || ctx.commercialTruth?.geography || '');
   if (!location) return [];
 
+  const truth = ctx.commercialTruth || buildCommercialTruthModel({
+    businessName: ctx.businessName,
+    combined: ctx.combined,
+    offers: ctx.offers,
+    siteArchitecture: ctx.siteArchitecture,
+    semanticModel: ctx.semanticModel,
+    location
+  });
+  const searchLocation = inferSpecificSearchLocation(ctx, truth) || location;
   const candidates = [];
-  const seenQueries = new Set();
-  const add = candidate => {
-    if (!candidate?.query) return;
-    const key = candidate.query.toLowerCase().replace(/\s+/g, ' ').trim();
-    if (seenQueries.has(key)) return;
-    seenQueries.add(key);
-    candidates.push(candidate);
-  };
-
-  // BUILD 029 — OPERATOR MODEL -> MARKET HANDOFF
-  // This is the only place primary market demand should be born. Pull from the validated
-  // commercial model first, not loose page copy or a predefined tourism taxonomy.
-  const primaryProducts = collectValidatedCommercialProducts(ctx);
-  primaryProducts.forEach((product, index) => {
-    const intent = primaryProductIntent(product.name);
-    if (!intent) return;
-    const id = `product-${intent.replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || index}`;
-    add({
-      id,
-      coverageFamily: id,
-      label: product.name,
-      intent,
-      query: `${location} ${intent}`,
+  const seen = new Set();
+  const add = (intent, source, score, evidence = [], role = 'primary') => {
+    const cleanIntent = cleanCommercialSearchIntent(intent, searchLocation, location);
+    if (!cleanIntent || /^(?:tours?|activities|experiences|adventures)$/i.test(cleanIntent)) return;
+    const query = `${searchLocation} ${cleanIntent}`.replace(/\s+/g, ' ').trim();
+    const key = query.toLowerCase();
+    if (seen.has(key)) return;
+    seen.add(key);
+    candidates.push({
+      id: `truth-${key.replace(/[^a-z0-9]+/g, '-')}`,
+      coverageFamily: `truth-${canonicalDemandFamily(cleanIntent)}`,
+      label: source || cleanIntent,
+      intent: cleanIntent,
+      query,
       aliases: [],
       verifiedProductFamily: true,
       semanticProduct: true,
-      websiteScore: Math.min(48, 22 + Number(product.score || 0)),
-      productSignalCount: Math.max(1, product.evidence?.length || 1),
+      commercialRole: role,
+      websiteScore: Math.max(18, Math.min(58, Number(score || 0))),
+      productSignalCount: Math.max(1, Array.isArray(evidence) ? evidence.length : 1),
       websiteMentionCount: 0,
-      websiteEvidence: `Validated primary product from ${product.evidence?.join(' + ') || 'first-party commercial structure'}.`
+      websiteEvidence: `Commercial truth: ${(Array.isArray(evidence) ? evidence : [evidence]).filter(Boolean).join(' + ') || 'first-party product evidence'}`
     });
-  });
+  };
 
-  // Known families are now enrichment only. They may add a useful adjacent interpretation
-  // when FIRST-PARTY product evidence supports the family, but they can never replace or
-  // outrank the open-ended product model simply because a keyword appeared in body copy.
-  const offers = Array.isArray(ctx.offers) ? ctx.offers : [];
-  const offerText = offers.join(' ').toLowerCase();
-  const bodyText = String(ctx.combined || '').toLowerCase();
-  const families = [
-    { id: 'celebrity-homes', coverageFamily: 'sightseeing', label: 'Celebrity homes & Hollywood history', intent: 'celebrity homes tours', pattern: /celebrity|movie stars?|movie star homes?|stars? homes?|hollywood|famous homes?/gi, aliases: ['celebrity homes', 'movie star homes'] },
-    { id: 'architecture-modernism', coverageFamily: 'sightseeing', label: 'Architecture & modernism', intent: 'architecture tours', pattern: /architect(?:ure|ural)?|modernism|midcentury|mid-century|modern homes?/gi, aliases: ['architecture', 'modernism'] },
-    { id: 'sightseeing', coverageFamily: 'sightseeing', label: 'General sightseeing & city history', intent: 'sightseeing tours', pattern: /sightseeing|city tour|history tour|historical tour|landmarks?|guided city/gi, aliases: ['sightseeing', 'city history'] },
-    { id: 'food', coverageFamily: 'food', label: 'Food & culinary experiences', intent: 'food tours', pattern: /food tour|culinary|tasting tour|restaurant tour|foodie/gi, aliases: ['food', 'culinary'] },
-    { id: 'wine', coverageFamily: 'wine', label: 'Wine & winery experiences', intent: 'wine tours', pattern: /wine tour|winery|vineyard|wine tasting/gi, aliases: ['wine', 'winery'] },
-    { id: 'fishing', coverageFamily: 'fishing', label: 'Fishing charters', intent: 'fishing charters', pattern: /fishing charter|fishing trip|deep sea fishing|sportfishing|fly fishing/gi, aliases: ['fishing', 'charter'] },
-    { id: 'water', coverageFamily: 'water', label: 'Boat, snorkel & water experiences', intent: 'boat tours', pattern: /boat tour|boat trip|powerboat|catamaran|snorkel|sailing|yacht|cruise|dolphin|whale watching|sunset cruise/gi, aliases: ['boat', 'catamaran', 'sailing'] },
-    { id: 'adventure', coverageFamily: 'adventure', label: 'Outdoor adventure tours', intent: 'adventure tours', pattern: /atv|utv|jeep|hummer|off-road|rafting|kayak|zipline|horseback|hiking tour/gi, aliases: ['adventure', 'outdoor tours'] }
-  ];
+  (truth.primaryProducts || []).forEach(product => add(product.intent || product.name, product.name, product.score, product.evidence, 'primary'));
+  (truth.secondaryProducts || []).forEach(product => add(product.intent || product.name, product.name, Math.max(18, Number(product.score || 0) - 4), product.evidence, 'secondary'));
 
-  families.forEach(family => {
-    const preflightFamily = (ctx.preflight?.materialFamilies || []).find(item => item.id === family.coverageFamily);
-    const primaryEvidence = String((preflightFamily?.primaryEvidence || []).join(' '));
-    const familyHasPrimaryEvidence = Boolean(preflightFamily?.verifiedProductFamily && primaryEvidence.trim());
-    if (!familyHasPrimaryEvidence) return;
+  // A major positioning phrase can represent a real commercial segment even when individual
+  // detail pages are sparse. It is derived from first-party headings/title, not a tourism taxonomy.
+  (truth.segments || []).forEach(segment => add(segment.intent || segment.name, segment.name, segment.score || 30, segment.evidence, 'segment'));
 
-    const resolvedIntent = resolveDemandIntent(family, offerText, bodyText, preflightFamily);
-    // Avoid duplicating an open-ended product query with a weaker family abstraction.
-    const familyQuery = `${location} ${resolvedIntent}`;
-    if (seenQueries.has(familyQuery.toLowerCase().replace(/\s+/g, ' ').trim())) return;
-
-    add({
-      id: family.id,
-      coverageFamily: family.coverageFamily,
-      label: family.label,
-      intent: resolvedIntent,
-      query: familyQuery,
-      aliases: family.aliases,
-      verifiedProductFamily: true,
-      semanticProduct: false,
-      websiteScore: 9 + Math.min(8, Math.round((preflightFamily?.strength || 0) / 5)),
-      productSignalCount: Math.max(1, preflightFamily?.primaryMatches || 1),
-      websiteMentionCount: 0,
-      websiteEvidence: `${preflightFamily?.primaryMatches || 1} supporting first-party product/category signals`
-    });
-  });
-
-  // Broad destination demand is fallback only. If GO understands even one validated commercial
-  // product, a generic "[destination] tours" query cannot enter the initial competition.
-  if (!candidates.some(item => item.semanticProduct)) {
-    add({
-      id: 'general-tours',
-      coverageFamily: 'general',
-      label: 'General destination tours',
-      intent: 'tours',
-      query: `${location} tours`,
-      aliases: ['tours'],
-      verifiedProductFamily: false,
-      semanticProduct: false,
-      websiteScore: 1,
-      productSignalCount: 0,
-      websiteMentionCount: 0,
-      websiteEvidence: 'Broad market context only because validated primary inventory was insufficient.'
-    });
+  if (!candidates.length) {
+    // Safe fallback: only use concise first-party offers, never loose body-copy categories.
+    (ctx.offers || []).slice(0, 5).forEach((offer, index) => add(offer, offer, 20 - index, ['offer inventory'], 'fallback'));
   }
 
   return candidates
     .sort((a, b) => {
-      if (Boolean(b.semanticProduct) !== Boolean(a.semanticProduct)) return b.semanticProduct ? 1 : -1;
+      const roleWeight = { primary: 4, segment: 3, secondary: 2, fallback: 1 };
+      const roleDiff = (roleWeight[b.commercialRole] || 0) - (roleWeight[a.commercialRole] || 0);
+      if (roleDiff) return roleDiff;
+      const specificityDiff = intentSpecificityScore(b.intent) - intentSpecificityScore(a.intent);
+      if (specificityDiff) return specificityDiff;
       return (b.websiteScore || 0) - (a.websiteScore || 0);
     })
     .slice(0, MAX_DEMAND_CANDIDATES);
 }
 
-function collectValidatedCommercialProducts(ctx) {
-  const rows = [];
+function buildCommercialTruthModel({ businessName, combined, offers, siteArchitecture, semanticModel, location }) {
+  const products = [];
   const seen = new Map();
-  const reject = value => /^(adventures?|courses?|rates?|services?|activities?|experiences?|tours?|book now|learn more|stay with us|dive with us)$/i.test(value)
-    || /\b(with us|why choose|what to expect|our story|our team|safe with us|top rated|best in|copyright|image)\b/i.test(value);
-
-  const add = (name, score = 0, evidence = [], urls = []) => {
-    const clean = normalizePrimaryProductName(name, ctx.businessName);
-    if (!clean || reject(clean) || !looksLikeBookableProductName(clean)) return;
-    const intent = primaryProductIntent(clean);
-    if (!intent || intent === 'tours') return;
-    const key = intent.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
-    if (!key) return;
-    const current = seen.get(key) || { name: clean, score: 0, evidence: [], urls: [] };
+  const add = (name, score, evidence, urls = []) => {
+    const clean = normalizePrimaryProductName(name, businessName);
+    const intent = canonicalCommercialIntent(clean);
+    if (!clean || !intent || !looksLikeBookableProductName(clean) || isNonCommercialInventoryLabel(clean)) return;
+    const key = intent.toLowerCase();
+    const current = seen.get(key) || { name: clean, intent, score: 0, evidence: [], urls: [] };
     current.score = Math.max(current.score, Number(score || 0));
-    (Array.isArray(evidence) ? evidence : [evidence]).filter(Boolean).forEach(item => {
-      if (!current.evidence.includes(item)) current.evidence.push(item);
-    });
-    (Array.isArray(urls) ? urls : [urls]).filter(Boolean).forEach(item => {
-      if (!current.urls.includes(item)) current.urls.push(item);
-    });
+    for (const item of (Array.isArray(evidence) ? evidence : [evidence])) if (item && !current.evidence.includes(item)) current.evidence.push(item);
+    for (const url of (Array.isArray(urls) ? urls : [urls])) if (url && !current.urls.includes(url)) current.urls.push(url);
     seen.set(key, current);
   };
 
-  (ctx.semanticModel?.primaryProducts || []).forEach(product => add(product.name, product.score, product.evidence, product.urls));
-  (ctx.siteArchitecture?.commercialPages || []).forEach(product => add(product.name, product.score, product.evidence, product.url));
-  (ctx.siteArchitecture?.internalProducts || []).forEach(product => add(product.name, product.score, product.evidence, product.url));
+  (semanticModel?.primaryProducts || []).forEach(p => add(p.name, Math.max(30, Number(p.score || 0)), p.evidence || ['semantic primary product'], p.urls));
+  (siteArchitecture?.commercialPages || []).forEach(p => add(p.name, Math.max(34, Number(p.score || 0)), p.evidence || 'commercial detail page', p.url));
+  (siteArchitecture?.internalProducts || []).forEach(p => add(p.name, Math.max(28, Number(p.score || 0)), p.evidence || 'internal product link', p.url));
+  extractStructuredProductPhrases(combined || '').forEach(p => add(p.name, Math.max(24, Number(p.score || 0)), p.evidence || 'structured commercial section'));
+  (offers || []).forEach(p => add(p, 22, 'offer inventory'));
 
-  // Structured commercial sections are valuable when the site exposes products as plain text
-  // rather than links/cards. They remain subordinate to explicit product pages but are allowed
-  // to recover open-ended inventory without a predefined activity dictionary.
-  extractStructuredProductPhrases(ctx.combined || '').forEach(product => add(product.name, product.score, product.evidence));
+  // Explicit positioning headings often describe the two or three businesses the operator is
+  // really in (e.g. "Private Boat Charters & Scuba Diving in Grand Cayman"). Split those
+  // phrases into open-ended segments without requiring a predefined activity dictionary.
+  extractPositioningSegments(combined || '', location, businessName).forEach(p => add(p.name, p.score, p.evidence));
 
-  rows.push(...seen.values());
-  return rows
-    .filter(item => item.score >= 10 || item.evidence.some(e => /commercial detail page|repeated internal product link|internal product link|structured commercial section|product page/i.test(e)))
-    .sort((a, b) => b.score - a.score)
-    .slice(0, 10);
+  products.push(...seen.values());
+  products.sort((a, b) => b.score - a.score);
+
+  // Collapse near-duplicates so "Private Dive Charter" and "Private Dive Charters" do not
+  // consume separate market slots, while genuinely different products remain represented.
+  const deduped = [];
+  for (const product of products) {
+    const tokens = demandTokens(product.intent);
+    const duplicate = deduped.find(existing => tokenSimilarity(tokens, demandTokens(existing.intent)) >= 0.82);
+    if (!duplicate) deduped.push(product);
+    else {
+      duplicate.score = Math.max(duplicate.score, product.score);
+      product.evidence.forEach(e => { if (!duplicate.evidence.includes(e)) duplicate.evidence.push(e); });
+    }
+  }
+
+  const primaryProducts = deduped.slice(0, 8);
+  const segments = extractPositioningSegments(combined || '', location, businessName).slice(0, 4);
+  return {
+    geography: cleanMarketLocation(location || semanticModel?.geography?.value || ''),
+    primaryProducts,
+    secondaryProducts: [],
+    segments,
+    marketReady: Boolean(cleanMarketLocation(location || semanticModel?.geography?.value || '') && primaryProducts.length),
+    evidenceSummary: primaryProducts.map(p => `${p.name}: ${p.evidence.join(', ')}`).slice(0, 10)
+  };
+}
+
+function extractPositioningSegments(text, location = '', businessName = '') {
+  const lines = String(text || '').split(/\n+/).map(cleanText).filter(Boolean);
+  const out = [];
+  const seen = new Set();
+  const locationParts = String(location || '').split(',').map(x => x.trim()).filter(Boolean);
+  const add = raw => {
+    let value = cleanText(raw || '')
+      .replace(/^(?:top rated|best|premier|leading|#?1|number one)\s+/i, '')
+      .replace(new RegExp(`\\b(?:in|near|around)\\s+(?:${locationParts.map(escapeRegExp).join('|') || 'a^'})\\b.*$`, 'i'), '')
+      .replace(/\bwith\s+.+$/i, '')
+      .trim();
+    if (businessName) value = value.replace(new RegExp(escapeRegExp(businessName), 'ig'), ' ').replace(/\s+/g, ' ').trim();
+    const pieces = value.split(/\s+(?:&|and|\+)\s+/i).map(v => normalizePrimaryProductName(v, businessName)).filter(Boolean);
+    for (const piece of pieces) {
+      const intent = canonicalCommercialIntent(piece);
+      if (!intent || isNonCommercialInventoryLabel(piece) || seen.has(intent)) continue;
+      const words = intent.split(/\s+/).filter(Boolean);
+      if (words.length < 2 || words.length > 7) continue;
+      seen.add(intent);
+      out.push({ name: piece, intent, score: 36, evidence: ['primary positioning heading'] });
+    }
+  };
+  for (const line of lines.slice(0, 120)) {
+    if (line.length < 8 || line.length > 110) continue;
+    if (/^(?:title:|#|##|###)/i.test(line)) {
+      const candidate = line.replace(/^(?:title:\s*|#{1,4}\s*)/i, '');
+      if (/\b(?:charter|diving|dive|tour|ride|rental|cruise|excursion|experience|lesson|class|safari|rafting|kayak|snorkel|fishing|sailing|adventure)\b/i.test(candidate)) add(candidate);
+    }
+  }
+  return out;
+}
+
+function isNonCommercialInventoryLabel(value) {
+  const text = String(value || '').trim();
+  return /^(?:home|about|contact|gallery|reviews?|testimonials?|rates?|pricing|book now|learn more|services?|activities?|experiences?|adventures?|courses?|dive with us|stay with us)$/i.test(text)
+    || /\b(?:why choose|what our guests say|your trip|your plan|your pace|discover the experience|safe with us|top rated|personalised|personalized|image\s*\d*|photo\s*\d*|gallery)\b/i.test(text);
+}
+
+function normalizeCommercialIntentForLocation(intent, location) {
+  let text = String(intent || '').toLowerCase().replace(/\s+/g, ' ').trim();
+  const locationParts = String(location || '').toLowerCase().split(',').map(x => x.trim()).filter(Boolean);
+  text = text.replace(/^(?:go|book|explore|discover|experience)\s+/i, ' ');
+  for (const part of locationParts) {
+    if (!part) continue;
+    const escaped = escapeRegExp(part);
+    text = text.replace(new RegExp(`\\b(?:in|at|near|around)\\s+${escaped}\\b`, 'ig'), ' ').replace(new RegExp(`\\b${escaped}\\b`, 'ig'), ' ');
+  }
+  text = text.replace(/\b(?:image|photo|gallery)\s*\d*\b/gi, ' ').replace(/\s+/g, ' ').trim();
+  if (!text || /^(?:image|photo|gallery|home|about|contact|book now)$/i.test(text)) return '';
+  return text;
+}
+
+function canonicalCommercialIntent(value) {
+  let text = normalizePrimaryProductName(value || '')
+    .replace(/\b(?:top rated|award winning|personalized|personalised|exclusive|amazing|ultimate|best)\b/gi, ' ')
+    .replace(/\b(?:experience|experiences)\b/gi, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .toLowerCase();
+  if (!text || isNonCommercialInventoryLabel(text)) return '';
+  // Preserve product nouns; only remove phrases that rarely change commercial search intent.
+  text = text.replace(/\b(?:guided|small group|all inclusive)\b/gi, ' ').replace(/\s+/g, ' ').trim();
+  if (text.split(/\s+/).length > 8) return '';
+  return text;
+}
+
+function cleanMarketLocation(value) {
+  const text = cleanText(String(value || '')).replace(/\s+/g, ' ').trim();
+  if (!text || /\b(?:tour|ride|charter|diving|dive|rental|experience|activity)\b/i.test(text)) return '';
+  return text.split(',').slice(0, 2).join(', ').trim();
+}
+
+function demandTokens(value) {
+  const stop = new Set(['the','a','an','in','at','of','and','tour','tours','experience','experiences']);
+  return String(value || '').toLowerCase().split(/[^a-z0-9]+/).filter(t => t.length > 2 && !stop.has(t));
+}
+
+function tokenSimilarity(a, b) {
+  if (!a.length || !b.length) return 0;
+  const aa = new Set(a), bb = new Set(b);
+  const intersection = [...aa].filter(x => bb.has(x)).length;
+  return intersection / Math.max(aa.size, bb.size);
+}
+
+function canonicalDemandFamily(intent) {
+  return demandTokens(intent).slice(0, 3).join('-') || 'product';
+}
+
+function collectValidatedCommercialProducts(ctx) {
+  return (ctx.commercialTruth?.primaryProducts || buildCommercialTruthModel({
+    businessName: ctx.businessName,
+    combined: ctx.combined,
+    offers: ctx.offers,
+    siteArchitecture: ctx.siteArchitecture,
+    semanticModel: ctx.semanticModel,
+    location: ctx.businessContext?.location || ''
+  }).primaryProducts || []).slice(0, 10);
 }
 
 function resolveDemandIntent(family, offerText, bodyText, preflightFamily = null) {
@@ -1444,7 +1595,7 @@ function buildProfessionalMarketFinding(ctx) {
   const authorities = (market.competitors || []).filter(item => item.category === 'authority');
   const demandFamilies = Array.isArray(market.demandFamilies) ? market.demandFamilies : [];
   const selected = market.selectedDemand || demandFamilies[0] || null;
-  if (!rows.length || !direct.length || !selected) return null;
+  if (!rows.length || !selected) return null;
 
   const focusRow = rows.find(row => row.query === selected.query) || rows[0];
   if (!focusRow) return null;
@@ -1463,8 +1614,8 @@ function buildProfessionalMarketFinding(ctx) {
       return ap - bp;
     });
 
-  const leaders = (focusDirect.length ? focusDirect : direct).slice(0, 3);
-  if (!leaders.length) return null;
+  const leaders = focusDirect.slice(0, 3);
+  const hasComparableLeaders = leaders.length > 0;
 
   const leaderSummary = leaders.map(item => {
     const position = item.bestLocalPosition
@@ -1507,10 +1658,14 @@ function buildProfessionalMarketFinding(ctx) {
   const checkedSearches = buildCheckedSearchRows(rows, demandFamilies, market.selectedDemand);
   const searchSelectionWhy = explainCheckedSearches(rows, demandFamilies);
 
-  let title = `Competitors are easier to find for ${demandShort}`;
-  if (!visibilityGap) {
-    title = `You are visible for ${demandShort} — now GO would find why competitors still stand out`;
-  }
+  const portfolioGapRows = rows.filter(row => (row.targetLocalPosition == null && (row.localResultsChecked || 0) >= 3) || (row.targetOrganicPosition == null && (row.organicResultsChecked || 0) >= 5));
+  const portfolioVisibleRows = rows.filter(row => row.targetLocalPosition != null || row.targetOrganicPosition != null);
+
+  let title = visibilityGap
+    ? `GO found a search visibility gap for ${demandShort}`
+    : hasComparableLeaders
+      ? `You are visible for ${demandShort} — competitors still stand out`
+      : `You are visible for ${demandShort} — GO would keep this demand on the watchlist`;
 
   const searchProof = [];
   if (notObservedLocally) {
@@ -1524,9 +1679,16 @@ function buildProfessionalMarketFinding(ctx) {
     searchProof.push(`its website appeared at organic position #${targetOrganic}`);
   }
 
+  const portfolioSummary = rows.length > 1
+    ? `GO checked ${rows.length} representative searches tied to products this business sells. ${portfolioGapRows.length ? `${ctx.businessName} had a visibility gap in ${portfolioGapRows.length} of those search sets` : `${ctx.businessName} was visible in ${portfolioVisibleRows.length || rows.length} of those search sets`}. `
+    : '';
   const operatorProblem = visibilityGap
-    ? `Travelers looking for ${demandShort} are finding competing operators while ${ctx.businessName} is less visible in the search results GO checked. ${searchProof.length ? searchProof.join('; ') + '. ' : ''}Competitors showing up around this demand include ${leaderSummary}.`
-    : `${ctx.businessName} is already showing up around ${demandShort}, but competing operators such as ${leaderSummary} are also defining this category. GO would now determine which visibility and trust signals are helping those competitors stand out.`;
+    ? hasComparableLeaders
+      ? `${portfolioSummary}For “${focusQuery},” ${searchProof.length ? searchProof.join('; ') + '. ' : ''}Comparable operators showing up around this same bookable demand include ${leaderSummary}.`
+      : `${portfolioSummary}For “${focusQuery},” ${searchProof.length ? searchProof.join('; ') + '. ' : ''}GO did not verify enough comparable operators to claim who is winning, but the missing visibility itself is measurable and directly tied to something ${ctx.businessName} sells.`
+    : hasComparableLeaders
+      ? `${portfolioSummary}${ctx.businessName} is already showing up for “${focusQuery},” while comparable operators such as ${leaderSummary} are also defining this category. GO would now determine which visibility and trust signals are helping those competitors stand out.`
+      : `${portfolioSummary}${ctx.businessName} is already visible around “${focusQuery}.” GO did not verify enough comparable operators to make a competitive-position claim, so it would preserve this demand and move to the next verified constraint.`;
 
   const whyItMatters = `${demandLabel} is closely tied to an experience ${ctx.businessName} actually sells, so this is not generic traffic. Better visibility here can put the business in front of more travelers already looking for something they can book.`;
 
@@ -1535,8 +1697,10 @@ function buildProfessionalMarketFinding(ctx) {
   }
 
   const action = visibilityGap
-    ? `GO would strengthen the pages that sell this experience, make the offer and location clearer to Google and AI discovery systems, improve the business signals that connect ${ctx.businessName} to this demand, and build the authority signals competitors are benefiting from. Then GO would keep checking this same market to see whether visibility improves.`
-    : `GO would compare the pages, business signals, reviews and authority of the competitors standing out for this experience, identify the strongest gaps, improve those signals for ${ctx.businessName}, and keep measuring the same market to see whether the gap closes.`;
+    ? `GO would map “${focusQuery}” to the strongest matching ${ctx.businessName} product page, improve that page's experience + location relevance, strengthen internal/trust signals supporting the offer${hasComparableLeaders ? `, compare the page and public proof against ${leaders.slice(0,2).map(x => x.name).join(' and ')}` : ''}, then rerun the same search portfolio to measure whether visibility improves.`
+    : hasComparableLeaders
+      ? `GO would preserve the pages already earning visibility, compare their content and trust signals against ${leaders.slice(0,2).map(x => x.name).join(' and ')}, improve only the gaps that are actually material, then keep measuring this same search portfolio.`
+      : `GO would preserve the pages already earning visibility here, keep monitoring this exact search portfolio, and move execution priority to a stronger verified constraint instead of inventing a competitive problem.`;
 
   const counter = `${market.target?.identityVerified
     ? "GO matched the operator to a Google local entity before comparing the market."
@@ -1561,11 +1725,15 @@ function buildProfessionalMarketFinding(ctx) {
         targetOrganic ? `Organic #${targetOrganic}` : (notObservedOrganically ? `Not observed in ${organicChecked} organic results checked` : null)
       ].filter(Boolean).join(' · ')
     },
-    {
+    ...(hasComparableLeaders ? [{
       type: 'public',
-      label: 'Direct market leaders',
+      label: 'Comparable operators verified',
       detail: leaderSummary
-    },
+    }] : [{
+      type: 'public',
+      label: 'Competitor qualification',
+      detail: 'GO did not verify enough comparable bookable-experience businesses in the prioritized search to make a direct competitor claim.'
+    }]),
     ...(authorityNames.length ? [{
       type: 'public',
       label: 'Destination / category authority',
@@ -1599,7 +1767,9 @@ function buildProfessionalMarketFinding(ctx) {
     moneyLabel: 'Demand opportunity found · revenue needs connected data',
     confidence: market.target?.identityVerified ? 'High' : 'Medium-high',
     priorityReason: `GO compared ${demandFamilies.length} demand families and chose ${demandLabel} because it is closer to a bookable product and has stronger commercial relevance to this operator than broader discovery demand.`,
-    rankExplanation: `GO chose this first because it matches something ${ctx.businessName} actually sells, travelers can book it, competitors are showing up around it, and GO found a visibility opportunity it can act on.`,
+    rankExplanation: hasComparableLeaders
+      ? `GO chose this first because it matches something ${ctx.businessName} actually sells, travelers can book it, comparable operators are showing up around it, and GO found a visibility opportunity it can act on.`
+      : `GO chose this first because it matches something ${ctx.businessName} actually sells and GO found a measurable visibility gap. It is explicitly withholding a competitor claim until comparable commercial operators are verified.`,
     counterEvidence: counter,
     severity: 3,
     evidenceStrength: market.target?.identityVerified ? 4 : 3,
@@ -1695,14 +1865,19 @@ function formatPriceRange(prices) {
 }
 
 function mergeAndPrioritizeFindings(marketFindings, websiteFindings) {
-  const all = [...marketFindings, ...websiteFindings];
+  const hasMarket = marketFindings.length > 0;
+  const earnedWebsiteFindings = websiteFindings.filter(item => {
+    if (!hasMarket) return (item.evidenceStrength || 0) >= 2 && (item.priorityScore || 0) >= 8;
+    return (item.evidenceStrength || 0) >= 3 && (item.priorityScore || 0) >= 11 && item.kind !== "investigation";
+  });
+  const all = [...marketFindings, ...earnedWebsiteFindings];
   return all
     .sort((a, b) => (b.priorityScore || 0) - (a.priorityScore || 0))
     .slice(0, 3)
     .map((item, index) => ({
       ...item,
       rankExplanation: index === 0 && marketFindings.includes(item)
-        ? "GO ranked this first because verified evidence outside the operator's website now changes the growth hypothesis. It is the first finding that compares the business with the market surrounding it."
+        ? "GO ranked this first because verified evidence outside the operator's website changes the growth hypothesis and maps directly to something the operator sells."
         : item.rankExplanation || item.priorityReason
     }));
 }
@@ -1764,6 +1939,13 @@ function buildUniversalProfile(url, pages, market = emptyMarket(), bookingLinkEv
       }
     },
     marketEvidence: market,
+    pipelineDebug: {
+      runtime: { frontendBuildId: GO_FRONTEND_BUILD_ID, marketFunctionBuildId: market?.pipelineDebug?.marketFunctionBuildId || market?.handoffStatus?.buildId || GO_MARKET_HANDOFF_STATUS.buildId || "NO MARKET FUNCTION ID", marketHandoff: market?.pipelineDebug?.marketHandoff || market?.handoffStatus || { ...GO_MARKET_HANDOFF_STATUS }, runId: GO_ACTIVE_RUN_ID },
+      operatorTruth: { businessName, businessType: businessContext.businessType, geography: businessContext.location || location || "", bookingProvider: bookingProvider.label, bookingEvidence: bookingProvider.detail || bookingProvider.evidence || "" },
+      inventoryTruth: { offers: offers.slice(0, 12), primarySignals: preflight.primarySignals.slice(0, 20), materialFamilies: preflight.materialFamilies.slice(0, 10), semanticProducts: (market?.pipelineDebug?.demandPlan || []).filter(item => item.semanticProduct).map(item => item.label) },
+      market: market.pipelineDebug || null,
+      findingInput: opportunities.map(item => ({ title: item.title, pillar: item.pillar, confidence: item.confidence, problem: item.problem, action: item.action, metric: item.metric, priorityReason: item.priorityReason, checkedSearches: item.checkedSearches || [], sources: item.sources }))
+    },
     opportunities,
     watchItems: [
       { title: "Exact Google / Maps rank", detail: (market.searchPages.length || market.discoveryDocs.length) ? "Build 029 can verify public market presence and competitor evidence across independent discovery surfaces, but it does not convert that evidence into a universal Google or Maps rank. Local results vary by location and surface." : "Public market retrieval was limited in this scan, so GO is not claiming search position." },
@@ -1889,10 +2071,10 @@ function buildWebsiteFindings(ctx) {
     add({
       kind: "investigation",
       pillar: "Intelligence", icon: "◎", title: "The buying basics are in place — GO would benchmark the market before changing them",
-      problem: `GO found ${ctx.offers.length} experience signals, public pricing such as ${ctx.prices.slice(0, 3).join(", ")}, and ${ctx.trust.summary.toLowerCase()}. Travelers can see what is for sale, what it costs, and reasons to trust the operator. That is useful context, but not enough to call pricing a problem. The next valuable question is how these offers compare with the operators winning the same Palm Springs demand on price, visibility and trust.`,
+      problem: `GO found ${ctx.offers.length} experience signals, public pricing such as ${ctx.prices.slice(0, 3).join(", ")}, and ${ctx.trust.summary.toLowerCase()}. Travelers can see what is for sale, what it costs, and reasons to trust the operator. That is useful context, but not enough to call pricing a problem. The next valuable question is how these offers compare with operators competing for the same relevant customer demand on price, visibility and trust.`,
       action: "GO would preserve the working buying path and use the next public-intelligence layer to compare similar experiences, search position and review trust against real competitors before recommending a pricing or positioning change.",
       metric: "Competitor price + search position + review trust → booking performance", moneyLabel: "Needs analytics + booking revenue", confidence: "Medium-high",
-      priorityReason: "GO is not seeing a missing buying foundation here. The higher-value next step is to compare FSA against the operators competing for the same demand before changing a working conversion path.",
+      priorityReason: "GO is not seeing a missing buying foundation here. The higher-value next step is to compare this operator against businesses competing for the same demand before changing a working conversion path.",
       counterEvidence: "Public evidence cannot prove that value positioning is underperforming. If these pages already convert strongly, GO should leave them alone and move to another constraint.",
       severity: 1, evidenceStrength: 3, revenueProximity: 2, actionability: 2, uncertainty: 1, supportCount: 3,
       sources: [
@@ -2251,7 +2433,7 @@ function extractPrimaryProductModel(text, offers, businessName, siteArchitecture
   extractStructuredProductPhrases(raw).forEach(item => add(item.name, item.score, item.evidence));
 
   // Existing offer extraction is useful supporting evidence, but is no longer the sole ontology.
-  (offers || []).forEach(offer => add(offer, 7, "offer inventory"));
+  (offers || []).forEach(offer => add(offer, 10, "offer inventory"));
 
   // Headings that repeat in booking/product evidence are promoted without knowing the activity type.
   headings.forEach(heading => {
@@ -2691,7 +2873,9 @@ function showResults(profile) {
   text("confidence-score", String(profile.analysisConfidence || "Medium").toUpperCase());
   text("confidence-copy", profile.confidenceCopy || "Live public evidence");
   renderProfileStrip(profile.publicProfile || {});
-  document.getElementById("finding-list").innerHTML = profile.opportunities.map((item, index) => `
+  const debugEnabled = new URLSearchParams(window.location.search).get("debug") === "1";
+  const debugPanel = debugEnabled ? renderPipelineDebug(profile.pipelineDebug || {}) : "";
+  document.getElementById("finding-list").innerHTML = debugPanel + profile.opportunities.map((item, index) => `
     <article class="finding-card">
       <div class="finding-number">0${index + 1}</div>
       <div class="finding-copy">
@@ -2713,6 +2897,22 @@ function showResults(profile) {
   unsupported.hidden = true;
   results.hidden = false;
   results.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+
+function renderPipelineDebug(debug) {
+  const json = JSON.stringify(debug || {}, null, 2);
+  return `
+    <details style="margin:0 0 18px;border:1px solid rgba(91,181,255,.35);border-radius:14px;background:rgba(4,20,36,.78);padding:14px 16px;">
+      <summary style="cursor:pointer;font-weight:800;color:#8fd0ff;letter-spacing:.06em;">GO PIPELINE DEBUG — INTERNAL ONLY</summary>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin:10px 0 8px;">
+        <code style="padding:5px 8px;border:1px solid rgba(91,181,255,.3);border-radius:7px;color:#dcecff;">FE: ${escapeHtml(debug?.runtime?.frontendBuildId || debug?.market?.frontendBuildId || GO_FRONTEND_BUILD_ID)}</code>
+        <code style="padding:5px 8px;border:1px solid rgba(91,181,255,.3);border-radius:7px;color:#dcecff;">MI: ${escapeHtml(debug?.runtime?.marketFunctionBuildId || debug?.market?.marketFunctionBuildId || "MISSING")}</code>
+        <code style="padding:5px 8px;border:1px solid rgba(91,181,255,.3);border-radius:7px;color:#dcecff;">RUN: ${escapeHtml(debug?.runtime?.runId || debug?.market?.runId || "MISSING")}</code>
+      </div>
+      <p style="margin:8px 0 10px;color:#9fb3c8;font-size:12px;line-height:1.5;">If FE/MI are not the Runtime Truth IDs, we are debugging stale code. Operator truth → inventory truth → market request → generated demand → selected searches → raw results → qualified evidence → final finding input.</p>
+      <pre style="white-space:pre-wrap;overflow:auto;max-height:720px;margin:0;background:#06101c;border-radius:10px;padding:14px;color:#dcecff;font-size:11px;line-height:1.45;">${escapeHtml(json)}</pre>
+    </details>`;
 }
 
 

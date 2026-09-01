@@ -561,4 +561,40 @@ PUBLIC HYPOTHESIS
 → EXECUTION
 → MEASURED RESULT
 → LEARNING
-→ BETTER FUTURE PUBLIC HYPOTHESIS
+→ BETTER FUTURE PUBLIC HYPOTHESIS## Momentum / Product Breadth Guardrail — August 31, 2026
+
+Analyzer remains strategically important and must still pass cold-start generalization before V1 freeze.
+
+However, Growth Operator development must begin expanding visibly beyond Analyzer.
+
+After the next focused Analyzer architecture session, prioritize a meaningful broader-product capability.
+
+Strong candidate:
+
+GROWTH SCORE V1
+
+Use existing public GO intelligence to begin initializing an operator's Growth Score across the six GO areas:
+
+- Visibility
+- Trust
+- Conversion
+- Operations
+- Intelligence
+- Growth
+
+Public evidence can initialize supported dimensions.
+
+Unsupported dimensions should explicitly show that connected data is required rather than inventing precision.
+
+This creates an important product transition:
+
+OPERATOR ANALYZER
+→ INITIAL GROWTH BASELINE
+→ GROWTH SCORE
+→ CONNECTED DATA
+→ GO PRIORITY
+→ GO WORK
+→ MEASUREMENT
+→ SCORE MOVEMENT
+
+This reconnects Analyzer intelligence to the larger Growth Operator operating system and restores visible product breadth while Analyzer continues improving as a subsystem.

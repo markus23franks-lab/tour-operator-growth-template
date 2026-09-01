@@ -49,4 +49,25 @@ Attempting to make public Analyzer as knowledgeable as connected Growth Operator
 
 Analyzer is the cold-start brain.
 
-Connected GO is the deeper operating brain.
+Connected GO is the deeper operating brain.## Decision — Stop Output-Level Analyzer Patching
+**Date:** August 31, 2026
+
+Founder and Builder will no longer continue the pattern:
+
+final report looks wrong
+→ infer likely cause
+→ add heuristic
+→ retest same operator
+→ repeat.
+
+Build 029 diagnostics demonstrated that Shaggy's first-party operator understanding and inventory extraction can be good while the final market opportunity remains weak.
+
+The next Analyzer investigation must compare the successful Caicos Dream path against the unsuccessful Shaggy's path at the DATA level.
+
+Primary question:
+
+> Does the strongest qualified market evidence actually determine GO's selected opportunity, or is GO selecting a predetermined/generalized opportunity structure and decorating it with evidence?
+
+No further heuristic patch should be made until this is understood.
+
+If opportunity selection/synthesis is structurally weak, repair the decision layer rather than continuing to optimize upstream extraction indefinitely.

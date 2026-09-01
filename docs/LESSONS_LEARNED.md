@@ -72,4 +72,36 @@ A polished finding generated from weak evidence can be more dangerous than obvio
 
 Evidence integrity therefore becomes MORE important as the product becomes more polished.
 
-When foundational evidence is weak, GO should lower confidence, explain uncertainty, or withhold a conclusion rather than compensate with confident prose.
+When foundational evidence is weak, GO should lower confidence, explain uncertainty, or withhold a conclusion rather than compensate with confident prose.## Product Progress Must Be Measured at the Output Layer — August 31, 2026
+
+Recent Build 029 work produced meaningful technical improvements in operator understanding, inventory extraction, commercial demand generation and runtime diagnostics.
+
+However, Founder identified an important development failure:
+
+> Individual internals improved while the customer-visible product repeatedly felt approximately the same.
+
+Shaggy's Diving made this especially clear.
+
+GO successfully understood the operator, extracted commercially meaningful inventory and generated substantially better demand searches, yet the final opportunity remained generic and insufficiently compelling.
+
+This changes the development question from:
+
+"How do we make each upstream component slightly better?"
+
+to:
+
+"Is the strongest available evidence actually driving GO's judgment?"
+
+Technical progress is only valuable when it materially improves the operator experience or enables a meaningful future capability.
+
+### Avoid Backend Progress Without Visible Capability Progress
+
+Growth Operator development should not remain concentrated indefinitely inside one subsystem.
+
+As a working cadence principle:
+
+After approximately 2–3 meaningful backend/intelligence sessions, development should seek to produce or unlock a visible customer-facing capability leap where practical.
+
+This does not mean building fake UI for momentum.
+
+It means ensuring foundational work continuously reconnects to the broader Growth Operator product.

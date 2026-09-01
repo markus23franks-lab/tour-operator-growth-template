@@ -1,4 +1,5 @@
 const SERP_ENDPOINT = "https://serpapi.com/search.json";
+const GO_MARKET_BUILD_ID = "B029-MARKET-HANDOFF-REPAIR-MI-20260831-2248";
 const MAX_QUERIES = 10;
 const MAX_ORGANIC = 10;
 const MAX_LOCAL = 10;
@@ -12,14 +13,6 @@ export default async (request) => {
     return json(405, { ok: false, error: "Method not allowed" });
   }
 
-  const apiKey = process.env.SERPAPI_KEY;
-  if (!apiKey) {
-    return json(500, {
-      ok: false,
-      error: "SERPAPI_KEY is not configured on the server.",
-    });
-  }
-
   let body;
   try {
     body = await request.json();
@@ -27,9 +20,33 @@ export default async (request) => {
     return json(400, { ok: false, error: "Invalid JSON body." });
   }
 
+  // Runtime handshake is intentionally independent of SerpApi. This lets the browser
+  // prove which Netlify function build is actually executing before GO trusts market data.
+  if (body.action === "runtime") {
+    return json(200, {
+      ok: true,
+      action: "runtime",
+      buildId: GO_MARKET_BUILD_ID,
+      runtimeBuildId: GO_MARKET_BUILD_ID,
+      observedAt: new Date().toISOString(),
+    });
+  }
+
+  const apiKey = process.env.SERPAPI_KEY;
+  if (!apiKey) {
+    return json(500, {
+      ok: false,
+      buildId: GO_MARKET_BUILD_ID,
+      runtimeBuildId: GO_MARKET_BUILD_ID,
+      error: "SERPAPI_KEY is not configured on the server.",
+    });
+  }
+
   const businessName = cleanText(body.businessName);
   const website = cleanUrl(body.website);
   const location = cleanText(body.location);
+  const debugRunId = cleanText(body.debugRunId);
+  const frontendBuildId = cleanText(body.frontendBuildId);
 
   // Acquisition is intentionally separate from market judgment. The browser-side
   // reader can occasionally return challenge/interstitial text; GO must recover
@@ -38,7 +55,7 @@ export default async (request) => {
     if (!website) return json(400, { ok: false, error: "website is required." });
     try {
       const acquisition = await acquireWebsiteEvidence({ website, apiKey });
-      return json(200, { ok: true, acquisition });
+      return json(200, { ok: true, buildId: GO_MARKET_BUILD_ID, runtimeBuildId: GO_MARKET_BUILD_ID, acquisition });
     } catch (error) {
       console.error("Website acquisition error", error);
       return json(502, { ok: false, error: error instanceof Error ? error.message : "Website acquisition failed." });
@@ -85,16 +102,45 @@ export default async (request) => {
       identity.name || businessName,
       website
     );
+    const qualificationAudit = buildQualificationAudit(queryResults);
 
     return json(200, {
       ok: true,
+      buildId: GO_MARKET_BUILD_ID,
+      runtimeBuildId: GO_MARKET_BUILD_ID,
       market: {
         provider: "SerpApi",
+        buildId: GO_MARKET_BUILD_ID,
+        runtimeBuildId: GO_MARKET_BUILD_ID,
         observedAt: new Date().toISOString(),
         location,
         target: identity,
         queries: queryResults,
         players,
+        qualificationAudit,
+        runtimeDebug: {
+          marketFunctionBuildId: GO_MARKET_BUILD_ID,
+          frontendBuildIdReceived: frontendBuildId || "MISSING",
+          runIdReceived: debugRunId || "MISSING",
+          request: { businessName, website, location, queries },
+          queryResults: queryResults.map(row => ({
+            query: row.query,
+            targetLocalPosition: row.targetLocalPosition ?? null,
+            targetOrganicPosition: row.targetOrganicPosition ?? null,
+            localResultsChecked: row.localResultsChecked ?? null,
+            organicResultsChecked: row.organicResultsChecked ?? null,
+            localResults: (row.localResults || []).slice(0, 10).map(x => ({ name: x.name || x.title || "", link: x.link || x.website || "", position: x.position ?? null, rating: x.rating ?? null, reviews: x.reviews ?? null })),
+            organicResults: (row.organicResults || []).slice(0, 10).map(x => ({ title: x.title || x.name || "", link: x.link || "", position: x.position ?? null }))
+          })),
+          qualifiedPlayers: players.slice(0, 20).map(player => ({ name: player.name, website: player.website, category: player.category, queries: player.queries, reasons: player.qualificationReasons || [] }))
+        },
+        qualificationDebug: players.slice(0, 20).map(player => ({
+          name: player.name,
+          website: player.website,
+          category: player.category,
+          queries: player.queries,
+          reasons: player.qualificationReasons || []
+        })),
         searchesUsed:
           queryResults.reduce(
             (sum, row) => sum + (row.localSearchUsed ? 2 : 1),
@@ -106,6 +152,8 @@ export default async (request) => {
     console.error("SerpApi market intelligence error", error);
     return json(502, {
       ok: false,
+      buildId: GO_MARKET_BUILD_ID,
+      runtimeBuildId: GO_MARKET_BUILD_ID,
       error: error instanceof Error ? error.message : "Market intelligence provider failed.",
     });
   }
@@ -116,6 +164,24 @@ async function acquireWebsiteEvidence({ website, apiKey }) {
   const hostName = host(website);
   const pages = [];
   const seen = new Set();
+  const bookingEvidence = [];
+
+  const addBookingEvidence = (html, pageUrl) => {
+    const raw = String(html || "");
+    for (const match of raw.matchAll(/<(?:a|iframe|script)\b[^>]*(?:href|src)=["']([^"']+)["'][^>]*>/gi)) {
+      try {
+        const url = new URL(decodeEntities(match[1]), pageUrl).href;
+        if (/book|reserve|availability|checkout|ticket|peek|fareharbor|junglebee|bokun|rezdy|xola|tripworks|checkfront|bookeo|rezgo|rocketrez/i.test(url)) {
+          bookingEvidence.push(`BOOKING TECH URL: ${url}`);
+        }
+      } catch {}
+    }
+    for (const match of raw.matchAll(/<a\b[^>]*href=["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi)) {
+      const label = cleanTextBlock(decodeEntities(match[2].replace(/<[^>]+>/g, " ")));
+      if (!/book|reserve|availability|checkout|ticket/i.test(label)) continue;
+      try { bookingEvidence.push(`BOOKING CTA: ${label} ${new URL(decodeEntities(match[1]), pageUrl).href}`); } catch {}
+    }
+  };
 
   const addPage = (url, text, source) => {
     const clean = cleanTextBlock(text);
@@ -128,11 +194,15 @@ async function acquireWebsiteEvidence({ website, apiKey }) {
   // often succeeds when a public reader is challenged.
   const home = await fetchPublicHtml(website).catch(() => null);
   if (home) {
+    addBookingEvidence(home.html, website);
     addPage(website, htmlToEvidence(home.html, website), "direct-html");
     const links = extractInternalLinks(home.html, origin).slice(0, 10);
     for (const link of links.slice(0, 6)) {
       const page = await fetchPublicHtml(link).catch(() => null);
-      if (page) addPage(link, htmlToEvidence(page.html, link), "direct-html");
+      if (page) {
+        addBookingEvidence(page.html, link);
+        addPage(link, htmlToEvidence(page.html, link), "direct-html");
+      }
       if (pages.length >= 6) break;
     }
   }
@@ -156,6 +226,7 @@ async function acquireWebsiteEvidence({ website, apiKey }) {
     indexedPages: indexed.slice(0, 10),
     sufficient: directChars >= 1200 && meaningful,
     directChars,
+    bookingEvidence: [...new Set(bookingEvidence)].slice(0, 40).join("\n"),
     note: pages.length ? "Recovered first-party website evidence before operator modeling." : "Could not recover sufficient first-party website evidence."
   };
 }
@@ -461,6 +532,25 @@ function normalizeLocal(items) {
     .filter((item) => item.title);
 }
 
+function buildQualificationAudit(queryResults) {
+  const audit = [];
+  queryResults.forEach((row) => {
+    row.localResults.forEach((item) => {
+      const q = qualifyLocalMarketResult(item, row.query);
+      audit.push({ query: row.query, source: "Google Local", name: item.title || "", url: item.website || "", type: item.type || "", category: q.category, accepted: !!q.include, reason: q.reason });
+    });
+    row.organicResults.forEach((item) => {
+      if (isLowValueOrganicDomain(item.domain)) {
+        audit.push({ query: row.query, source: "Google Organic", name: item.title || "", url: item.link || "", type: "", category: "noise", accepted: false, reason: "Low-value social/community domain" });
+        return;
+      }
+      const q = qualifyOrganicMarketResult(item, row.query);
+      audit.push({ query: row.query, source: "Google Organic", name: item.title || "", url: item.link || "", type: "", category: q.category, accepted: !!q.include, reason: q.reason });
+    });
+  });
+  return audit.slice(0, 120);
+}
+
 function aggregatePlayers(
   queryResults,
   businessName,
@@ -471,7 +561,9 @@ function aggregatePlayers(
   const targetNames = [businessName, canonicalName].filter(Boolean);
 
   queryResults.forEach((row) => {
-    row.localResults.forEach((item) =>
+    row.localResults.forEach((item) => {
+      const qualification = qualifyLocalMarketResult(item, row.query);
+      if (!qualification.include) return;
       addPlayer(
         map,
         {
@@ -483,15 +575,19 @@ function aggregatePlayers(
           organicPosition: null,
           query: row.query,
           source: "Google Local",
+          resultType: item.type || "",
+          address: item.address || "",
+          qualification,
         },
         targetNames,
         website
-      )
-    );
+      );
+    });
 
     row.organicResults.forEach((item) => {
       if (isLowValueOrganicDomain(item.domain)) return;
-      if (!isCommerciallyRelevantOrganicResult(item, row.query)) return;
+      const qualification = qualifyOrganicMarketResult(item, row.query);
+      if (!qualification.include) return;
 
       addPlayer(
         map,
@@ -504,6 +600,7 @@ function aggregatePlayers(
           organicPosition: item.position,
           query: row.query,
           source: "Google Organic",
+          qualification,
         },
         targetNames,
         website
@@ -528,7 +625,7 @@ function aggregatePlayers(
 }
 
 function addPlayer(map, item, targetNames, website) {
-  const category = classifyPlayer(item.website, item.name);
+  const category = item.qualification?.category || classifyPlayer(item.website, item.name, item.resultType);
   const key = playerKey(item.name, item.website);
   if (!key) return;
 
@@ -550,6 +647,7 @@ function addPlayer(map, item, targetNames, website) {
     bestLocalPosition: null,
     bestOrganicPosition: null,
     sources: [],
+    qualificationReasons: [],
     isTarget,
   };
 
@@ -579,51 +677,107 @@ function addPlayer(map, item, targetNames, website) {
   if (item.source && !current.sources.includes(item.source)) {
     current.sources.push(item.source);
   }
+  const qualificationReason = item.qualification?.reason || (item.source === "Google Local" ? "Google Local business result" : "Qualified commercial search result");
+  if (qualificationReason && !current.qualificationReasons.includes(qualificationReason)) {
+    current.qualificationReasons.push(qualificationReason);
+  }
   if (!current.website && item.website) current.website = item.website;
   current.isTarget = current.isTarget || isTarget;
   map.set(key, current);
 }
 
-function classifyPlayer(url, name) {
-  const value = `${host(url)} ${cleanText(name).toLowerCase()}`;
+function classifyPlayer(url, name, resultType = "") {
+  const domain = host(url);
+  const value = `${domain} ${cleanText(name).toLowerCase()} ${cleanText(resultType).toLowerCase()}`;
 
-  if (
-    /(tripadvisor|viator|getyourguide|airbnb|expedia|yelp|travelocity|booking\.com)/i.test(
-      value
-    )
-  ) {
+  if (/(tripadvisor|viator|getyourguide|airbnb|expedia|travelocity|booking\.com|yelp)/i.test(value)) {
     return "marketplace";
   }
 
-  if (
-    /(visitpalmsprings|visitgreaterpalmsprings|tourism|chamber|city of|official|travel guide|historical society|museum|modernism week)/i.test(
-      value
-    )
-  ) {
+  if (isAuthorityLikeResult(value, domain)) {
     return "authority";
   }
 
   return "direct";
 }
 
+function isAuthorityLikeResult(value, domain = "") {
+  const text = `${value || ""} ${domain || ""}`.toLowerCase();
+  return /(department of tourism|tourism board|tourism authority|visitor bureau|visitors bureau|visitor center|tourist information|official tourism|official travel|travel guide|destination guide|things to do|travel blog|travel magazine|travel news|chamber of commerce|historical society|wikipedia|copyright|image\s*\d*|photo gallery|resident guide|cayman resident|visit[a-z0-9-]*\.|\.gov(?:\.|$)|government)/i.test(text)
+    || /(^|\.)(lonelyplanet|frommers|fodors|tripadvisor|cntraveler|travelandleisure)\./i.test(domain || "");
+}
 
-function isCommerciallyRelevantOrganicResult(item, query) {
+function queryCommercialTerms(query) {
+  const stop = new Set(["the","and","for","with","from","near","best","top","islands","island","cayman","grand","tours","tour","things","activities","company","official"]);
+  return String(query || "")
+    .toLowerCase()
+    .split(/[^a-z0-9]+/)
+    .filter(term => term.length >= 4 && !stop.has(term));
+}
+
+function qualifyLocalMarketResult(item, query) {
+  const title = cleanText(item?.title || "");
+  const type = cleanText(item?.type || "");
+  const website = cleanUrl(item?.website || "");
+  const domain = host(website);
+  const combined = `${domain} ${title} ${type}`.toLowerCase();
+  if (!title) return { include: false, category: "noise", reason: "Missing local business identity" };
+
+  const marketplace = /(tripadvisor|viator|getyourguide|airbnb|expedia|travelocity|booking\.com|yelp)/i.test(combined);
+  if (marketplace) return { include: true, category: "marketplace", reason: "Marketplace/discovery surface in Google local results" };
+
+  if (isAuthorityLikeResult(combined, domain)) {
+    return { include: true, category: "authority", reason: "Destination/tourism authority in Google local results; demand context only" };
+  }
+
+  const terms = queryCommercialTerms(query);
+  const overlap = terms.filter(term => combined.includes(term)).length;
+  const commercialType = /(tour operator|tour agency|travel agency|boat tour|boat rental|dive shop|diving center|diving centre|scuba|charter|cruise|tourist attraction|outdoor activity|adventure sports|fishing charter|horseback|rafting|kayak|watersports?|excursion)/i.test(type);
+  const commercialName = /(tour|charter|cruise|diving|dive|scuba|snorkel|fishing|sailing|excursion|adventure|rental|ride|experience|activity|boat|watersports?|horseback|rafting|kayak)/i.test(title);
+
+  if ((commercialType || commercialName) && (terms.length === 0 || overlap >= 1 || commercialType)) {
+    return { include: true, category: "direct", reason: `Google Local bookable-experience business${overlap ? ` matching ${overlap} specific query term${overlap === 1 ? "" : "s"}` : ""}` };
+  }
+
+  return { include: false, category: "noise", reason: "Local result does not look like a comparable tour/activity business for this search" };
+}
+
+function qualifyOrganicMarketResult(item, query) {
   const title = cleanText(item?.title || "");
   const snippet = cleanText(item?.snippet || "");
-  const domain = String(item?.domain || "");
+  const domain = String(item?.domain || host(item?.link) || "").toLowerCase();
   const text = `${title} ${snippet}`.toLowerCase();
-  if (!title && !domain) return false;
+  const combined = `${domain} ${text}`;
+  if (!title && !domain) return { include: false, category: "noise", reason: "Missing usable result identity" };
 
-  // Keep obvious operator/commerce results and tourism authorities/marketplaces.
-  if (/tour|charter|cruise|diving|dive|scuba|snorkel|fishing|sailing|excursion|adventure|rental|ride|trip|experience|activity|tickets?|booking|reserve/i.test(text)) return true;
-  if (/tripadvisor|viator|getyourguide|yelp|tourism|visit|chamber|museum/i.test(`${domain} ${text}`)) return true;
+  const marketplace = /(tripadvisor|viator|getyourguide|airbnb|expedia|travelocity|booking\.com|yelp)/i.test(combined);
+  if (marketplace) return { include: true, category: "marketplace", reason: "Marketplace/discovery surface where travelers can compare or book experiences" };
 
-  // Otherwise require meaningful overlap with the commercial part of the query. This blocks
-  // celebrity songs/images/editorial pages from being promoted as market competitors.
-  const stop = new Set(["the","and","for","with","from","near","best","top","islands","island","cayman","grand","tours","tour"]);
-  const terms = String(query || "").toLowerCase().split(/[^a-z0-9]+/).filter(t => t.length >= 4 && !stop.has(t));
-  const overlap = terms.filter(term => text.includes(term)).length;
-  return overlap >= Math.min(2, Math.max(1, terms.length));
+  if (isAuthorityLikeResult(combined, domain)) {
+    return { include: true, category: "authority", reason: "Destination/editorial authority; useful for demand context but not treated as a competing operator" };
+  }
+
+  const terms = queryCommercialTerms(query);
+  const overlap = terms.filter(term => text.includes(term) || domain.includes(term)).length;
+  const productLanguage = /(tour|charter|cruise|diving|dive|scuba|snorkel|fishing|sailing|excursion|adventure|rental|ride|trip|experience|activity|attraction|boat|watersports?|horseback|rafting|kayak)/i.test(text);
+  const transactionLanguage = /(book(?:ing)?|reserve|availability|check availability|price|pricing|from \$|per person|private|small group|departures?|daily tours?|tickets?)/i.test(text);
+  const operatorLanguage = /(we offer|our tours?|our charters?|our dives?|our excursions?|locally owned|tour operator|dive operator|charter company|adventure company)/i.test(text);
+  const obviousNonCommercial = /(copyright|all rights reserved|privacy policy|terms of use|image|photo|lyrics|song|chemical|distributor|research|pdf|news|article|blog post)/i.test(text);
+
+  if (obviousNonCommercial) {
+    return { include: false, category: "noise", reason: "Editorial/utility/non-commercial result" };
+  }
+
+  // A direct competitor must look like a business selling the searched experience,
+  // not merely a page that mentions the same words.
+  const strongCommercial = productLanguage && (transactionLanguage || operatorLanguage);
+  const queryMatch = terms.length === 0 ? productLanguage : overlap >= 1;
+  const unrelatedCorporate = /(?:chemical|premix|fiber|telecom|insurance|bank|law|real estate|construction|distribution|distributor|medical|clinic|school|university)/i.test(text);
+  if (strongCommercial && queryMatch && !unrelatedCorporate) {
+    return { include: true, category: "direct", reason: `Comparable bookable-experience business${overlap ? ` matching ${overlap} specific query term${overlap === 1 ? "" : "s"}` : ""}` };
+  }
+
+  return { include: false, category: "noise", reason: "Result mentions the market but does not provide enough evidence of a comparable bookable experience business" };
 }
 
 function isLowValueOrganicDomain(domain) {

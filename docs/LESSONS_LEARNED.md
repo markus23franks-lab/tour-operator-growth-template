@@ -104,4 +104,61 @@ After approximately 2–3 meaningful backend/intelligence sessions, development 
 
 This does not mean building fake UI for momentum.
 
-It means ensuring foundational work continuously reconnects to the broader Growth Operator product.
+It means ensuring foundational work continuously reconnects to the broader Growth Operator product.## Analyzer Intelligence Has Downstream Value — September 1, 2026
+
+Recent Analyzer development became discouraging because multiple backend improvements produced nearly identical operator-facing findings.
+
+Growth Score changed the context.
+
+Once Analyzer evidence was connected to:
+
+- business condition
+- constraint
+- opportunity economics
+- GO priority
+- future mission
+- future measurement
+
+the value of the intelligence became much easier to see.
+
+Lesson:
+
+> Foundational intelligence should be evaluated by what it enables across Growth Operator, not only by how impressive an isolated Analyzer finding looks.
+
+Analyzer is the public intelligence engine.
+
+Growth Score translates that intelligence into business condition.
+
+Mission turns it into work.
+
+Execution changes the business.
+
+Measurement proves the result.
+
+### Historical Regression Can Be More Valuable Than Another New Patch
+
+When a prior build produced a meaningfully better product outcome, use Git history as evidence.
+
+Do not assume the latest architecture is superior simply because it is newer.
+
+Compare successful historical behavior against current behavior and deliberately recover lost capabilities while preserving newer improvements.
+
+### More Processing Is Not Automatically Better Intelligence
+
+Recent Analyzer iterations produced an undesirable combination:
+
+MORE PROCESSING
++
+SLOWER ANALYSIS
++
+LESS COMPELLING MARKET OUTPUT
+
+This is a warning against equating system complexity with customer value.
+
+GO should prefer:
+
+one exceptional evidence-backed opportunity
+
+over:
+
+exhaustive investigation with mediocre conclusions.

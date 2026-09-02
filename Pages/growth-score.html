@@ -1,114 +1,46 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <title>Growth Operator Score</title>
-    <link rel="stylesheet" href="../styles.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Growth Score — Growth Operator</title>
+  <link rel="stylesheet" href="../styles/growth-score.css">
 </head>
-
 <body>
+  <main class="score-shell">
+    <header class="topbar"><a class="brand" href="dashboard.html"><span class="brand-mark">◈</span><span><strong>GROWTH</strong><small>OPERATOR</small></span></a><span class="status"><i></i> GROWTH SCORE · EVIDENCE + ECONOMICS</span></header>
 
-<section class="hero">
-    <div class="hero-content">
+    <section class="hero">
+      <div><p class="eyebrow">YOUR GROWTH OPERATING BASELINE</p><h1 id="business-heading">Your Growth Score</h1><p class="lede" id="score-summary"></p><div class="evidence-row"><span class="evidence-pill public">PUBLICLY OBSERVED</span><span class="evidence-pill inferred">GO INFERENCE</span><span class="evidence-pill needs">NEEDS CONNECTED DATA</span></div></div>
+      <article class="score-card"><small id="score-label">PUBLIC GROWTH BASELINE</small><div class="score-ring" id="score-ring" style="--score:0"><div><strong id="score-number">—</strong><span>/100</span></div></div><b id="score-read"></b><p id="score-confidence"></p></article>
+    </section>
 
-        <p class="eyebrow">FREE TOUR OPERATOR GROWTH SCORE</p>
+    <section class="economics-strip">
+      <div class="economics-main"><small>IDENTIFIED ANNUAL GROWTH OPPORTUNITY</small><strong id="revenue-range">Needs evidence</strong><span id="revenue-copy">GO will only model dollars when it has enough evidence to show the assumptions.</span></div>
+      <div><small>OPPORTUNITY CONFIDENCE</small><strong id="revenue-confidence">—</strong><span id="revenue-confidence-copy">Public estimate until first-party data replaces assumptions.</span></div>
+      <div><small>WHAT WOULD VERIFY IT</small><strong id="verify-title">Traffic + bookings</strong><span id="verify-copy">Connect Search Console, analytics and booking revenue.</span></div>
+    </section>
 
-        <h1>Diagnose What’s Costing You Direct Bookings</h1>
+    <section class="orientation"><div><small>BIGGEST ADDRESSABLE CONSTRAINT</small><strong id="constraint-name">—</strong><span id="constraint-copy"></span></div><div><small>GO'S NEXT PRIORITY</small><strong id="priority-title">—</strong><span id="priority-copy"></span></div><div><small>EVIDENCE LEVEL</small><strong id="evidence-level">Public baseline</strong><span id="evidence-copy"></span></div></section>
 
-        <p class="hero-text">
-            Get a personalized growth report across the six systems that drive tour operator growth.
-        </p>
+    <section class="section evidence-section">
+      <div class="section-heading"><p class="eyebrow">WHY YOU SHOULD TRUST THE SCORE</p><h2>GO shows its work.</h2><p>The score is not a black box. Every scored area is backed by evidence GO can point to, the effect that evidence had on the score, and what is still unknown.</p></div>
+      <div class="proof-summary" id="proof-summary"></div>
+      <div class="evidence-ledger" id="evidence-ledger"></div>
+    </section>
 
-        <form id="growth-form">
-            <label>Business Name</label>
-            <input type="text" id="business-name" placeholder="Example: Blue River Rafting">
+    <section class="section"><div class="section-heading"><p class="eyebrow">THE SIX GROWTH AREAS</p><h2>One score. Six systems underneath it.</h2><p>GO scores only what current evidence can support. Each scored system now exposes the evidence behind the number.</p></div><div class="area-grid" id="area-grid"></div></section>
 
-            <label>Website URL</label>
-            <input type="text" id="website-url" placeholder="https://yourwebsite.com">
+    <section class="priority-panel">
+      <div class="priority-main"><p class="eyebrow">GO'S HIGHEST-VALUE MOVE</p><div class="priority-kicker"><span id="priority-pillar">—</span><em id="priority-confidence">PUBLIC EVIDENCE</em></div><h2 id="mission-title"></h2><p id="mission-problem"></p><div class="why-card"><small>WHY THIS COMES FIRST</small><p id="mission-why"></p></div><div class="math-card"><small>HOW GO MODELED THE UPSIDE</small><div id="math-lines"></div><p id="math-note"></p></div></div>
+      <aside class="action-card"><small>WHAT GO WANTS TO DO</small><h3>Turn the opportunity into measurable work.</h3><p id="mission-action"></p><div class="metric"><span>GO WOULD MEASURE</span><strong id="mission-metric">—</strong></div><div class="action-value"><span>MODELED ANNUAL UPSIDE</span><strong id="action-revenue">Needs connected data</strong></div><button id="open-mission">Open GO Mission →</button><small class="mission-state">MISSION STATE · <b>READY FOR REVIEW</b></small></aside>
+    </section>
 
-            <label>Booking Software</label>
-            <select id="booking-software">
-                <option>Peek Pro</option>
-                <option>FareHarbor</option>
-                <option>Rezdy</option>
-                <option>Checkfront</option>
-                <option>Other / Not Sure</option>
-            </select>
+    <section class="connection-panel"><div><p class="eyebrow">TURN ESTIMATES INTO PROOF</p><h2>Public intelligence finds the opportunity. Connected data proves the dollars.</h2><p id="connection-copy"></p></div><div class="connections"><span>Search Console <b>REPLACES TRAFFIC ASSUMPTIONS</b></span><span>Google Business Profile <b>VERIFIES LOCAL DEMAND</b></span><span>Analytics <b>VERIFIES CONVERSION PATH</b></span><span>Booking / OBP <b>VERIFIES BOOKINGS + REVENUE</b></span></div></section>
 
-            <label>Are enough new customers finding you on Google?</label>
-            <select id="seo-confidence">
-                <option>Yes — we show up well</option>
-                <option>Somewhat — but we could do better</option>
-                <option>No — we are not getting enough leads</option>
-                <option>Not sure</option>
-            </select>
-
-            <label>Do you consistently get new Google reviews after trips?</label>
-            <select id="review-system">
-                <option>Yes</option>
-                <option>No</option>
-                <option>Not sure</option>
-            </select>
-
-            <label>Do you know where most of your bookings come from?</label>
-            <select id="tracking-confidence">
-                <option>Yes — I know clearly</option>
-                <option>Somewhat</option>
-                <option>No — we are guessing</option>
-            </select>
-
-            <button type="submit">Analyze My Business →</button>
-        </form>
-
-        <div id="loading-screen" style="display:none;">
-            <p class="eyebrow">ANALYZING YOUR BUSINESS</p>
-            <h2>Building Your Growth Diagnosis...</h2>
-
-            <p>✅ Visibility</p>
-            <p>✅ Trust</p>
-            <p>✅ Conversion</p>
-            <p>✅ Operations</p>
-            <p>✅ Intelligence</p>
-            <p>✅ Growth Potential</p>
-        </div>
-
-        <div id="results" style="display:none;">
-            <p class="eyebrow">YOUR GROWTH DIAGNOSIS</p>
-
-            <h2 id="report-title">Growth Score</h2>
-            <h1 id="score-number">0 / 100</h1>
-
-            <p id="score-message"></p>
-
-            <div class="insight-card">
-                <h3>Business Profile</h3>
-                <p id="business-profile"></p>
-            </div>
-
-            <hr>
-
-            <h3>Business Health</h3>
-
-            <div id="business-health"></div>
-
-            <hr>
-
-            <div class="insight-card priority">
-                <h3>Biggest Growth Opportunity</h3>
-                <p id="top-opportunity"></p>
-            </div>
-
-            <h3>Estimated Revenue Opportunity</h3>
-            <p id="revenue-opportunity"></p>
-
-            <div id="growth-roadmap"></div>
-
-            <button>Build My 90-Day Growth Plan →</button>
-        </div>
-
-    </div>
-</section>
-
-<script src="../js/assessment.js"></script>
-
+    <section class="movement"><div><small>NOW</small><strong id="baseline-number">—</strong><span>Evidence-backed baseline</span></div><i>→</i><div class="future"><small>NEXT</small><strong id="modeled-opportunity">—</strong><span>Opportunity GO is ready to work</span></div><i>→</i><div class="future"><small>THEN</small><strong>Measured revenue</strong><span>What GO can prove it changed</span></div></section>
+    <footer class="footer-actions"><a href="growth-snapshot.html" class="button ghost">← Growth Snapshot</a><a href="dashboard.html" class="button">Open Dashboard →</a></footer>
+  </main>
+  <script src="../js/assessment.js"></script>
 </body>
 </html>

@@ -597,4 +597,83 @@ OPERATOR ANALYZER
 → MEASUREMENT
 → SCORE MOVEMENT
 
-This reconnects Analyzer intelligence to the larger Growth Operator operating system and restores visible product breadth while Analyzer continues improving as a subsystem.
+This reconnects Analyzer intelligence to the larger Growth Operator operating system and restores visible product breadth while Analyzer continues improving as a subsystem.## Build 031 Milestone — Growth Score Evidence + Economics
+**September 1, 2026**
+
+Growth Score has become a meaningful product surface.
+
+Current capability includes:
+
+- overall public Growth Score
+- six Growth Systems
+- honest Needs Data states
+- evidence-level labeling
+- primary growth constraint
+- GO priority
+- evidence ledger
+- opportunity economics
+- modeled annual upside
+- assumptions/explanation
+- GO Mission bridge
+- public intelligence → modeled opportunity → measured revenue progression
+
+This represents an important shift:
+
+Analyzer intelligence is no longer being evaluated only as an audit/report.
+
+It now has a downstream product purpose.
+
+### Immediate Next Milestone — Historical Analyzer Intelligence Recovery
+
+Before additional Analyzer development:
+
+Use Git history to locate the earlier Caicos Dream Tours implementation that produced stronger tangible search/market intelligence.
+
+Compare historical vs current behavior across:
+
+- demand generation
+- search execution
+- SERP parsing
+- result qualification
+- competitor discovery
+- ranking/position observations
+- review/trust extraction
+- opportunity construction
+- finding prioritization
+- query limits
+- fallback/retry behavior
+- concurrency/performance
+
+Goal:
+
+EARLIER INVESTIGATIVE AGGRESSION
++
+CURRENT EVIDENCE DISCIPLINE
++
+CURRENT OPERATOR UNDERSTANDING
++
+GROWTH SCORE ECONOMIC PRESENTATION
+
+### Analyzer Performance
+
+Current Analyzer runtime of approximately five minutes is not acceptable for V1.
+
+After historical comparison identifies the correct intelligence architecture, optimize toward:
+
+Typical useful analysis:
+~20–30 seconds
+
+Complex analysis:
+preferably <=45 seconds
+
+Potential approaches include:
+
+- parallel execution
+- deduplicated searches/fetches
+- cached page retrieval
+- commercial prioritization before expensive investigation
+- hard timeout of weak recovery paths
+- early stopping after sufficient evidence
+- progressive deeper investigation after the first useful result
+
+Do not optimize the wrong architecture merely to make it faster.

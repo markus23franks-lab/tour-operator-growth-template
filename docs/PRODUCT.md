@@ -72,4 +72,80 @@ Once this threshold is reached:
 
 FREEZE ANALYZER V1.
 
-Analyzer development then transitions from a dedicated product phase into a continuously improving Growth Operator subsystem.
+Analyzer development then transitions from a dedicated product phase into a continuously improving Growth Operator subsystem.## Growth Score — Evidence + Economics Product Model
+**Added: September 1, 2026**
+
+Growth Score is becoming a first-class Growth Operator product surface rather than a decorative dashboard metric.
+
+Its role is to translate GO's underlying intelligence into a simple answer to:
+
+- How is my growth engine performing?
+- What is holding me back?
+- Why does GO believe that?
+- What should GO work on next?
+- What could fixing it be worth?
+- What data would make GO more certain?
+- Did GO's work actually create growth?
+
+The emerging product progression is:
+
+ANALYZER EVIDENCE
+→ GROWTH SCORE
+→ PRIMARY CONSTRAINT
+→ OPPORTUNITY ECONOMICS
+→ GO PRIORITY / MISSION
+→ EXECUTION
+→ MEASUREMENT
+→ SCORE MOVEMENT
+→ NEXT CONSTRAINT
+
+### Evidence Levels
+
+Growth Score must remain honest about what GO actually knows.
+
+Public evidence can support an initial/public baseline.
+
+Unsupported systems should show states such as:
+
+NEEDS DATA
+
+rather than fabricated precision.
+
+Connected first-party data should progressively replace modeled assumptions with verified business truth.
+
+Conceptual progression:
+
+PUBLIC INTELLIGENCE
+→ MODELED OPPORTUNITY
+→ CONNECTED BASELINE
+→ GO EXECUTION
+→ MEASURED IMPACT
+→ ATTRIBUTED REVENUE WHERE DEFENSIBLE
+
+### Opportunity Economics
+
+Economic framing is a core part of Growth Score.
+
+GO should not simply say:
+
+"You have a visibility problem."
+
+GO should increasingly say:
+
+"GO found this constraint.
+Here is the evidence.
+Here is the action GO recommends.
+Here is the modeled economic opportunity.
+Here is what GO needs to measure whether the opportunity is real."
+
+Important:
+
+Modeled Opportunity
+≠
+Measured Impact
+≠
+Attributed Revenue
+
+GO must never inflate an opportunity merely to make pricing easier to justify.
+
+Better intelligence and connected business data should create more accurate economic models.

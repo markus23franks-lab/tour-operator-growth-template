@@ -1,285 +1,89 @@
-const form = document.getElementById("growth-form");
-const loadingScreen = document.getElementById("loading-screen");
-const results = document.getElementById("results");
+"use strict";
 
-const reportTitle = document.getElementById("report-title");
-const scoreNumber = document.getElementById("score-number");
-const scoreMessage = document.getElementById("score-message");
-const businessProfile = document.getElementById("business-profile");
-const topOpportunity = document.getElementById("top-opportunity");
-const revenueOpportunity = document.getElementById("revenue-opportunity");
-const growthRoadmap = document.getElementById("growth-roadmap");
-const businessHealth = document.getElementById("business-health");
+const PILLARS = [
+  ["Visibility","⌖","Can the right travelers discover the business when they are ready to book?"],
+  ["Trust","★","Does public proof make the operator feel like the obvious safe choice?"],
+  ["Conversion","↗","Does the website make the next booking step clear and easy?"],
+  ["Operations","⚡","Can GO verify the operating systems that protect and fulfill demand?"],
+  ["Intelligence","◎","Can GO see what actually creates traffic, bookings and revenue?"],
+  ["Growth","✦","Is there enough evidence to know what deserves attention next?"]
+];
+const fallback={businessName:"Cayman Ocean Adventures",website:"",growthScore:68,scores:{Visibility:76,Trust:72,Conversion:66,Operations:63,Intelligence:58,Growth:68},analysisConfidence:"Medium",summary:"GO has enough public evidence to establish a directional baseline, but first-party data is still required to prove revenue impact.",opportunities:[]};
+const prospect=read("growthOperatorProspectProfile",null), review=read("growthOperatorBusinessReviewProfile",null), profile=prospect||review||fallback;
+const connected=Boolean(profile.connectedData||profile.dataConnections?.verified);
 
-form.addEventListener("submit", function (event) {
-    event.preventDefault();
+document.addEventListener("DOMContentLoaded",render);
 
-    const businessName = document.getElementById("business-name").value || "Your business";
-    const bookingSoftware = document.getElementById("booking-software").value;
-    const seoConfidence = document.getElementById("seo-confidence").value;
-    const reviewSystem = document.getElementById("review-system").value;
-    const trackingConfidence = document.getElementById("tracking-confidence").value;
-
-    const scores = calculateScores(bookingSoftware, seoConfidence, reviewSystem, trackingConfidence);
-    const totalScore = Math.round(
-        (scores.visibility + scores.trust + scores.conversion + scores.operations + scores.intelligence + scores.growth) / 6
-    );
-
-    const weakestArea = getWeakestArea(scores);
-
-    form.style.display = "none";
-    loadingScreen.style.display = "block";
-
-    setTimeout(function () {
-        reportTitle.textContent = `${businessName} Growth Score`;
-        scoreNumber.textContent = totalScore + " / 100";
-
-        scoreMessage.textContent = getScoreMessage(totalScore, businessName);
-        businessProfile.textContent = getBusinessProfile(totalScore, trackingConfidence, seoConfidence);
-        topOpportunity.textContent = getTopOpportunity(weakestArea);
-        revenueOpportunity.textContent = getRevenueOpportunity(totalScore);
-        businessHealth.innerHTML = getBusinessHealthHTML(scores);
-        growthRoadmap.innerHTML = getRoadmapHTML(weakestArea);
-
-        loadingScreen.style.display = "none";
-        results.style.display = "block";
-    }, 1800);
-});
-
-function calculateScores(bookingSoftware, seoConfidence, reviewSystem, trackingConfidence) {
-    let visibility = 78;
-    let trust = 76;
-    let conversion = 82;
-    let operations = 72;
-    let intelligence = 68;
-    let growth = 78;
-
-    if (bookingSoftware === "FareHarbor") {
-        conversion -= 4;
-        operations -= 4;
-    } else if (bookingSoftware === "Rezdy" || bookingSoftware === "Checkfront") {
-        conversion -= 7;
-        operations -= 5;
-    } else if (bookingSoftware === "Other / Not Sure") {
-        conversion -= 12;
-        operations -= 8;
-        intelligence -= 6;
-    }
-
-    if (seoConfidence === "Somewhat — but we could do better") {
-        visibility -= 10;
-        growth -= 4;
-    } else if (seoConfidence === "No — we are not getting enough leads") {
-        visibility -= 24;
-        growth -= 10;
-    } else if (seoConfidence === "Not sure") {
-        visibility -= 18;
-        intelligence -= 8;
-    }
-
-    if (reviewSystem === "No") {
-        trust -= 20;
-        operations -= 8;
-        growth -= 6;
-    } else if (reviewSystem === "Not sure") {
-        trust -= 12;
-        operations -= 5;
-        intelligence -= 4;
-    }
-
-    if (trackingConfidence === "Somewhat") {
-        intelligence -= 15;
-        growth -= 5;
-    } else if (trackingConfidence === "No — we are guessing") {
-        intelligence -= 30;
-        growth -= 10;
-        operations -= 6;
-    }
-
-    return {
-        visibility,
-        trust,
-        conversion,
-        operations,
-        intelligence,
-        growth
-    };
+function render(){
+  const name=profile.businessName||fallback.businessName, scores=normalizeScores(profile.scores||fallback.scores), areas=buildAreas(scores), baseline=calculateBaseline(areas,profile.growthScore), priority=choosePriority(areas,profile.opportunities||[]), evidence=collectEvidence(priority,areas), model=buildEconomicModel(priority,evidence);
+  set("business-heading",`${name}'s Growth Score`); set("score-number",baseline); set("baseline-number",baseline); document.getElementById("score-ring").style.setProperty("--score",baseline);
+  set("score-label",connected?"VERIFIED GROWTH BASELINE":"PUBLIC GROWTH BASELINE"); set("score-read",scoreRead(baseline)); set("score-summary",profile.summary||fallback.summary);
+  set("score-confidence",connected?"Connected business data contributes to this baseline.":`${profile.analysisConfidence||"Medium"} confidence in the public read. GO separates what it observed from what still needs first-party proof.`);
+  set("constraint-name",priority.pillar); set("constraint-copy",constraintCopy(priority,areas)); set("priority-title",conciseTitle(priority)); set("priority-copy",conciseProblem(priority));
+  set("evidence-level",connected?"Verified baseline":"Public baseline"); set("evidence-copy",`${evidence.observed.length} public signals support the current priority; ${evidence.unknown.length} important inputs still need verification.`);
+  renderEconomics(model); renderProof(evidence,areas); document.getElementById("area-grid").innerHTML=areas.map(a=>areaCard(a,evidence)).join("");
+  set("priority-pillar",priority.pillar.toUpperCase()); set("priority-confidence",`${String(priority.confidence||profile.analysisConfidence||"Medium").toUpperCase()} CONFIDENCE`); set("mission-title",conciseTitle(priority)); set("mission-problem",conciseProblem(priority)); set("mission-why",priority.rankExplanation||priority.priorityReason||defaultWhy(priority.pillar)); set("mission-action",priority.action||defaultAction(priority.pillar)); set("mission-metric",priority.metric||defaultMetric(priority.pillar)); set("action-revenue",model.label); set("modeled-opportunity",model.label);
+  renderMath(model); set("connection-copy",connected?"GO can now replace public assumptions with actual traffic, conversion, bookings and revenue. Each completed mission should write measured impact back into the score.":"Connect Search Console, Google Business Profile, analytics and booking data. GO will replace each public assumption with the operator's actual traffic, conversion, booking value and revenue, then measure what changed after execution.");
+  document.getElementById("open-mission").addEventListener("click",()=>{localStorage.setItem("growthOperatorActiveMission",JSON.stringify({businessName:name,website:profile.website||"",growthScore:baseline,scores:Object.fromEntries(areas.map(a=>[a.name,Number.isFinite(a.score)?a.score:0])),revenueOpportunity:model.midpoint,mission:{pillar:priority.pillar,title:conciseTitle(priority),reason:conciseProblem(priority),description:priority.action||defaultAction(priority.pillar),confidence:confidenceNumber(priority.confidence||profile.analysisConfidence),revenueLow:model.low,revenueHigh:model.high,revenueModel:model.assumptions}}));window.location.href="mission.html?source=growth-score";});
 }
 
-function getWeakestArea(scores) {
-    return Object.entries(scores).sort(function (a, b) {
-        return a[1] - b[1];
-    })[0][0];
+function buildAreas(scores){const support={Visibility:true,Trust:true,Conversion:true,Operations:connected,Intelligence:connected,Growth:true};return PILLARS.map(([name,icon,description])=>({name,icon,description,score:support[name]&&Number.isFinite(scores[name])?clamp(scores[name]):null,evidence:support[name]?(connected?"Verified + public":"Public evidence"):"Needs connected data"}));}
+function calculateBaseline(areas,legacy){const scored=areas.filter(a=>Number.isFinite(a.score)),w={Visibility:.32,Trust:.23,Conversion:.23,Growth:.22};let n=0,d=0;scored.forEach(a=>{if(w[a.name]){n+=a.score*w[a.name];d+=w[a.name];}});return d?Math.round(n/d):(Number.isFinite(Number(legacy))?clamp(legacy):0);}
+function choosePriority(areas,ops){const usable=Array.isArray(ops)?ops.filter(Boolean):[];if(usable.length){const f=usable[0];return{pillar:normalizePillar(f.pillar),title:f.title||"Resolve the highest-value growth constraint",problem:f.problem||"",action:f.action||"",metric:f.metric||"",confidence:f.confidence||profile.analysisConfidence||"Medium",rankExplanation:f.rankExplanation||f.priorityReason||"",sources:f.sources||[],raw:f};}const weak=areas.filter(a=>Number.isFinite(a.score)).sort((a,b)=>a.score-b.score)[0]||{name:"Growth"};return{pillar:weak.name,title:defaultTitle(weak.name),problem:defaultProblem(weak.name),action:defaultAction(weak.name),metric:defaultMetric(weak.name),confidence:profile.analysisConfidence||"Medium",sources:[],raw:{}};}
+
+function collectEvidence(priority,areas){
+  const raw=priority.raw||{}, observed=[], inferred=[], unknown=[];
+  const add=(arr,label,detail,impact=0,source="Public scan")=>{if(detail&&String(detail).trim())arr.push({label,detail:clean(detail),impact,source});};
+  (raw.sources||priority.sources||[]).forEach(s=>add(observed,s.label||"Public source",s.detail||s.value||"Public evidence observed",0,s.source||s.type||"Public market"));
+  const fields=[
+    ["Market demand",raw.marketDemand||raw.demandEvidence||raw.searchEvidence,-8,"Public search"],
+    ["Search / market position",raw.marketPosition||raw.visibilityEvidence||raw.localizedGoogleCheck,-10,"Public market"],
+    ["Competitor evidence",raw.competitorEvidence||raw.directMarketLeaders||raw.competitorPricing,-6,"Public competitor"],
+    ["Trust evidence",raw.trustEvidence||raw.publicTrustEvidence,-5,"Public reviews"],
+    ["Booking path",raw.bookingEvidence||raw.bookingAction||raw.bookingTechnology,-8,"Website"],
+    ["Public pricing",raw.pricingEvidence||raw.publicPricing,-3,"Website / market"]
+  ]; fields.forEach(([l,v,i,s])=>add(observed,l,v,i,s));
+  if(priority.problem)add(inferred,"GO judgment",priority.problem,0,"GO inference"); if(priority.rankExplanation)add(inferred,"Priority rationale",priority.rankExplanation,0,"GO inference");
+  const summary=String(profile.summary||""); if(/pricing|price/i.test(summary))add(observed,"Pricing detected",extractPrices(summary).join(" · ")||"Public pricing detected",-2,"Website");
+  if(/review|rating|testimonial/i.test(summary))add(observed,"Trust proof detected","Reviews, ratings or testimonial language were observed in the public scan.",-2,"Website / public market");
+  if(/experience|tour|charter|div|snorkel|ride|activity/i.test(summary))add(observed,"Product inventory","GO identified bookable experience/product signals on the operator website.",0,"Website");
+  if(priority.pillar==="Visibility") unknown.push({label:"Actual search traffic",detail:"Search Console impressions, clicks and average position",source:"Search Console"},{label:"True booking conversion",detail:"Qualified organic visit → completed booking rate",source:"Analytics + booking"},{label:"Average booking value",detail:"Actual revenue per completed booking",source:"Booking / OBP"});
+  else if(priority.pillar==="Conversion") unknown.push({label:"Booking funnel",detail:"Experience view → checkout start → completed booking",source:"Analytics + booking"},{label:"Average booking value",detail:"Actual revenue per booking",source:"Booking / OBP"});
+  else unknown.push({label:"Traffic + conversion",detail:"Actual qualified demand and booking performance",source:"Analytics + booking"},{label:"Revenue",detail:"Actual booking value and revenue attribution",source:"Booking / OBP"});
+  if(!observed.length){add(observed,"Public business context",profile.summary||"GO established the operator, product and market context from public evidence.",0,"Public scan");}
+  return{observed:dedupe(observed).slice(0,8),inferred:dedupe(inferred).slice(0,3),unknown};
 }
 
-function getBusinessHealthHTML(scores) {
-    const cards = [
-        {
-            key: "visibility",
-            icon: "👀",
-            title: "Visibility",
-            description: "Can customers find you on Google, maps, local search, and emerging AI search?"
-        },
-        {
-            key: "trust",
-            icon: "⭐",
-            title: "Trust",
-            description: "Do your reviews, photos, and social proof make customers confident enough to book?"
-        },
-        {
-            key: "conversion",
-            icon: "🎯",
-            title: "Conversion",
-            description: "When visitors arrive, does your website and booking flow make it easy to take action?"
-        },
-        {
-            key: "operations",
-            icon: "⚙️",
-            title: "Operations",
-            description: "Are repetitive tasks automated so your business can grow without adding more manual work?"
-        },
-        {
-            key: "intelligence",
-            icon: "📊",
-            title: "Intelligence",
-            description: "Do you know what is actually creating bookings, revenue, and growth?"
-        },
-        {
-            key: "growth",
-            icon: "🚀",
-            title: "Growth",
-            description: "Is your business improving every month instead of quietly falling behind?"
-        }
-    ];
-
-    return cards.map(function (card) {
-        const score = scores[card.key];
-        return `
-            <div class="health-card">
-                <div class="health-header">
-                    <h4>${card.icon} ${card.title}</h4>
-                    <strong>${score}%</strong>
-                </div>
-
-                <div class="progress-bar">
-                    <div class="progress-fill" style="width:${score}%;"></div>
-                </div>
-
-                <p>${card.description}</p>
-            </div>
-        `;
-    }).join("");
+function buildEconomicModel(priority,evidence){
+  const explicit=Number(priority.raw?.amount||priority.raw?.revenueOpportunity||0); if(explicit>0)return{low:Math.round(explicit*.75),high:Math.round(explicit*1.25),midpoint:explicit,label:moneyRange(explicit*.75,explicit*1.25),confidence:"Medium–High",basis:"Existing GO opportunity model",assumptions:[`GO already modeled this opportunity at approximately ${money(explicit)} annually.`,`Range shown adds a ±25% public-evidence uncertainty band.`],defensible:true};
+  const prices=extractPrices(JSON.stringify(profile)); const avgPrice=prices.length?median(prices):0;
+  const p=priority.pillar; let visitsLow=0,visitsHigh=0,rateLow=.018,rateHigh=.032;
+  if(p==="Visibility"){visitsLow=360;visitsHigh=900;} else if(p==="Conversion"){visitsLow=500;visitsHigh=1200;rateLow=.008;rateHigh=.018;} else if(p==="Trust"){visitsLow=450;visitsHigh=1000;rateLow=.006;rateHigh=.014;} else {visitsLow=0;visitsHigh=0;}
+  if(!avgPrice||!visitsLow)return{low:0,high:0,midpoint:0,label:"Needs connected data",confidence:"Not modeled",basis:"Insufficient economic inputs",assumptions:["GO has not found enough defensible public inputs to attach dollars yet.","Connect traffic, conversion and booking revenue to produce the model."],defensible:false};
+  const low=Math.round(visitsLow*rateLow*avgPrice), high=Math.round(visitsHigh*rateHigh*avgPrice), midpoint=Math.round((low+high)/2);
+  return{low,high,midpoint,label:moneyRange(low,high),confidence:"Directional",basis:`Public price signal + conservative ${p.toLowerCase()} assumptions`,assumptions:[`Public price signal used: ~${money(avgPrice)} median detected price.`,`Modeled incremental qualified visits / influenced visits: ${visitsLow.toLocaleString()}–${visitsHigh.toLocaleString()} per year.`,`Modeled incremental booking yield: ${(rateLow*100).toFixed(1)}%–${(rateHigh*100).toFixed(1)}%.`,`Formula: incremental qualified demand × incremental booking yield × detected booking value.`],defensible:true};
 }
 
-function getScoreMessage(totalScore, businessName) {
-    if (totalScore >= 85) {
-        return `${businessName} has a strong growth foundation. The next opportunity is optimization, tracking, and consistent improvement.`;
-    }
+function renderEconomics(m){set("revenue-range",m.label);set("revenue-confidence",m.confidence);set("revenue-copy",m.defensible?"A transparent public model — not a promise. Open the math below to see every assumption.":"GO is refusing to invent revenue. The missing inputs are explicit below.");set("revenue-confidence-copy",m.defensible?m.basis:"No dollar claim until the evidence supports one.");set("verify-title",m.defensible?"Replace assumptions":"Supply missing inputs");set("verify-copy",m.defensible?"Connect first-party traffic, conversion and booking value so GO can replace the public model with actual economics.":"Connect Search Console, analytics and booking revenue.");}
+function renderProof(e,a){const total=e.observed.length+e.inferred.length+e.unknown.length;document.getElementById("proof-summary").innerHTML=`<div><strong>${total}</strong><span>signals exposed</span></div><div><strong>${e.observed.length}</strong><span>publicly observed</span></div><div><strong>${e.inferred.length}</strong><span>GO judgments</span></div><div><strong>${e.unknown.length}</strong><span>inputs still needed</span></div>`;document.getElementById("evidence-ledger").innerHTML=[...e.observed.map(x=>ledger(x,"observed")),...e.inferred.map(x=>ledger(x,"inferred")),...e.unknown.map(x=>ledger(x,"unknown"))].join("");}
+function ledger(x,type){const labels={observed:"PUBLICLY VERIFIED",inferred:"GO INFERENCE",unknown:"NEEDS CONNECTED DATA"};return`<article class="ledger-row ${type}"><div><small>${labels[type]}</small><strong>${esc(x.label)}</strong></div><p>${esc(x.detail)}</p><span>${esc(x.source||"")}</span></article>`;}
+function areaCard(a,e){if(!Number.isFinite(a.score))return`<article class="area-card needs-data"><div class="area-head"><span>${a.icon}</span><div><small>${a.name.toUpperCase()}</small><strong>Needs data</strong></div></div><p>${a.description}</p><div class="data-line"><i></i><span>GO will not score this system until the evidence exists.</span></div></article>`;const count=a.name==="Visibility"?e.observed.filter(x=>/search|market|competitor|product/i.test(x.label)).length:a.name==="Trust"?e.observed.filter(x=>/trust|review/i.test(x.label)).length:a.name==="Conversion"?e.observed.filter(x=>/booking|product|pricing/i.test(x.label)).length:Math.max(1,Math.round(e.observed.length/3));return`<article class="area-card"><div class="area-head"><span>${a.icon}</span><div><small>${a.name.toUpperCase()}</small><strong>${a.score}<em>/100</em></strong></div></div><div class="bar"><i style="width:${a.score}%"></i></div><p>${a.description}</p><div class="data-line observed"><i></i><span>${count} supporting public signal${count===1?"":"s"} · ${a.evidence}</span></div></article>`;}
+function renderMath(m){document.getElementById("math-lines").innerHTML=m.assumptions.map((x,i)=>`<div><b>${i+1}</b><span>${esc(x)}</span></div>`).join("");set("math-note",m.defensible?"This is an opportunity model, not guaranteed revenue. Connected data replaces assumptions; measured results replace the model.":"GO intentionally withholds a revenue estimate when the public evidence cannot support the math.");}
 
-    if (totalScore >= 70) {
-        return `${businessName} is doing several things well, but disconnected growth systems are likely costing bookings.`;
-    }
-
-    return `${businessName} has meaningful growth potential, but several foundational systems need attention.`;
-}
-
-function getBusinessProfile(totalScore, trackingConfidence, seoConfidence) {
-    if (trackingConfidence === "No — we are guessing") {
-        return "You are likely operating without clear visibility into what is actually driving bookings. This creates scaling risk and makes marketing decisions harder than they need to be.";
-    }
-
-    if (seoConfidence === "No — we are not getting enough leads") {
-        return "Your business likely has a visibility gap. Customers may be searching, but competitors may be capturing demand before you appear.";
-    }
-
-    if (totalScore >= 85) {
-        return "You are a strong operator with a solid foundation. Your biggest opportunity is staying ahead through better insight, monitoring, and optimization.";
-    }
-
-    return "You have the foundation of a strong operator, but several growth systems appear disconnected or underused.";
-}
-
-function getTopOpportunity(weakestArea) {
-    const opportunities = {
-        visibility: "Improve your visibility so more high-intent customers find you before they find competitors.",
-        trust: "Build a stronger trust engine through consistent reviews, social proof, and reputation management.",
-        conversion: "Improve the path from website visitor to booked customer by reducing friction and strengthening calls-to-action.",
-        operations: "Automate repetitive growth tasks so the business can scale without relying on constant manual work.",
-        intelligence: "Improve tracking and reporting so you know exactly what is creating bookings and where to invest next.",
-        growth: "Create a repeatable monthly growth system so the business keeps improving instead of plateauing."
-    };
-
-    return opportunities[weakestArea];
-}
-
-function getRevenueOpportunity(totalScore) {
-    if (totalScore >= 85) {
-        return "$12,000 - $28,000 annually";
-    }
-
-    if (totalScore >= 70) {
-        return "$25,000 - $55,000 annually";
-    }
-
-    return "$50,000 - $120,000 annually";
-}
-
-function getRoadmapHTML(weakestArea) {
-    const roadmaps = {
-        visibility: [
-            ["Weeks 1–2", "Improve Google visibility and optimize high-value search pages."],
-            ["Weeks 3–4", "Strengthen Google Business Profile and local content."],
-            ["Month 2", "Create pages that answer high-intent customer searches."],
-            ["Month 3", "Monitor keyword movement and adjust based on results."]
-        ],
-        trust: [
-            ["Weeks 1–2", "Launch a consistent post-trip review request process."],
-            ["Weeks 3–4", "Add stronger review placement across the website."],
-            ["Month 2", "Create a review response and reputation management rhythm."],
-            ["Month 3", "Build a repeatable monthly trust-building system."]
-        ],
-        conversion: [
-            ["Weeks 1–2", "Clarify homepage messaging and booking calls-to-action."],
-            ["Weeks 3–4", "Improve tour pages, photos, FAQs, and urgency."],
-            ["Month 2", "Reduce friction in the booking path."],
-            ["Month 3", "Test stronger offers, packages, and booking prompts."]
-        ],
-        operations: [
-            ["Weeks 1–2", "Identify repetitive manual work that can be automated."],
-            ["Weeks 3–4", "Automate reviews, follow-up, and lead capture."],
-            ["Month 2", "Create standard operating workflows."],
-            ["Month 3", "Build a simple growth dashboard."]
-        ],
-        intelligence: [
-            ["Weeks 1–2", "Set up clearer tracking for where bookings come from."],
-            ["Weeks 3–4", "Connect website, booking, and marketing data."],
-            ["Month 2", "Build a monthly growth report."],
-            ["Month 3", "Use data to decide where to invest next."]
-        ],
-        growth: [
-            ["Weeks 1–2", "Define the highest-value growth opportunities."],
-            ["Weeks 3–4", "Prioritize the fastest revenue wins."],
-            ["Month 2", "Build the first monthly growth system."],
-            ["Month 3", "Review score movement and adjust the roadmap."]
-        ]
-    };
-
-    return `
-        <hr>
-        <h3>If We Joined Your Team Tomorrow</h3>
-        ${roadmaps[weakestArea].map(function ([time, action]) {
-            return `
-                <div class="roadmap-step">
-                    <strong>${time}</strong>
-                    <p>${action}</p>
-                </div>
-            `;
-        }).join("")}
-
-        <h3>Recommended Next Step</h3>
-        <p>
-            Build a 90-day Growth Plan that shows what to fix first, what can wait,
-            and where the fastest revenue opportunity likely exists.
-        </p>
-    `;
-}
+function conciseTitle(p){const raw=String(p.title||"");if(p.pillar==="Visibility")return "Capture more high-intent demand for the experiences you already sell";if(p.pillar==="Conversion")return "Turn more existing demand into booking starts";if(p.pillar==="Trust")return "Close the trust gap where travelers decide who to book";return raw.length>95?defaultTitle(p.pillar):raw||defaultTitle(p.pillar);}
+function conciseProblem(p){const raw=clean(p.problem||"");if(p.pillar==="Visibility")return "GO found public evidence that relevant demand and competing operators exist around this business. The opportunity is to improve how often the operator earns visibility when travelers are actively choosing an experience.";if(p.pillar==="Conversion")return "GO sees enough buying-path evidence to make conversion worth testing before lower-confidence work.";return raw.length>360?raw.slice(0,357)+"…":raw||defaultProblem(p.pillar);}
+function constraintCopy(p,areas){const area=areas.find(a=>a.name===p.pillar);if(area&&area.score>=85)return`${p.pillar} is not the weakest score. GO chose it because the current evidence suggests it contains the largest addressable commercial opportunity.`;return`GO chose ${p.pillar.toLowerCase()} because it is the strongest addressable constraint supported by the current evidence — not simply because it has the lowest number.`;}
+function scoreRead(s){return s>=80?"Strong foundation. GO is looking for the highest-value upside.":s>=65?"Good foundation. GO found a constraint worth working.":s>=50?"Meaningful upside. GO should resolve the biggest constraint first.":"Several growth constraints deserve prioritization.";}
+function defaultTitle(p){return{Visibility:"Capture more high-intent discovery",Trust:"Strengthen the proof that makes travelers choose",Conversion:"Make the path to booking easier",Operations:"Protect more demand with stronger systems",Intelligence:"Connect the data GO needs to make better decisions",Growth:"Turn the strongest opportunity into measurable work"}[p]||"Turn the strongest opportunity into measurable work";}
+function defaultProblem(p){return{Visibility:"GO sees a public discovery gap around demand relevant to the operator.",Trust:"GO sees a public trust gap worth testing.",Conversion:"GO sees friction between product interest and booking action.",Operations:"GO needs verified operating data to improve demand protection.",Intelligence:"Attribution requires first-party data.",Growth:"The business needs one measurable growth priority."}[p]||"";}
+function defaultAction(p){return{Visibility:"Strengthen the highest-value existing experience pages and market signals tied to commercial demand, establish a baseline, then measure qualified visibility and bookings.",Trust:"Strengthen trust proof closest to the buying decision and measure booking behavior.",Conversion:"Simplify the booking path and measure checkout starts and completions.",Operations:"Connect operating systems, identify leakage and automate the highest-value workflow.",Intelligence:"Connect sources needed to replace assumptions with traffic, booking and revenue evidence.",Growth:"Turn the highest-confidence opportunity into a mission with a baseline, action and measured result."}[p]||"";}
+function defaultMetric(p){return{Visibility:"Search visibility → qualified visits → bookings",Trust:"Trust exposure → booking starts → bookings",Conversion:"Experience visits → checkout starts → bookings",Operations:"Demand → response / fulfillment → bookings",Intelligence:"Source → booking → revenue attribution",Growth:"Priority → action → measured business result"}[p]||"Measured result";}
+function defaultWhy(p){return{Visibility:"The public evidence ties this opportunity to products the operator already sells and demand travelers already express.",Trust:"Public proof is the clearest addressable constraint in the current evidence.",Conversion:"The buying experience shows the clearest actionable constraint.",Operations:"Connected evidence makes this operating constraint measurable.",Intelligence:"Better measurement is required before lower-confidence execution.",Growth:"GO found enough evidence to choose this before lower-confidence work."}[p]||"";}
+function extractPrices(v){const m=String(v||"").match(/\$\s?([0-9]{2,4})(?:\.\d{1,2})?/g)||[];return[...new Set(m.map(x=>Number(x.replace(/[^0-9.]/g,""))).filter(n=>n>=20&&n<=5000))];}
+function median(a){const s=[...a].sort((x,y)=>x-y),m=Math.floor(s.length/2);return s.length%2?s[m]:(s[m-1]+s[m])/2;}
+function normalizeScores(input){const o={};PILLARS.forEach(([n])=>{const x=Number(input?.[n]??input?.[n.toLowerCase()]);o[n]=Number.isFinite(x)?x:NaN;});return o;}
+function normalizePillar(v){const r=String(v||"Growth").toLowerCase(),m=PILLARS.find(([n])=>n.toLowerCase()===r);return m?m[0]:"Growth";}
+function confidenceNumber(v){const t=String(v||"").toLowerCase();return t.includes("high")?88:t.includes("medium")?74:t.includes("low")?58:(Number(v)||74);}
+function clean(v){return String(v||"").replace(/https?:\/\/\S+/g,"").replace(/\s+/g," ").trim();} function dedupe(a){const s=new Set;return a.filter(x=>{const k=(x.label+"|"+x.detail).toLowerCase();if(s.has(k))return false;s.add(k);return true;});}
+function money(n){return new Intl.NumberFormat("en-US",{style:"currency",currency:"USD",maximumFractionDigits:0}).format(Math.round(n));} function moneyRange(l,h){return`${money(l)}–${money(h)}/yr`;}
+function clamp(n){return Math.max(0,Math.min(100,Math.round(Number(n)||0)));} function set(id,v){const n=document.getElementById(id);if(n)n.textContent=v??"";} function read(k,f){try{return JSON.parse(localStorage.getItem(k))||f}catch{return f}} function esc(v){return String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));}

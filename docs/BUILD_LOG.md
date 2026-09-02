@@ -284,4 +284,74 @@ COMPLETE
 
 Build 027 established the reasoning foundation for deeper market intelligence.
 
-Next: Build 028.
+Next: Build 028.# Build 031 — Growth Score: Evidence + Economics
+**Date: September 1, 2026**
+
+## Major Milestone — Analyzer Intelligence Begins Powering Growth Operator
+
+Build 031 moved Growth Score from a mostly conceptual/dashboard element into a meaningful Growth Operator product surface.
+
+Growth Score now begins translating GO's intelligence into:
+
+- overall growth baseline
+- six Growth Systems
+- evidence confidence
+- primary constraint
+- GO priority
+- opportunity economics
+- modeled annual upside
+- explicit assumptions
+- evidence ledger
+- connected-data progression
+- GO Mission bridge
+
+The central product relationship is becoming:
+
+Analyzer
+→ Growth Score
+→ Constraint
+→ Economics
+→ GO Priority
+→ Mission
+→ Execution
+→ Measurement
+→ Score Movement
+
+This was an important product milestone because it demonstrated how the intelligence work underneath Operator Analyzer feeds the broader Growth Operator operating system.
+
+## Key Product Learning
+
+Growth Score restored the original product feeling that Founder wanted:
+
+complex intelligence underneath
++
+simple business status on top
++
+visible priority
++
+economic justification
++
+eventual measurable progress
+
+## Remaining Analyzer Issue
+
+Current Analyzer intelligence is still inconsistent.
+
+Caicos Dream Tours previously produced significantly more tangible search/competitive intelligence than the current Build 031 Analyzer.
+
+The next Analyzer work should begin with historical Git recovery rather than another new heuristic.
+
+Current Analyzer performance is also too slow for V1, with Caicos taking approximately five minutes in current testing.
+
+## Next
+
+Recover and compare the earlier successful Caicos intelligence implementation.
+
+Merge:
+
+- historical external-market strength
+- current operator understanding
+- current evidence discipline
+- current Growth Score integration
+
+Then benchmark Caicos again before additional Analyzer expansion.

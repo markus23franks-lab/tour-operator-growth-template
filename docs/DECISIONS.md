@@ -70,4 +70,55 @@ Primary question:
 
 No further heuristic patch should be made until this is understood.
 
-If opportunity selection/synthesis is structurally weak, repair the decision layer rather than continuing to optimize upstream extraction indefinitely.
+If opportunity selection/synthesis is structurally weak, repair the decision layer rather than continuing to optimize upstream extraction indefinitely.## Decision — Growth Score Connects Intelligence to Economic Action
+**Date: September 1, 2026**
+
+Growth Score is confirmed as a central Growth Operator product system.
+
+It should not function as an arbitrary business grade.
+
+It should summarize GO's current evidence about the operator's growth system and connect that evidence directly to:
+
+CONSTRAINT
+→ PRIORITY
+→ ACTION
+→ ECONOMIC OPPORTUNITY
+→ MEASUREMENT
+
+Public evidence may establish an initial score/baseline.
+
+Connected data increases confidence and may change that baseline.
+
+This is expected behavior.
+
+The score should become more accurate as GO learns more about the business.
+
+### Decision — Do Not Artificially Increase ROI Models
+
+A modeled revenue opportunity must remain evidence-backed.
+
+If a current public opportunity appears economically small, GO should not inflate assumptions to make Growth Operator look valuable.
+
+Instead:
+
+- improve the underlying intelligence;
+- identify stronger opportunities when evidence supports them;
+- connect first-party data;
+- establish real traffic/conversion/booking/revenue baselines;
+- measure actual outcomes.
+
+The economic model exists to improve trust, not to manufacture urgency.
+
+### Decision — Recover Historical Intelligence Before More Analyzer Patching
+
+Recent Build 031 testing indicates that earlier Caicos Dream Tours analysis produced more tangible and commercially useful external-market intelligence than the current Analyzer.
+
+Before writing additional Analyzer heuristics:
+
+1. Locate the historical successful implementation through Git.
+2. Diff it against current Build 031.
+3. Identify which useful market/search behaviors were lost.
+4. Preserve current evidence integrity and operator-understanding improvements.
+5. Merge the strongest elements of both systems.
+
+Do not simply revert the repository.

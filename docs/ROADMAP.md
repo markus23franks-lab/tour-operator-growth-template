@@ -677,3 +677,8 @@ Potential approaches include:
 - progressive deeper investigation after the first useful result
 
 Do not optimize the wrong architecture merely to make it faster.
+## Discovery Intelligence expansion
+- Current: public web/search evidence feeding Visibility.
+- Next: recover stronger search/rank/competitor intelligence and improve Analyzer performance.
+- Future evidence adapters: local/Maps, AI/answer discovery, social discovery, marketplace/distribution, reputation/authority.
+- Connected measurement: Search Console, Google Business Profile, analytics and booking/OBP data to replace public estimates and attribute measured revenue.

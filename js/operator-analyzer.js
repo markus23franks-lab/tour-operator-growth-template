@@ -1,6 +1,6 @@
 "use strict";
 
-const GO_FRONTEND_BUILD_ID = "B029-MARKET-HANDOFF-REPAIR-FE-20260831-2248";
+const GO_FRONTEND_BUILD_ID = "B035-DISCOVERY-HANDOFF-REPAIR-FE-20260902";
 let GO_MARKET_HANDOFF_STATUS = { ok: false, buildId: "UNVERIFIED", status: "not-checked", error: "" };
 let GO_ACTIVE_RUN_ID = "";
 
@@ -1886,10 +1886,108 @@ function safeHost(url) {
   try { return new URL(url).hostname.replace(/^www\./, ""); } catch { return ""; }
 }
 
+function buildDiscoveryIntelligence({ businessName, market, opportunities }) {
+  // Professional market evidence can arrive through the normalized queryResults collection,
+  // the server runtime debug payload, or raw query rows. Normalize all supported shapes so
+  // Growth Score does not incorrectly claim "run Analyzer" after a completed scan.
+  const candidateRows = [
+    ...(Array.isArray(market?.queryResults) ? market.queryResults : []),
+    ...(Array.isArray(market?.runtimeDebug?.queryResults) ? market.runtimeDebug.queryResults : []),
+    ...(Array.isArray(market?.queries) && market.queries.some(item => item && typeof item === 'object') ? market.queries : [])
+  ];
+  const rowMap = new Map();
+  candidateRows.forEach(row => {
+    if (!row?.query) return;
+    const key = String(row.query).trim().toLowerCase();
+    if (!rowMap.has(key)) rowMap.set(key, row);
+  });
+  const rows = [...rowMap.values()];
+
+  const direct = (market?.competitors || []).filter(item => item.category === 'direct' || (!item.category && !item.authority && !item.marketplace));
+  const searches = rows.map(row => {
+    const localResults = Array.isArray(row.localResults) ? row.localResults : [];
+    const organicResults = Array.isArray(row.organicResults) ? row.organicResults : [];
+    const localChecked = Number(row.localResultsChecked ?? localResults.length ?? 0);
+    const organicChecked = Number(row.organicResultsChecked ?? organicResults.length ?? 0);
+    const targetLocal = row.targetLocalPosition ?? row.operatorLocalPosition ?? null;
+    const targetOrganic = row.targetOrganicPosition ?? row.operatorOrganicPosition ?? null;
+
+    const rowCompetitors = direct
+      .filter(item => (item.queries || []).some(q => String(q).trim().toLowerCase() === String(row.query).trim().toLowerCase()))
+      .slice(0, 3)
+      .map(item => ({
+        name: item.name,
+        localPosition: item.bestLocalPosition ?? null,
+        organicPosition: item.bestOrganicPosition ?? null,
+        rating: item.rating ?? null,
+        reviews: item.reviews ?? null
+      }));
+
+    return {
+      query: row.query,
+      operatorLocalPosition: targetLocal,
+      operatorOrganicPosition: targetOrganic,
+      localResultsChecked: localChecked,
+      organicResultsChecked: organicChecked,
+      visible: targetLocal != null || targetOrganic != null,
+      competitors: rowCompetitors
+    };
+  });
+
+  // Public fallback searches are still evidence that GO investigated the market, but without
+  // structured positions they must not masquerade as exact ranking data.
+  const fallbackQueries = searches.length ? [] : (market?.searchPages || [])
+    .map(item => item?.query)
+    .filter(Boolean)
+    .slice(0, 8)
+    .map(query => ({
+      query,
+      operatorLocalPosition: null,
+      operatorOrganicPosition: null,
+      localResultsChecked: 0,
+      organicResultsChecked: 0,
+      visible: false,
+      competitors: []
+    }));
+
+  const normalizedSearches = searches.length ? searches : fallbackQueries;
+  const measurable = normalizedSearches.filter(item => item.localResultsChecked >= 1 || item.organicResultsChecked >= 1);
+  const gaps = measurable.filter(item => !item.visible && (item.localResultsChecked >= 3 || item.organicResultsChecked >= 5));
+  const visible = measurable.filter(item => item.visible);
+  const lead = (opportunities || []).find(item => item.pillar === 'Visibility') || null;
+  const handoff = market?.handoffStatus || {};
+
+  return {
+    source: market?.provider || 'Public web',
+    observedAt: market?.observedAt || '',
+    businessName,
+    searchesChecked: measurable.length,
+    searchesAttempted: normalizedSearches.length,
+    visibleSearches: visible.length,
+    gapSearches: gaps.length,
+    searches: normalizedSearches,
+    hasStructuredPositions: measurable.length > 0,
+    marketHandoffStatus: handoff.ok === false ? 'limited' : (market?.professional ? 'professional' : 'public-fallback'),
+    marketHandoffDetail: handoff.error || market?.retrievalNote || '',
+    competitors: direct.slice(0, 8).map(item => ({
+      name: item.name,
+      appearances: item.appearances || 0,
+      rating: item.rating ?? null,
+      reviews: item.reviews ?? null,
+      bestLocalPosition: item.bestLocalPosition ?? null,
+      bestOrganicPosition: item.bestOrganicPosition ?? null
+    })),
+    conclusion: lead?.problem || '',
+    nextAction: lead?.action || '',
+    measure: lead?.metric || 'Discovery visibility → qualified visits → bookings'
+  };
+}
+
 function buildUniversalProfile(url, pages, market = emptyMarket(), bookingLinkEvidence = "") {
   const combined = `${pages.map(page => page.markdown).join("\n\n")}\n\n${bookingLinkEvidence}`;
   const home = pages[0]?.markdown || combined;
-  const businessName = extractBusinessName(home, url);
+  const extractedBusinessName = extractBusinessName(home, url);
+  const businessName = canonicalBusinessName(extractedBusinessName, market?.target, url);
   const offers = extractOffers(combined, businessName);
   const prices = extractPrices(combined);
   const businessContext = inferBusinessContext(combined, home, url);
@@ -1939,6 +2037,7 @@ function buildUniversalProfile(url, pages, market = emptyMarket(), bookingLinkEv
       }
     },
     marketEvidence: market,
+    discoveryIntelligence: buildDiscoveryIntelligence({ businessName, market, opportunities }),
     pipelineDebug: {
       runtime: { frontendBuildId: GO_FRONTEND_BUILD_ID, marketFunctionBuildId: market?.pipelineDebug?.marketFunctionBuildId || market?.handoffStatus?.buildId || GO_MARKET_HANDOFF_STATUS.buildId || "NO MARKET FUNCTION ID", marketHandoff: market?.pipelineDebug?.marketHandoff || market?.handoffStatus || { ...GO_MARKET_HANDOFF_STATUS }, runId: GO_ACTIVE_RUN_ID },
       operatorTruth: { businessName, businessType: businessContext.businessType, geography: businessContext.location || location || "", bookingProvider: bookingProvider.label, bookingEvidence: bookingProvider.detail || bookingProvider.evidence || "" },
@@ -1948,7 +2047,7 @@ function buildUniversalProfile(url, pages, market = emptyMarket(), bookingLinkEv
     },
     opportunities,
     watchItems: [
-      { title: "Exact Google / Maps rank", detail: (market.searchPages.length || market.discoveryDocs.length) ? "Build 029 can verify public market presence and competitor evidence across independent discovery surfaces, but it does not convert that evidence into a universal Google or Maps rank. Local results vary by location and surface." : "Public market retrieval was limited in this scan, so GO is not claiming search position." },
+      { title: "Exact Google / Maps rank", detail: (market.searchPages.length || market.discoveryDocs.length) ? "GO can verify public market presence and competitor evidence across independent discovery surfaces, but it does not convert that evidence into a universal Google or Maps rank. Local results vary by location and surface." : "Public market retrieval was limited in this scan, so GO is not claiming search position." },
       { title: "Google review velocity", detail: market.reviewSignals.length ? "GO found public rating/review references in market evidence, but review velocity still requires dated review history." : "GO can see trust proof shown on websites, but reliable public review velocity remains a separate evidence layer." },
       { title: "Actual conversion + revenue", detail: "Analytics and booking data are required before GO can prove where visitors drop out or attach dollars to an improvement." }
     ]
@@ -2305,6 +2404,33 @@ function extractBusinessName(markdown, url) {
   candidates.sort((a, b) => b.score - a.score);
 
   return candidates[0]?.name || domain || "Tour Operator";
+}
+
+function canonicalBusinessName(extractedName, target, url) {
+  const targetName = cleanBusinessIdentity(target?.name || target?.title || '');
+  let extracted = cleanBusinessIdentity(extractedName || '');
+
+  // Resolved Google/local entity is the strongest public brand signal.
+  if (targetName && target?.identityVerified) return targetName;
+
+  // Common SEO-title patterns should never become the operator name. Preserve the brand
+  // phrase embedded inside copy such as "Private charters with Caicos Dream Tours today".
+  const embeddedBrandPatterns = [
+    /\b(?:with|from|by)\s+(.{3,64}?)\s+(?:today|online|official(?:\s+site)?|now)$/i,
+    /^(?:book|explore|discover|experience)\s+(.{3,64}?)\s+(?:today|online|now)$/i
+  ];
+  for (const pattern of embeddedBrandPatterns) {
+    const match = extracted.match(pattern);
+    if (match?.[1]) {
+      const candidate = cleanBusinessIdentity(match[1]);
+      if (candidate && candidate.length >= 3) extracted = candidate;
+    }
+  }
+
+  const genericLead = /^(private|best|top|book|things to do|tours? with|charters? with|experiences? with)\b/i;
+  if (targetName && (!extracted || genericLead.test(extracted) || extracted.length > targetName.length + 18)) return targetName;
+
+  return extracted || targetName || domainLabel(url) || 'Tour Operator';
 }
 
 function cleanBusinessIdentity(value) {

@@ -149,3 +149,39 @@ Attributed Revenue
 GO must never inflate an opportunity merely to make pricing easier to justify.
 
 Better intelligence and connected business data should create more accurate economic models.
+## Discovery Intelligence (Build 032)
+Visibility is the simple operator-facing system; Discovery Intelligence is the capability underneath it. GO asks where travelers can discover an operator when looking for experiences the operator sells, whether the operator is present, who appears instead, and whether the gap is commercially important. Traditional organic search is one evidence provider, not the definition of Visibility. Future providers may include local/Maps, AI/answer engines, social, marketplaces/distribution, and reputation/authority surfaces. GO must never expose a maze of SEO/AEO/GEO/social scores; it should synthesize provider evidence into one understandable Visibility judgment and show supporting evidence on demand. Unchecked channels remain explicitly NOT CHECKED / NEEDS DATA rather than being inferred.
+## Visibility = Customer Discovery
+
+Visibility should remain a simple operator-facing Growth System.
+
+Underneath, GO should progressively understand discovery across:
+
+- traditional search
+- local / Maps
+- AI / generative recommendations
+- social platforms
+- marketplaces
+- review and authority surfaces
+
+Do not create separate customer-facing SEO, AEO, GEO, Instagram, TikTok, Maps, or AI scores merely because those systems exist.
+
+The operator primarily needs to understand:
+
+Where are travelers looking?
+
+Are they finding me?
+
+Who are they finding instead?
+
+Why?
+
+Does the gap matter commercially?
+
+What will GO do about it?
+
+Social discovery should eventually become first-class evidence because travel experiences are highly visual and travelers increasingly discover things to do through social content and advertising.
+
+GO should never default to generic advice such as "post more on Instagram."
+
+Social should earn priority only when GO has evidence that it represents a meaningful growth opportunity relative to the operator's other constraints.

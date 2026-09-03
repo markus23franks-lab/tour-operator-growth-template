@@ -177,3 +177,5 @@ Viator, GetYourGuide, Tripadvisor and other OTAs.
 GO should never claim an OBP without sufficient evidence.
 
 "Booking flow detected; provider not confidently identified" is an acceptable conclusion.
+## Discovery evidence provider model (Build 032)
+Discovery Intelligence normalizes evidence from multiple providers into the existing Visibility system. Provider families: `organic`, `local`, `generative`, `social`, `marketplace`, and `authority`. Each provider should emit normalized evidence with source/surface, observed state, operator presence, competing presence, confidence, commercial intent, and provenance. Growth Score consumes only evidence that exists; an unavailable adapter must remain `not_checked` and must not reduce the score. Current Build 032 UI prepares this model using existing public web/search evidence without fabricating live AI/social/local checks. Google is a provider; GO's cross-provider judgment is the product.

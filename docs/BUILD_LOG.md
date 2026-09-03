@@ -355,3 +355,11 @@ Merge:
 - current Growth Score integration
 
 Then benchmark Caicos again before additional Analyzer expansion.
+## Build 032 — Discovery Intelligence foundation (2026-09-02)
+- Reframed Growth Score Visibility as cross-channel Discovery Intelligence.
+- Added a visible discovery-source panel with honest Evidence Available / Partial Evidence / Not Checked states.
+- Kept organic search useful without implying it represents all discovery.
+- Prepared provider families for local, AI/answer, social, marketplace and authority evidence without fabricating those checks.
+- Updated Visibility measurement language from search-only to discovery visibility.
+- Restored the canonical Growth Operator mark in the Growth Score header.
+- Preserved existing evidence/economics/mission behavior.

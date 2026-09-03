@@ -122,3 +122,28 @@ Before writing additional Analyzer heuristics:
 5. Merge the strongest elements of both systems.
 
 Do not simply revert the repository.
+## Sept. 2, 2026 — Visibility means Discovery Intelligence
+Decision: keep the operator-facing system named **Visibility**, but define the capability underneath it as **Discovery Intelligence**. Do not create separate SEO/AEO/GEO/Instagram/TikTok scores. Search, local, AI/answer, social, marketplace and authority systems are evidence providers. GO decides whether a discovery gap matters relative to the operator's other constraints. Preserve OBP neutrality: GO helps create more bookings and should coexist with Peek, FareHarbor, Rezdy, Bokun, Xola, Junglebee, Checkfront, custom systems and others. Build the company for customer value, not acquisition; strategic optionality is an outcome, not a product requirement.
+## Decision — Discovery Intelligence Is Provider-Neutral
+**Date: September 2, 2026**
+
+GO's Visibility system should be architected as Discovery Intelligence rather than as a Google/SEO system.
+
+The durable question is:
+
+"When travelers are looking for experiences this operator sells, where is the operator being discovered — and where are competitors winning instead?"
+
+Potential evidence providers eventually include:
+
+- Google organic
+- Google Maps / local
+- generative / AI discovery
+- social discovery
+- marketplaces / OTAs
+- review and authority sources
+
+These providers should feed normalized GO Discovery Evidence.
+
+GO's judgment — not any individual provider — is the product.
+
+Near-term implementation should continue making Google/search evidence excellent without coupling the core Visibility architecture exclusively to Google.

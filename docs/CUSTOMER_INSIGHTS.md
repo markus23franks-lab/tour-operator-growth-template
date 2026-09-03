@@ -244,3 +244,48 @@ These themes have appeared repeatedly across customer conversations.
 - Customers want guidance, not just analytics.
 - Simplicity builds trust.
 - Honest sales conversations build credibility.
+## Sept. 2, 2026 — OBP service-economics validation
+A conversation with Peek's Head of Customer Success (previously FareHarbor) reinforced that booking platforms are actively thinking about helping operators understand website quality, SEO, AEO/GEO and organic discoverability. The human-CSM model has a structural gap: advice often becomes operator homework, execution and measurement are uncertain, and dedicated CSM attention naturally concentrates on customers that economically justify it. Smaller operators may need growth expertise most while being hardest to serve manually. GO's opportunity is to investigate, prioritize, explain, execute and measure without proportional human CSM time. This supports the thesis that operators do not mainly lack marketing tools; they lack a competent growth operator.
+## Market Validation — OBP Customer Success Growth Gap
+**Date: September 2, 2026**
+
+Founder spoke with Peek's Head of Customer Success, previously at FareHarbor.
+
+Peek is actively considering how to train CSMs to help operators identify and understand:
+
+- website improvements
+- SEO
+- AEO / GEO
+- organic discovery
+- website best practices
+- tactics for getting found
+
+This validates that organic growth/discovery is a meaningful operator need even inside major booking-platform organizations.
+
+However, the human-CSM model exposes a structural opportunity for Growth Operator:
+
+CSM identifies issue
+→ educates operator
+→ operator receives homework
+→ execution remains unresolved
+→ prioritization may depend on individual CSM judgment
+→ impact may never be measured.
+
+Additionally, dedicated CSM service is economically concentrated among higher-value accounts. Many smaller operators who most need growth assistance may therefore receive the least high-touch help.
+
+Growth Operator's opportunity is not merely to automate a CSM checklist.
+
+GO should:
+
+INVESTIGATE
+→ PRIORITIZE
+→ EXPLAIN
+→ EXECUTE
+→ MEASURE
+→ LEARN
+
+This reinforces GO's OBP-neutral position:
+
+Booking platforms help process bookings.
+
+Growth Operator helps create more bookings.

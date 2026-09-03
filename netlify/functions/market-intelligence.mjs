@@ -1,5 +1,5 @@
 const SERP_ENDPOINT = "https://serpapi.com/search.json";
-const GO_MARKET_BUILD_ID = "B029-MARKET-HANDOFF-REPAIR-MI-20260831-2248";
+const GO_MARKET_BUILD_ID = "B034-DISCOVERY-INTELLIGENCE-RECOVERY-MI-20260902";
 const MAX_QUERIES = 10;
 const MAX_ORGANIC = 10;
 const MAX_LOCAL = 10;
@@ -344,7 +344,10 @@ async function runMarketQuery({
   let localResults = normalizeLocal(extractLocalFromGoogle(organicPayload));
   let localSearchUsed = false;
 
-  if (localResults.length < 3) {
+  // Speed rule: the normal Google response often already contains a local pack. Use it.
+  // A second google_local request for every query doubled the slowest part of the scan.
+  // Only spend that extra request when Google returned no local evidence at all.
+  if (localResults.length === 0) {
     const localPayload = await serpSearch({
       engine: "google_local",
       q: query,

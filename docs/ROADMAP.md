@@ -682,3 +682,59 @@ Do not optimize the wrong architecture merely to make it faster.
 - Next: recover stronger search/rank/competitor intelligence and improve Analyzer performance.
 - Future evidence adapters: local/Maps, AI/answer discovery, social discovery, marketplace/distribution, reputation/authority.
 - Connected measurement: Search Console, Google Business Profile, analytics and booking/OBP data to replace public estimates and attribute measured revenue.
+## Build 038 Milestone — GO Judgment Engine V1
+**September 7, 2026**
+
+Builds 036–038 established the first clean separation between evidence acquisition and GO judgment.
+
+The Discovery Evidence Harness demonstrated that the current external-data layer contains substantially more useful intelligence than recent Analyzer output exposed.
+
+SerpApi currently remains acceptable for its existing role.
+
+The primary development bottleneck has moved from:
+
+CAN GO SEE THE MARKET?
+
+to:
+
+CAN GO DETERMINE WHICH OBSERVATIONS MATTER COMMERCIALLY?
+
+### Next Build — 039 Opportunity Intelligence V1
+
+Primary objective:
+
+Move GO from:
+
+"Find the biggest weakness."
+
+to:
+
+"Determine the highest-value next growth opportunity."
+
+Build 039 should begin introducing:
+
+- product/business-segment commercial importance
+- opportunity candidate generation
+- commercial weighting
+- GO Priority
+- GO Investigation
+- ranked Opportunity Portfolio
+
+Caicos Dream remains the primary successful-operator benchmark.
+
+The private-charter visibility gap should not automatically become the highest-priority opportunity merely because it is the clearest observed search weakness.
+
+Future opportunity intelligence will progressively compare evidence across:
+
+Visibility
+Trust
+Conversion
+Pricing
+Reviews
+AI Discovery
+Social Discovery
+Distribution
+Competitive Position
+Product Demand
+Website Experience
+Connected Business Data

@@ -161,4 +161,32 @@ one exceptional evidence-backed opportunity
 
 over:
 
-exhaustive investigation with mediocre conclusions.
+exhaustive investigation with mediocre conclusions.## GO Could See More Than the Product Was Showing — September 7, 2026
+
+The Discovery Evidence Harness produced an important development lesson:
+
+Weak operator-facing intelligence does not necessarily mean weak provider evidence.
+
+For Caicos Dream Tours, the underlying provider evidence contained substantial:
+
+- organic results
+- local results
+- positions
+- competitors
+- ratings
+- review counts
+- qualification decisions
+
+Recent Analyzer versions had often flattened or filtered that richness before operator presentation.
+
+Lesson:
+
+Before replacing an evidence provider or adding new heuristics, inspect the raw evidence and determine whether the failure is:
+
+ACQUISITION
+
+or
+
+PRESERVATION / REASONING / PRIORITIZATION.
+
+Do not solve a judgment problem by unnecessarily replacing the senses.

@@ -179,3 +179,113 @@ GO should never claim an OBP without sufficient evidence.
 "Booking flow detected; provider not confidently identified" is an acceptable conclusion.
 ## Discovery evidence provider model (Build 032)
 Discovery Intelligence normalizes evidence from multiple providers into the existing Visibility system. Provider families: `organic`, `local`, `generative`, `social`, `marketplace`, and `authority`. Each provider should emit normalized evidence with source/surface, observed state, operator presence, competing presence, confidence, commercial intent, and provenance. Growth Score consumes only evidence that exists; an unavailable adapter must remain `not_checked` and must not reduce the score. Current Build 032 UI prepares this model using existing public web/search evidence without fabricating live AI/social/local checks. Google is a provider; GO's cross-provider judgment is the product.
+## GO Intelligence Architecture — Evidence → Judgment → Opportunity
+**Added: September 7, 2026**
+
+Builds 036–038 materially clarified the Growth Operator intelligence architecture.
+
+The current evidence providers are capable of returning substantially more useful public-market evidence than recent operator-facing Analyzer results suggested.
+
+The emerging architecture is:
+
+FIRST-PARTY ACQUISITION
+↓
+OPERATOR / INVENTORY MODEL
+↓
+GO RESEARCH PLANNER
+↓
+PROVIDER ADAPTERS
+↓
+NORMALIZED EVIDENCE
+↓
+GO REASONING / JUDGMENT
+↓
+OPPORTUNITY INTELLIGENCE
+↓
+PRIORITIZED OPPORTUNITY PORTFOLIO
+↓
+GROWTH SCORE
+↓
+MISSION
+↓
+EXECUTION
+↓
+MEASUREMENT
+↓
+MEMORY / REPRIORITIZATION
+
+### Providers Are GO's Senses
+
+External providers should retrieve evidence.
+
+They should not determine what the operator should do.
+
+SerpApi currently demonstrates useful ability to provide:
+
+- organic search evidence
+- Local/Maps evidence
+- observed result positions
+- named market competitors
+- ratings
+- review counts
+- geographic evidence
+
+SerpApi is therefore not currently proven to be the primary intelligence bottleneck.
+
+Provider neutrality remains required.
+
+Future providers may include:
+
+- Google organic
+- Google Local / Maps
+- reviews / reputation
+- public pricing
+- website / conversion evidence
+- OTAs / marketplaces
+- AI / generative discovery
+- social discovery
+- Search Console
+- Analytics
+- booking / OBP data
+
+All providers should feed normalized evidence into the same GO reasoning system.
+
+### Judgment Is a Separate Layer
+
+Build 038 introduced an explicit separation:
+
+RAW EVIDENCE
+→ GO JUDGMENT
+→ OPERATOR CONCLUSION
+
+This is foundational.
+
+GO must be able to conclude:
+
+"Do nothing here."
+
+Strong evidence in one category does not mean that category contains the operator's best growth opportunity.
+
+### Opportunity Intelligence
+
+Evidence becomes an opportunity only after GO understands its commercial relevance.
+
+A large observed gap does not automatically equal a high-priority opportunity.
+
+Opportunity Intelligence should increasingly consider:
+
+- commercial importance
+- evidence confidence
+- economic potential
+- actionability
+- urgency
+- implementation effort / risk
+- GO's ability to measure the outcome
+
+The intelligence system should identify both:
+
+GO PRIORITY
+The best evidence-backed opportunity to work on now.
+
+GO INVESTIGATION
+The most economically promising unanswered question GO should investigate next.

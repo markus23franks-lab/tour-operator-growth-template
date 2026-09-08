@@ -1,5 +1,5 @@
 const SERP_ENDPOINT = "https://serpapi.com/search.json";
-const GO_MARKET_BUILD_ID = "B034-DISCOVERY-INTELLIGENCE-RECOVERY-MI-20260902";
+const GO_MARKET_BUILD_ID = "B037-EVIDENCE-HARNESS-RESILIENCE-MI-20260907";
 const MAX_QUERIES = 10;
 const MAX_ORGANIC = 10;
 const MAX_LOCAL = 10;
@@ -92,7 +92,18 @@ export default async (request) => {
           canonicalName: identity.name || businessName,
           website,
           apiKey,
-        })
+        }).catch((error) => ({
+          query,
+          targetOrganicPosition: null,
+          targetLocalPosition: null,
+          organicResultsChecked: 0,
+          localResultsChecked: 0,
+          organicResults: [],
+          localResults: [],
+          localSearchUsed: false,
+          providerError: error instanceof Error ? error.message : String(error || 'Unknown provider error'),
+          timing: { totalMs: 0, organicMs: 0, localMs: 0 },
+        }))
       )
     );
 
@@ -129,6 +140,7 @@ export default async (request) => {
             targetOrganicPosition: row.targetOrganicPosition ?? null,
             localResultsChecked: row.localResultsChecked ?? null,
             organicResultsChecked: row.organicResultsChecked ?? null,
+            timing: row.timing || null,
             localResults: (row.localResults || []).slice(0, 10).map(x => ({ name: x.name || x.title || "", link: x.link || x.website || "", position: x.position ?? null, rating: x.rating ?? null, reviews: x.reviews ?? null })),
             organicResults: (row.organicResults || []).slice(0, 10).map(x => ({ title: x.title || x.name || "", link: x.link || "", position: x.position ?? null }))
           })),
@@ -330,26 +342,13 @@ async function runMarketQuery({
   website,
   apiKey,
 }) {
-  const organicPayload = await serpSearch({
-    engine: "google",
-    q: query,
-    location,
-    gl: "us",
-    hl: "en",
-    device: "desktop",
-    api_key: apiKey,
-  });
-
-  const organicResults = normalizeOrganic(organicPayload.organic_results || []);
-  let localResults = normalizeLocal(extractLocalFromGoogle(organicPayload));
-  let localSearchUsed = false;
-
-  // Speed rule: the normal Google response often already contains a local pack. Use it.
-  // A second google_local request for every query doubled the slowest part of the scan.
-  // Only spend that extra request when Google returned no local evidence at all.
-  if (localResults.length === 0) {
-    const localPayload = await serpSearch({
-      engine: "google_local",
+  const startedAt = Date.now();
+  const organicStartedAt = Date.now();
+  let organicPayload = null;
+  let organicError = "";
+  try {
+    organicPayload = await serpSearch({
+      engine: "google",
       q: query,
       location,
       gl: "us",
@@ -357,8 +356,38 @@ async function runMarketQuery({
       device: "desktop",
       api_key: apiKey,
     });
-    localResults = normalizeLocal(localPayload.local_results || []);
-    localSearchUsed = true;
+  } catch (error) {
+    organicError = error instanceof Error ? error.message : String(error || "Organic provider request failed");
+  }
+
+  const organicMs = Date.now() - organicStartedAt;
+  const organicResults = normalizeOrganic(organicPayload?.organic_results || []);
+  let localResults = normalizeLocal(extractLocalFromGoogle(organicPayload));
+  let localSearchUsed = false;
+
+  // Speed rule: the normal Google response often already contains a local pack. Use it.
+  // A second google_local request for every query doubled the slowest part of the scan.
+  // Only spend that extra request when Google returned no local evidence at all.
+  let localMs = 0;
+  let localError = "";
+  if (localResults.length === 0) {
+    const localStartedAt = Date.now();
+    try {
+      const localPayload = await serpSearch({
+        engine: "google_local",
+        q: query,
+        location,
+        gl: "us",
+        hl: "en",
+        device: "desktop",
+        api_key: apiKey,
+      });
+      localResults = normalizeLocal(localPayload.local_results || []);
+      localSearchUsed = true;
+    } catch (error) {
+      localError = error instanceof Error ? error.message : String(error || "Local provider request failed");
+    }
+    localMs = Date.now() - localStartedAt;
   }
 
   const targetNames = [businessName, canonicalName].filter(Boolean);
@@ -384,6 +413,8 @@ async function runMarketQuery({
     organicResults,
     localResults,
     localSearchUsed,
+    providerError: [organicError && `Organic: ${organicError}`, localError && `Local: ${localError}`].filter(Boolean).join(" | "),
+    timing: { totalMs: Date.now() - startedAt, organicMs, localMs },
   };
 }
 
@@ -397,17 +428,24 @@ async function resolveTargetIdentity({ businessName, location, website, apiKey }
   ].filter(Boolean);
 
   const seen = [];
+  const identityErrors = [];
 
   for (const query of [...new Set(identityQueries)]) {
-    const payload = await serpSearch({
-      engine: "google_local",
-      q: query,
-      location,
-      gl: "us",
-      hl: "en",
-      device: "desktop",
-      api_key: apiKey,
-    });
+    let payload = null;
+    try {
+      payload = await serpSearch({
+        engine: "google_local",
+        q: query,
+        location,
+        gl: "us",
+        hl: "en",
+        device: "desktop",
+        api_key: apiKey,
+      });
+    } catch (error) {
+      identityErrors.push(`${query}: ${error instanceof Error ? error.message : String(error || "provider request failed")}`);
+      continue;
+    }
 
     const results = normalizeLocal(payload.local_results || []);
     seen.push(...results);
@@ -445,8 +483,10 @@ async function resolveTargetIdentity({ businessName, location, website, apiKey }
     placeId: "",
     source: "SerpApi Google Local",
     identityVerified: false,
-    identityNote:
-      "GO did not verify a matching Google local entity strongly enough to make exact absence claims.",
+    identityNote: identityErrors.length
+      ? `GO could not fully verify the Google local entity because ${identityErrors.length} identity request(s) failed. Successful evidence, if any, is preserved.`
+      : "GO did not verify a matching Google local entity strongly enough to make exact absence claims.",
+    identityErrors,
     searchesUsed: [...new Set(identityQueries)].length,
   };
 }
@@ -476,13 +516,19 @@ async function serpSearch(params) {
   });
 
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 18000);
+  const timer = setTimeout(() => controller.abort(), 30000);
 
   try {
-    const res = await fetch(url, {
-      headers: { Accept: "application/json" },
-      signal: controller.signal,
-    });
+    let res;
+    try {
+      res = await fetch(url, {
+        headers: { Accept: "application/json" },
+        signal: controller.signal,
+      });
+    } catch (error) {
+      if (error?.name === "AbortError") throw new Error("SerpApi request exceeded 30s timeout");
+      throw error;
+    }
 
     const payload = await res.json().catch(() => ({}));
     if (!res.ok || payload.error) {

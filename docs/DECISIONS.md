@@ -146,4 +146,47 @@ These providers should feed normalized GO Discovery Evidence.
 
 GO's judgment — not any individual provider — is the product.
 
-Near-term implementation should continue making Google/search evidence excellent without coupling the core Visibility architecture exclusively to Google.
+Near-term implementation should continue making Google/search evidence excellent without coupling the core Visibility architecture exclusively to Google.## Decision — Evidence Strength Does Not Equal Opportunity Priority
+**Date: September 7, 2026**
+
+Build 038 demonstrated that GO can collect strong evidence about a real market gap without that gap necessarily representing the operator's best commercial opportunity.
+
+Example:
+
+Caicos Dream showed a clear visibility weakness around private-charter demand.
+
+However, private charters appear secondary to the operator's core public-tour business.
+
+Therefore:
+
+BIGGEST OBSERVED GAP
+≠
+BEST GROWTH OPPORTUNITY
+
+GO must understand the commercial importance of the affected product/business segment before prioritizing the opportunity.
+
+### Decision — Do Not Replace SerpApi Without Evidence
+
+The Discovery Evidence Harness demonstrated that SerpApi can currently return useful organic, local, competitor, position, rating and review evidence.
+
+Therefore GO will not replace SerpApi merely because recent Analyzer findings were weak.
+
+Provider changes should occur only when testing demonstrates that the provider is actually limiting the evidence GO requires.
+
+### Decision — Successful Operators Must Still Produce Valuable GO Work
+
+GO must not depend on finding something obviously broken.
+
+For successful operators, opportunity types may include:
+
+- FIX
+- CAPTURE
+- OPTIMIZE
+- EXPAND
+- DEFEND
+- DISCOVER
+- DO NOTHING
+
+GO's job is not to find a weakness.
+
+GO's job is to determine the best next way to grow or protect the business.

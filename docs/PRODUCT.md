@@ -184,4 +184,51 @@ Social discovery should eventually become first-class evidence because travel ex
 
 GO should never default to generic advice such as "post more on Instagram."
 
-Social should earn priority only when GO has evidence that it represents a meaningful growth opportunity relative to the operator's other constraints.
+Social should earn priority only when GO has evidence that it represents a meaningful growth opportunity relative to the operator's other constraints.## Opportunity Intelligence — GO Finds the Best Next Move
+
+Growth Operator should not behave like a constraint checklist that only searches for problems.
+
+The product should maintain an Opportunity Portfolio.
+
+Candidate opportunities may include:
+
+- Fix a weakness
+- Capture missing demand
+- Improve conversion
+- Optimize pricing
+- Expand an experience/product
+- Improve direct-booking mix
+- Improve AI discovery
+- Defend an existing advantage
+- Respond to competitor momentum
+- Investigate an unanswered opportunity
+- Do nothing where no action is justified
+
+The operator-facing experience should increasingly distinguish:
+
+### GO Priority
+
+What GO believes should be worked on now.
+
+### GO Investigation
+
+What GO believes is economically promising but requires more evidence before action.
+
+This allows GO to remain useful even when the obvious growth fundamentals are already strong.
+
+### Customer Maturity
+
+GO should mature with the operator.
+
+Conceptual lifecycle:
+
+FIX
+→ CAPTURE
+→ OPTIMIZE
+→ EXPAND
+→ DEFEND
+→ DISCOVER AGAIN
+
+The long-term product should not become unnecessary after obvious website/SEO/review problems are solved.
+
+As the business improves, GO's judgment should become more sophisticated.

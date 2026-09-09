@@ -71,7 +71,7 @@
       .map(x => ({name: clean(x.name||x.title), surface:x.surface, position:Number(x.position), rating:finite(x.rating), reviews:finite(x.reviews)}));
   }
 
-  function buildJudgment(market, website){
+  function buildJudgment(market, website, opportunity){
     const rows = market?.queries || [];
     const target = market?.target || {};
     const competitors = competitorSummary(rows,target,website);
@@ -81,7 +81,8 @@
     const organicVisible = rows.filter(r => finite(r.targetOrganicPosition));
     const top3 = rows.filter(r => (finite(r.targetLocalPosition) && Number(r.targetLocalPosition)<=3) || (finite(r.targetOrganicPosition) && Number(r.targetOrganicPosition)<=3));
     const ranked = [...rows].sort((a,b)=>queryScore(b)-queryScore(a));
-    const primary = ranked[0] || null;
+    const rawPrimary = ranked[0] || null;
+    const primary = opportunity?.priority?.candidate ? rows.find(r=>r.query===opportunity.priority.candidate.query) || rawPrimary : rawPrimary;
     const primaryCompetitors = primary ? strongestCompetitorsForQuery(primary,target,website) : [];
 
     const visibilityRatio = rows.length ? visibleRows.length/rows.length : 0;
@@ -141,7 +142,10 @@
     if (constraint==='Public trust advantage') action='Prioritize the trust gap before adding more generic visibility work: identify which review surface and proof elements repeatedly separate the operator from the competitors already being discovered.';
 
     return {
-      version:'GO-JUDGMENT-V1',
+      version:'GO-JUDGMENT-V2',
+      opportunityIntelligence: opportunity || null,
+      goPriority: opportunity?.priority || null,
+      goInvestigation: opportunity?.investigation || null,
       constraint, headline, summary, confidence,
       provider: market?.provider || 'Unknown provider',
       facts: facts.slice(0,4),

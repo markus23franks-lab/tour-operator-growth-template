@@ -189,4 +189,31 @@ For successful operators, opportunity types may include:
 
 GO's job is not to find a weakness.
 
-GO's job is to determine the best next way to grow or protect the business.
+GO's job is to determine the best next way to grow or protect the business.## Decision — Recoverable Revenue Governs GO Priority
+**Date: September 8, 2026**
+
+GO should not optimize for the largest observed weakness.
+
+The governing Opportunity Intelligence question is:
+
+"Where is the most valuable recoverable revenue likely hiding?"
+
+A weak ranking, large pricing gap, website problem, review deficit, or other observed weakness becomes important only when GO has reason to believe addressing it represents meaningful commercial value for the operator.
+
+GO should increasingly weigh:
+
+- demand
+- commercial relevance
+- economic value
+- recoverability
+- confidence
+- urgency
+- effort
+- risk
+- operational capacity
+
+This is a reasoning framework, not yet a literal scoring formula.
+
+Search rankings, reviews, pricing, AI discovery, conversion, social, marketplaces and future connected data are evidence sources.
+
+Revenue opportunity governs GO's judgment.

@@ -1,8 +1,10 @@
 const SERP_ENDPOINT = "https://serpapi.com/search.json";
-const GO_MARKET_BUILD_ID = "B037-EVIDENCE-HARNESS-RESILIENCE-MI-20260907";
+const GO_MARKET_BUILD_ID = "B051-TRUST-EVIDENCE-RESOLUTION-V1";
 const MAX_QUERIES = 10;
 const MAX_ORGANIC = 10;
 const MAX_LOCAL = 10;
+const SERP_CACHE_TTL_MS = 5 * 60 * 1000;
+const SERP_CACHE = new Map();
 
 export default async (request) => {
   if (request.method === "OPTIONS") {
@@ -73,27 +75,28 @@ export default async (request) => {
   }
 
   try {
-    // Resolve the operator first so GO does not mistake a DBA / Google entity name
-    // for an absent business. FSA is a good example: website branding and Google's
-    // entity naming can differ.
-    const identity = await resolveTargetIdentity({
+    const marketStartedAt = Date.now();
+
+    const identityPromise = resolveTargetIdentity({
       businessName,
       location,
       website,
       apiKey,
     });
 
-    const queryResults = await Promise.all(
+    const rawQueryResultsPromise = Promise.all(
       queries.map((query) =>
         runMarketQuery({
           query,
           location,
           businessName,
-          canonicalName: identity.name || businessName,
+          canonicalName: businessName,
           website,
           apiKey,
         }).catch((error) => ({
           query,
+          evidenceState: "UNKNOWN",
+          evidenceVerified: false,
           targetOrganicPosition: null,
           targetLocalPosition: null,
           organicResultsChecked: 0,
@@ -105,6 +108,19 @@ export default async (request) => {
           timing: { totalMs: 0, organicMs: 0, localMs: 0 },
         }))
       )
+    );
+
+    const [identity, rawQueryResults] = await Promise.all([
+      identityPromise,
+      rawQueryResultsPromise,
+    ]);
+
+    const queryResults = rawQueryResults.map((row) =>
+      reconcileTargetIdentity(row, {
+        businessName,
+        canonicalName: identity.name || businessName,
+        website,
+      })
     );
 
     const players = aggregatePlayers(
@@ -134,8 +150,11 @@ export default async (request) => {
           frontendBuildIdReceived: frontendBuildId || "MISSING",
           runIdReceived: debugRunId || "MISSING",
           request: { businessName, website, location, queries },
+          timing: { totalMarketMs: Date.now() - marketStartedAt },
           queryResults: queryResults.map(row => ({
             query: row.query,
+            evidenceState: row.evidenceState || "UNKNOWN",
+            evidenceVerified: row.evidenceVerified === true,
             targetLocalPosition: row.targetLocalPosition ?? null,
             targetOrganicPosition: row.targetOrganicPosition ?? null,
             localResultsChecked: row.localResultsChecked ?? null,
@@ -202,32 +221,38 @@ async function acquireWebsiteEvidence({ website, apiKey }) {
     pages.push({ url, markdown: clean.slice(0, 90000), source });
   };
 
-  // 1) Server-side HTML retrieval. This is independent of Jina/browser rendering and
-  // often succeeds when a public reader is challenged.
-  const home = await fetchPublicHtml(website).catch(() => null);
+  // Fetch the homepage first, then crawl a small high-value page set in parallel.
+  const home = await fetchPublicHtml(website, 6500).catch(() => null);
+
+  let links = [];
   if (home) {
     addBookingEvidence(home.html, website);
     addPage(website, htmlToEvidence(home.html, website), "direct-html");
-    const links = extractInternalLinks(home.html, origin).slice(0, 10);
-    for (const link of links.slice(0, 6)) {
-      const page = await fetchPublicHtml(link).catch(() => null);
-      if (page) {
-        addBookingEvidence(page.html, link);
-        addPage(link, htmlToEvidence(page.html, link), "direct-html");
-      }
-      if (pages.length >= 6) break;
-    }
+    links = extractInternalLinks(home.html, origin).slice(0, 5);
   }
 
-  // 2) Search-index recovery. This both validates that the domain represents the
-  // business and recovers product/page language when direct retrieval is thin.
-  let indexed = [];
-  if (apiKey && hostName) {
-    const payload = await serpSearch({ engine: "google", q: `site:${hostName}`, num: 10, hl: "en", api_key: apiKey }).catch(() => null);
-    indexed = normalizeOrganic(payload?.organic_results || []).filter(row => host(row.link) === hostName);
-    for (const row of indexed) {
-      addPage(row.link || website, `Title: ${row.title}\n${row.snippet}`, "google-index");
-    }
+  const internalPromise = Promise.all(
+    links.map(async (link) => ({
+      link,
+      page: await fetchPublicHtml(link, 5000).catch(() => null),
+    }))
+  );
+
+  const indexedPromise = apiKey && hostName
+    ? serpSearch({ engine: "google", q: `site:${hostName}`, num: 10, hl: "en", api_key: apiKey }, 6000).catch(() => null)
+    : Promise.resolve(null);
+
+  const [internalPages, indexedPayload] = await Promise.all([internalPromise, indexedPromise]);
+
+  for (const { link, page } of internalPages) {
+    if (!page) continue;
+    addBookingEvidence(page.html, link);
+    addPage(link, htmlToEvidence(page.html, link), "direct-html");
+  }
+
+  let indexed = normalizeOrganic(indexedPayload?.organic_results || []).filter(row => host(row.link) === hostName);
+  for (const row of indexed) {
+    addPage(row.link || website, `Title: ${row.title}\n${row.snippet}`, "google-index");
   }
 
   const directChars = pages.filter(p => p.source === "direct-html").reduce((n,p) => n + p.markdown.length, 0);
@@ -243,9 +268,9 @@ async function acquireWebsiteEvidence({ website, apiKey }) {
   };
 }
 
-async function fetchPublicHtml(url) {
+async function fetchPublicHtml(url, timeoutMs = 6500) {
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 12000);
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
     const res = await fetch(url, {
       redirect: "follow",
@@ -355,7 +380,7 @@ async function runMarketQuery({
       hl: "en",
       device: "desktop",
       api_key: apiKey,
-    });
+    }, 8500);
   } catch (error) {
     organicError = error instanceof Error ? error.message : String(error || "Organic provider request failed");
   }
@@ -381,7 +406,7 @@ async function runMarketQuery({
         hl: "en",
         device: "desktop",
         api_key: apiKey,
-      });
+      }, 4500);
       localResults = normalizeLocal(localPayload.local_results || []);
       localSearchUsed = true;
     } catch (error) {
@@ -404,8 +429,19 @@ async function runMarketQuery({
     "position"
   );
 
+  const providerError = [organicError && `Organic: ${organicError}`, localError && `Local: ${localError}`].filter(Boolean).join(" | ");
+  const targetVisible = Boolean(targetOrganicPosition || targetLocalPosition);
+  const usableResultCount = organicResults.length + localResults.length;
+  const evidenceState = targetVisible
+    ? "OBSERVED_WIN"
+    : providerError || usableResultCount === 0
+      ? "UNKNOWN"
+      : "OBSERVED_GAP";
+
   return {
     query,
+    evidenceState,
+    evidenceVerified: evidenceState !== "UNKNOWN",
     targetOrganicPosition,
     targetLocalPosition,
     organicResultsChecked: organicResults.length,
@@ -413,64 +449,69 @@ async function runMarketQuery({
     organicResults,
     localResults,
     localSearchUsed,
-    providerError: [organicError && `Organic: ${organicError}`, localError && `Local: ${localError}`].filter(Boolean).join(" | "),
+    providerError,
     timing: { totalMs: Date.now() - startedAt, organicMs, localMs },
+  };
+}
+
+function reconcileTargetIdentity(row, { businessName, canonicalName, website }) {
+  const targetNames = [businessName, canonicalName].filter(Boolean);
+  const targetOrganicPosition = findTargetPosition(row.organicResults || [], targetNames, website, "position");
+  const targetLocalPosition = findTargetPosition(row.localResults || [], targetNames, website, "position");
+  const targetVisible = Boolean(targetOrganicPosition || targetLocalPosition);
+  const usableResultCount = (row.organicResults || []).length + (row.localResults || []).length;
+  const evidenceState = targetVisible
+    ? "OBSERVED_WIN"
+    : row.providerError || usableResultCount === 0
+      ? "UNKNOWN"
+      : "OBSERVED_GAP";
+
+  return {
+    ...row,
+    targetOrganicPosition,
+    targetLocalPosition,
+    evidenceState,
+    evidenceVerified: evidenceState !== "UNKNOWN",
   };
 }
 
 async function resolveTargetIdentity({ businessName, location, website, apiKey }) {
   const targetHost = host(website);
-  const hostLabel = targetHost ? targetHost.split(".")[0] : "";
   const identityQueries = [
     `${businessName} ${location}`,
     targetHost ? `${targetHost} ${location}` : "",
-    hostLabel && hostLabel !== targetHost ? `${hostLabel} ${location}` : "",
-  ].filter(Boolean);
+  ].filter(Boolean).slice(0, 2);
 
-  const seen = [];
-  const identityErrors = [];
+  const attempts = await Promise.all(
+    [...new Set(identityQueries)].map(async (query) => {
+      try {
+        const payload = await serpSearch({
+          engine: "google_local",
+          q: query,
+          location,
+          gl: "us",
+          hl: "en",
+          device: "desktop",
+          api_key: apiKey,
+        }, 4500);
+        return { query, results: normalizeLocal(payload.local_results || []), error: "" };
+      } catch (error) {
+        return { query, results: [], error: error instanceof Error ? error.message : String(error || "provider request failed") };
+      }
+    })
+  );
 
-  for (const query of [...new Set(identityQueries)]) {
-    let payload = null;
-    try {
-      payload = await serpSearch({
-        engine: "google_local",
-        q: query,
-        location,
-        gl: "us",
-        hl: "en",
-        device: "desktop",
-        api_key: apiKey,
-      });
-    } catch (error) {
-      identityErrors.push(`${query}: ${error instanceof Error ? error.message : String(error || "provider request failed")}`);
-      continue;
-    }
+  const seen = attempts.flatMap(x => x.results);
+  const identityErrors = attempts.filter(x => x.error).map(x => `${x.query}: ${x.error}`);
 
-    const results = normalizeLocal(payload.local_results || []);
-    seen.push(...results);
-
-    const exact = results.find((item) =>
-      matchesTarget(item, [businessName], website)
-    );
-
-    if (exact) {
-      return targetIdentityFromMatch(exact, website, query, seen.length);
-    }
+  for (const attempt of attempts) {
+    const exact = attempt.results.find((item) => matchesTarget(item, [businessName], website));
+    if (exact) return targetIdentityFromMatch(exact, website, attempt.query, attempts.length);
   }
 
-  // If Google uses a different public entity / DBA name, website-domain matching
-  // is the strongest public bridge between the operator site and Google entity.
   if (targetHost) {
     const domainMatch = seen.find((item) => host(item.website) === targetHost);
-    if (domainMatch) {
-      return targetIdentityFromMatch(
-        domainMatch,
-        website,
-        "website-domain match",
-        seen.length
-      );
-    }
+    if (domainMatch) return targetIdentityFromMatch(domainMatch, website, "website-domain match", attempts.length);
   }
 
   return {
@@ -487,7 +528,7 @@ async function resolveTargetIdentity({ businessName, location, website, apiKey }
       ? `GO could not fully verify the Google local entity because ${identityErrors.length} identity request(s) failed. Successful evidence, if any, is preserved.`
       : "GO did not verify a matching Google local entity strongly enough to make exact absence claims.",
     identityErrors,
-    searchesUsed: [...new Set(identityQueries)].length,
+    searchesUsed: attempts.length,
   };
 }
 
@@ -507,7 +548,7 @@ function targetIdentityFromMatch(match, website, query, searchesUsed) {
   };
 }
 
-async function serpSearch(params) {
+async function serpSearch(params, timeoutMs = 7000) {
   const url = new URL(SERP_ENDPOINT);
   Object.entries(params).forEach(([key, value]) => {
     if (value !== undefined && value !== null && value !== "") {
@@ -515,8 +556,12 @@ async function serpSearch(params) {
     }
   });
 
+  const cacheKey = url.toString().replace(/([?&])api_key=[^&]+/i, "$1api_key=REDACTED");
+  const cached = SERP_CACHE.get(cacheKey);
+  if (cached && Date.now() - cached.at < SERP_CACHE_TTL_MS) return cached.payload;
+
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 30000);
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
 
   try {
     let res;
@@ -526,7 +571,7 @@ async function serpSearch(params) {
         signal: controller.signal,
       });
     } catch (error) {
-      if (error?.name === "AbortError") throw new Error("SerpApi request exceeded 30s timeout");
+      if (error?.name === "AbortError") throw new Error(`SerpApi request exceeded ${Math.round(timeoutMs / 1000)}s timeout`);
       throw error;
     }
 
@@ -535,6 +580,11 @@ async function serpSearch(params) {
       throw new Error(payload.error || `SerpApi returned ${res.status}`);
     }
 
+    SERP_CACHE.set(cacheKey, { at: Date.now(), payload });
+    if (SERP_CACHE.size > 100) {
+      const oldest = [...SERP_CACHE.entries()].sort((a,b) => a[1].at - b[1].at).slice(0, 20);
+      oldest.forEach(([key]) => SERP_CACHE.delete(key));
+    }
     return payload;
   } finally {
     clearTimeout(timer);

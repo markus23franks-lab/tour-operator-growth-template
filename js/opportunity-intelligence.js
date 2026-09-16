@@ -59,44 +59,58 @@
     return 'LOW';
   }
   const weight={CORE:4,SECONDARY:2.5,ANCILLARY:1,UNKNOWN:1.5};
+  const evidenceState=r=>r?.evidenceState || (r?.providerError?'UNKNOWN':(finite(r?.targetLocalPosition)||finite(r?.targetOrganicPosition)?'OBSERVED_WIN':'OBSERVED_GAP'));
 
   function build(market,acquisition){
     const rows=market?.queries||[];
     const profiles=assignRelative(rows.map(r=>profile(r.query,acquisition)));
     const candidates=rows.map((r,i)=>{
-      const commercial=profiles[i], visible=Boolean(finite(r.targetLocalPosition)||finite(r.targetOrganicPosition));
-      const severity=gapSeverity(r), evidence=market?.provider?'HIGH':'MEDIUM';
-      let type='DO NOTHING',priority='LOW',reason='Current observed search evidence does not justify action.';
-      if(!visible){
+      const commercial=profiles[i], state=evidenceState(r), verified=state!=='UNKNOWN', visible=state==='OBSERVED_WIN';
+      const severity=verified?gapSeverity(r):'UNKNOWN', evidence=verified?(market?.provider?'HIGH':'MEDIUM'):'UNKNOWN';
+      let type=verified?'DO NOTHING':'UNKNOWN',priority='LOW',reason=verified?'Current observed search evidence does not justify action.':'GO could not verify this search. It is excluded from gap and opportunity reasoning.';
+      if(state==='OBSERVED_GAP'){
         type=commercial.importance==='CORE'?'CAPTURE':'INVESTIGATE';
         priority=commercial.importance==='CORE'?'HIGH':commercial.importance==='SECONDARY'?'MEDIUM':'LOW';
         reason=`A real discovery gap was observed. GO weights it as ${commercial.importance.toLowerCase()} because first-party evidence suggests that level of commercial prominence.`;
       } else if(commercial.importance==='CORE' && ((finite(r.targetLocalPosition)&&r.targetLocalPosition<=3)||(finite(r.targetOrganicPosition)&&r.targetOrganicPosition<=3))){
         type='DEFEND';priority='MEDIUM';reason='Strong observed discovery on a commercially prominent offering is an advantage to protect, not a weakness to manufacture.';
       }
-      const rank=weight[commercial.importance]*10 + ({HIGH:6,MEDIUM:3,LOW:0}[severity]||0) + (type==='CAPTURE'?5:type==='DEFEND'?2:0);
-      return {query:r.query,type,priority,rank,commercialImportance:commercial.importance,commercialScore:commercial.raw,evidenceConfidence:evidence,gapSeverity:severity,reason,signals:commercial.signals,observation:{localPosition:finite(r.targetLocalPosition),organicPosition:finite(r.targetOrganicPosition)}};
+      const rank=verified ? weight[commercial.importance]*10 + ({HIGH:6,MEDIUM:3,LOW:0}[severity]||0) + (type==='CAPTURE'?5:type==='DEFEND'?2:0) : -100;
+      return {query:r.query,type,priority,rank,evidenceState:state,verified,commercialImportance:commercial.importance,commercialScore:commercial.raw,evidenceConfidence:evidence,gapSeverity:severity,reason,signals:commercial.signals,observation:{localPosition:finite(r.targetLocalPosition),organicPosition:finite(r.targetOrganicPosition)}};
     }).sort((a,b)=>b.rank-a.rank);
 
-    const coreGaps=candidates.filter(c=>c.type==='CAPTURE'&&c.commercialImportance==='CORE');
-    const defended=candidates.filter(c=>c.type==='DEFEND');
-    const lowerGaps=candidates.filter(c=>c.type==='INVESTIGATE');
+    const verifiedCandidates=candidates.filter(c=>c.verified);
+    const unknownCandidates=candidates.filter(c=>!c.verified);
+    const verifiedCount=verifiedCandidates.length, plannedCount=candidates.length;
+    const coverageRatio=plannedCount?verifiedCount/plannedCount:0;
+    const coreTotal=candidates.filter(c=>c.commercialImportance==='CORE').length;
+    const coreVerified=candidates.filter(c=>c.commercialImportance==='CORE'&&c.verified).length;
+    const sufficient=plannedCount>=3 && verifiedCount>=3 && coverageRatio>=0.6 && (coreTotal===0 || coreVerified/coreTotal>=0.5);
+    const coverage={planned:plannedCount,verified:verifiedCount,unknown:unknownCandidates.length,ratio:Number(coverageRatio.toFixed(2)),corePlanned:coreTotal,coreVerified,sufficient,state:sufficient?'SUFFICIENT':'INSUFFICIENT'};
+
+    const coreGaps=verifiedCandidates.filter(c=>c.type==='CAPTURE'&&c.commercialImportance==='CORE');
+    const defended=verifiedCandidates.filter(c=>c.type==='DEFEND');
+    const lowerGaps=verifiedCandidates.filter(c=>c.type==='INVESTIGATE');
 
     let priority={type:'DO NOTHING',headline:'No new search mission is justified from this sample.',reason:'GO found meaningful search strength and no core-product discovery gap strong enough to outrank it.',candidate:null};
-    if(coreGaps.length){
+    if(!sufficient){
+      priority={type:'INSUFFICIENT_EVIDENCE',headline:'Not enough verified evidence to choose a search priority.',reason:`GO verified ${verifiedCount} of ${plannedCount} planned discovery checks. Unknown checks are not treated as gaps.`,candidate:null};
+    } else if(coreGaps.length){
       const c=coreGaps[0];
       priority={type:'CAPTURE',headline:'A core offering has a discovery gap worth acting on.',reason:`“${c.query}” is both commercially prominent in first-party evidence and weak in the observed search sample.`,candidate:c};
     } else if(defended.length){
       priority={type:'DEFEND',headline:'Protect the discovery territory already working.',reason:'GO sees meaningful search strength around commercially prominent offerings. The evidence does not justify manufacturing a broad SEO problem.',candidate:defended[0]};
     }
 
-    let investigation={type:'INVESTIGATE',headline:'Find the next dollar outside obvious search fixes.',reason:'Because core search performance looks healthy, GO should next compare unanswered opportunities affecting the core business: pricing, conversion, AI discovery, product-demand whitespace, distribution and competitor momentum.',candidate:null};
+    let investigation=sufficient
+      ? {type:'INVESTIGATE',headline:'Find the next dollar outside obvious search fixes.',reason:'Because verified search evidence is sufficient for a judgment, GO should next compare unanswered opportunities affecting the core business: pricing, conversion, AI discovery, product-demand whitespace, distribution and competitor momentum.',candidate:null}
+      : {type:'RETRY_EVIDENCE',headline:'Complete the missing discovery evidence.',reason:`${unknownCandidates.length} planned check${unknownCandidates.length===1?'':'s'} could not be verified. Retry those checks before GO generalizes search performance or promotes a search mission.`,candidate:null};
     if(lowerGaps.length){
       const c=lowerGaps[0];
       investigation.reason += ` The “${c.query}” gap remains real, but GO currently weights it ${c.commercialImportance.toLowerCase()} and will not promote it simply because it is the cleanest gap.`;
     }
 
-    return {version:'GO-OPPORTUNITY-INTELLIGENCE-V2',productHierarchy:profiles,opportunities:candidates,priority,investigation,acquisition:{available:Boolean(pages(acquisition).length),pages:pages(acquisition).length,directChars:acquisition?.directChars||0,note:acquisition?.note||'First-party evidence was used only as public prominence evidence, not revenue share.'}};
+    return {version:'GO-OPPORTUNITY-INTELLIGENCE-V3',coverage,productHierarchy:profiles,opportunities:candidates,priority,investigation,acquisition:{available:Boolean(pages(acquisition).length),pages:pages(acquisition).length,directChars:acquisition?.directChars||0,note:acquisition?.note||'First-party evidence was used only as public prominence evidence, not revenue share.'}};
   }
   global.GOOpportunityIntelligence={build};
 })(window);

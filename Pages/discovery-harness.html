@@ -5,18 +5,27 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>GO Judgment Lab — Growth Operator</title>
   <link rel="stylesheet" href="../styles/discovery-harness.css">
+<style>
+.pricing-intel{margin:18px 0;padding:24px;border:1px solid rgba(53,224,255,.22);border-radius:18px;background:linear-gradient(135deg,rgba(8,24,43,.96),rgba(6,17,31,.96))}.pricing-grid{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(280px,.65fr);gap:24px}.pricing-state{display:inline-flex;padding:7px 10px;border-radius:999px;border:1px solid rgba(53,224,255,.3);color:#35e0ff;font-size:11px;font-weight:800;text-transform:uppercase}.pricing-intel h2{margin:12px 0 8px;font-size:25px}.pricing-intel p{margin:0;color:#a9bdca;line-height:1.55}.pricing-numbers{display:grid;grid-template-columns:1fr 1fr;gap:10px}.pricing-numbers>div{padding:15px;border:1px solid rgba(255,255,255,.08);border-radius:13px;background:rgba(255,255,255,.025)}.pricing-numbers span,.pricing-numbers small{display:block;color:#8198a8;font-size:11px}.pricing-numbers strong{display:block;margin:5px 0;font-size:22px;color:#f5fbff}.pricing-note{margin-top:16px;padding-top:14px;border-top:1px solid rgba(255,255,255,.07);font-size:11px;line-height:1.5;color:#6f8797}@media(max-width:800px){.pricing-grid{grid-template-columns:1fr}}
+</style>
+<style>
+.trust-intel{margin:18px 0;padding:24px;border:1px solid rgba(53,224,255,.18);border-radius:18px;background:rgba(5,20,35,.76)}.trust-grid{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(300px,.65fr);gap:24px}.trust-state{display:inline-flex;padding:7px 10px;border-radius:999px;border:1px solid rgba(53,224,255,.28);color:#35e0ff;font-size:11px;font-weight:800;text-transform:uppercase}.trust-intel h2{margin:12px 0 8px;font-size:25px}.trust-intel p{color:#a9bdca;line-height:1.5}.trust-action{margin-top:12px;padding:12px 14px;border-left:2px solid #35e0ff;background:rgba(53,224,255,.04)}.trust-numbers{display:grid;grid-template-columns:1fr 1fr;gap:10px}.trust-numbers>div{padding:14px;border:1px solid rgba(255,255,255,.08);border-radius:13px}.trust-numbers span,.trust-numbers small{display:block;color:#8198a8;font-size:11px}.trust-numbers strong{display:block;margin:5px 0;font-size:21px}.trust-sample{margin-top:14px;padding-top:12px;border-top:1px solid rgba(255,255,255,.07);font-size:11px;color:#7890a0}@media(max-width:800px){.trust-grid{grid-template-columns:1fr}}
+</style>
+<style>
+.conversion-intel{margin:18px 0;padding:24px;border:1px solid rgba(53,224,255,.18);border-radius:18px;background:rgba(5,20,35,.76)}.conversion-grid{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(330px,.8fr);gap:24px}.conversion-state{display:inline-flex;padding:7px 10px;border-radius:999px;border:1px solid rgba(53,224,255,.28);color:#35e0ff;font-size:11px;font-weight:800;text-transform:uppercase}.conversion-intel h2{margin:12px 0 8px;font-size:25px}.conversion-intel p{color:#a9bdca;line-height:1.5}.conversion-action{margin-top:12px;padding:12px 14px;border-left:2px solid #35e0ff;background:rgba(53,224,255,.04)}.conversion-signals{display:grid;grid-template-columns:1fr 1fr;gap:8px}.conversion-signal{padding:11px;border:1px solid rgba(255,255,255,.07);border-radius:11px;font-size:11px;color:#8299a8}.conversion-signal b{display:block;color:#eef8fc;margin-top:3px}.conversion-note{margin-top:12px;font-size:11px;color:#718998}@media(max-width:800px){.conversion-grid{grid-template-columns:1fr}}
+</style>
 </head>
 <body>
   <main class="shell">
     <header class="topbar">
       <a href="operator-analyzer.html" class="brand"><img src="../Assets/growth-operator-mark-clean.png" alt=""><span><strong>GROWTH</strong><small>OPERATOR</small></span></a>
-      <span class="badge">BUILD 042 · DEMAND + DISCOVERY INTELLIGENCE V1</span>
+      <span class="badge">BUILD 051 · TRUST EVIDENCE RESOLUTION</span>
     </header>
 
     <section class="hero">
       <p class="eyebrow">DEVELOPER INTELLIGENCE LAB · JUDGMENT BEFORE UI</p>
-      <h1>Find the demand that matters — then see who captures it.</h1>
-      <p>GO now compares two different questions: what your website teaches the market about you, and broader traveler-intent searches tied to what you actually sell. The goal is not to find the ugliest ranking — it is to find the most commercially important discovery mismatch.</p>
+      <h1>GO found the signal. Now make the growth decision.</h1>
+      <p>The operator view now leads with GO's judgment, action and economic confidence. The research is still there — but you should understand what matters before you ever open it.</p>
     </section>
 
     <section class="panel controls">
@@ -27,7 +36,7 @@
         <label>Search location<input id="location" type="text" placeholder="Turks and Caicos Islands"></label>
       </div>
       <label>Commercial searches<textarea id="queries" rows="7" placeholder="One exact search per line"></textarea></label>
-      <div class="actions"><button id="run" type="button">Run operator intelligence review →</button><button id="load-caicos" class="secondary" type="button">Load Caicos benchmark</button></div>
+      <div class="actions"><button id="run" type="button">Run operator value review →</button><button id="load-caicos" class="secondary" type="button">Load Caicos benchmark</button></div>
       <p class="note" id="input-note">The judgment layer does not invent rank, demand or revenue. It can only synthesize what the evidence provider returned.</p>
     </section>
 
@@ -48,7 +57,11 @@
   </main>
   <script src="../js/demand-intelligence.js"></script>
   <script src="../js/opportunity-intelligence.js"></script>
+  <script src="../js/economics.js"></script>
   <script src="../js/go-judgment.js"></script>
+  <script src="../js/pricing-intelligence.js"></script>
+  <script src="../js/trust-intelligence.js"></script>
+  <script src="../js/conversion-intelligence.js"></script>
   <script src="../js/discovery-harness.js"></script>
 </body>
 </html>

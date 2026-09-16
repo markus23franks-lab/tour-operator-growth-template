@@ -1,19 +1,7 @@
 (()=>{
  const h=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
- const old=window.renderJudgment;
- if(typeof old!=='function')return;
- function senseCard(c){
-   const state=c.state==='UNKNOWN'?'UNRESOLVED':c.state.replaceAll('_',' ');
-   return `<div class="sense-card"><small>${h(c.sense)}</small><b>${h(state)}</b><span>${h(c.finding)}</span></div>`;
- }
- window.renderJudgment=function(j){
-   old(j);
-   const host=document.getElementById('judgment');
-   if(!host||!window.GOOpportunityBrain)return;
-   const brain=window.GOOpportunityBrain.build({market:window.__lastMarket,discoveryOpportunity:j?.opportunityIntelligence,pricing:window.__lastPricing,trust:window.__lastTrust,conversion:window.__lastConversion});
-   window.__lastOpportunityBrain=brain;
-   const p=brain.primary||{};
-   const unresolved=brain.unresolved?.length?`${brain.unresolved.length} sense${brain.unresolved.length===1?'':'s'} still need evidence: ${brain.unresolved.map(x=>x.sense).join(', ')}.`:'All four senses have enough evidence for a current-state read.';
-   host.insertAdjacentHTML('afterbegin',`<section class="brain-v2"><div class="brain-label">GO OPPORTUNITY BRAIN · CURRENT DECISION</div><h2>${h(brain.headline)}</h2><p>${h(brain.summary)}</p><div class="brain-primary"><small>BEST NEXT MOVE · ${h(p.actionability||'INVESTIGATE')}</small><strong>${h(p.action||p.finding||'Continue investigation')}</strong><span>${h(p.requiredNextEvidence?`Evidence needed next: ${p.requiredNextEvidence}`:'')}</span></div><div class="sense-grid">${(brain.candidates||[]).map(senseCard).join('')}</div><p class="conversion-note"><b>Decision integrity:</b> ${h(unresolved)} ${h(brain.decisionPrinciple)}</p></section>`);
- };
+ const old=window.renderJudgment;if(typeof old!=='function')return;
+ function senseCard(c){const state=c.state==='UNKNOWN'?'UNRESOLVED':c.state.replaceAll('_',' ');return `<div class="sense-card"><small>${h(c.sense)}</small><b>${h(state)}</b><span>${h(c.finding)}</span></div>`}
+ function repairConversion(){const c=window.__lastConversion,el=document.querySelector('.conversion-intel');if(!c||!el)return;const labels={bookingCTA:'Booking CTA',pricing:'Visible pricing',reviews:'Review proof',trust:'Trust signals',urgency:'Availability / urgency',productDepth:'Product detail',faq:'Decision support'};const signals=Object.entries(c.signals||{}).map(([k,v])=>`<div class="conversion-signal">${h(labels[k]||k)}<b>${h(v==='OBSERVED_PRESENT'?'OBSERVED':'NOT VERIFIED')}</b></div>`).join('');const state=c.state==='INSUFFICIENT_EVIDENCE'?'Evidence incomplete':c.state==='OBSERVED_FOUNDATION'?'Observed foundation':c.state.replaceAll('_',' ');el.innerHTML=`<div class="section-kicker">GROWTH SENSE · WEBSITE CONVERSION INTELLIGENCE V2</div><div class="conversion-grid"><div><div class="conversion-state">${h(state)}</div><h2>${h(c.headline)}</h2><p>${h(c.summary)}</p><div class="conversion-action"><b>WHAT GO DOES WITH THIS</b><br>${h(c.action)}</div></div><div><div class="conversion-signals">${signals}</div><div class="conversion-note">${h(c.pages)} first-party pages recovered · ${h(c.present)}/${h(c.total)} signal families positively observed. Unobserved signals remain UNKNOWN.<br><br>${h(c.evidenceNote)}</div></div></div>`}
+ window.renderJudgment=function(j){old(j);repairConversion();const host=document.getElementById('judgment');if(!host||!window.GOOpportunityBrain)return;const brain=window.GOOpportunityBrain.build({market:window.__lastMarket,discoveryOpportunity:j?.opportunityIntelligence,pricing:window.__lastPricing,trust:window.__lastTrust,conversion:window.__lastConversion});window.__lastOpportunityBrain=brain;const p=brain.primary||{},unresolved=brain.unresolved?.length?`${brain.unresolved.length} sense${brain.unresolved.length===1?'':'s'} still need evidence: ${brain.unresolved.map(x=>x.sense).join(', ')}.`:'All four senses have enough evidence for a current-state read.';host.insertAdjacentHTML('afterbegin',`<section class="brain-v2"><div class="brain-label">GO OPPORTUNITY BRAIN · CURRENT DECISION</div><h2>${h(brain.headline)}</h2><p>${h(brain.summary)}</p><div class="brain-primary"><small>BEST NEXT MOVE · ${h(p.actionability||'INVESTIGATE')}</small><strong>${h(p.action||p.finding||'Continue investigation')}</strong><span>${h(p.requiredNextEvidence?`Evidence needed next: ${p.requiredNextEvidence}`:'')}</span></div><div class="sense-grid">${(brain.candidates||[]).map(senseCard).join('')}</div><p class="conversion-note"><b>Decision integrity:</b> ${h(unresolved)} ${h(brain.decisionPrinciple)}</p></section>`)};
 })();

@@ -2,6 +2,34 @@
 'use strict';
 const params=new URLSearchParams(location.search);
 const read=k=>{try{return JSON.parse(localStorage.getItem(k)||'null')}catch{return null}};
+const norm=v=>String(v||'').replace(/\s+/g,' ').trim();
+
+function normalizeSearchValue(value){
+  if(typeof value==='string')return norm(value);
+  if(value&&typeof value==='object')return norm(value.query||value.search||value.term||'');
+  return '';
+}
+function extractSearches(profile){
+  const candidates=[
+    profile?.pipelineDebug?.selectedQueries,
+    profile?.discoveryIntelligence?.searches,
+    profile?.marketEvidence?.checkedSearches,
+    profile?.pipelineDebug?.market?.queries
+  ];
+  const seen=new Set(),out=[];
+  for(const list of candidates){
+    if(!Array.isArray(list))continue;
+    for(const raw of list){
+      const query=normalizeSearchValue(raw);
+      const key=query.toLowerCase();
+      if(!query||seen.has(key))continue;
+      if(window.GOColdStartV3?.validQuery&&window.GOColdStartV3.validQuery(query)===false)continue;
+      seen.add(key);out.push(query);
+      if(out.length>=5)return out;
+    }
+  }
+  return out;
+}
 
 function installAnalyzerBridge(){
   const button=document.getElementById('open-snapshot');
@@ -35,8 +63,7 @@ function installLabAutopilot(){
   document.getElementById('website').value=p.website||p.url||'';
   document.getElementById('business-name').value=p.businessName||p.name||'';
   document.getElementById('location').value=p.businessContext?.location||p.location||p.publicProfile?.location||'';
-  const searches=p.discoveryIntelligence?.searches?.map(x=>x.query)||p.marketEvidence?.checkedSearches||p.pipelineDebug?.market?.queries||p.pipelineDebug?.selectedQueries||[];
-  document.getElementById('queries').value=[...new Set(searches.filter(Boolean))].slice(0,5).join('\n');
+  document.getElementById('queries').value=extractSearches(p).join('\n');
 
   const missing=[];
   if(!document.getElementById('business-name').value)missing.push('business identity');
@@ -57,8 +84,13 @@ function installLabAutopilot(){
       location.replace('growth-snapshot.html?source=zero-input');
     }
   },250);
-  setTimeout(()=>clearInterval(timer),90000);
+  setTimeout(()=>{
+    clearInterval(timer);
+    const copy=document.getElementById('go-auto-copy');
+    if(copy&&!read('growthOperatorOpportunityBrain')?.savedAt)copy.textContent='GO kept the result unresolved because the investigation did not finish with enough evidence. Try again later rather than treating a timeout as a growth problem.';
+  },90000);
 }
 
+window.GOZeroInputFlow={extractSearches,normalizeSearchValue};
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>{installAnalyzerBridge();installLabAutopilot();});else{installAnalyzerBridge();installLabAutopilot();}
 })();

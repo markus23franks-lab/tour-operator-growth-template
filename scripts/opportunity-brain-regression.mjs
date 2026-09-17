@@ -11,6 +11,7 @@ const UNKNOWN='UNKNOWN',WIN='OBSERVED_WIN',GAP='OBSERVED_GAP';
 const rows=states=>states.map((evidenceState,i)=>({query:`q${i+1}`,evidenceState}));
 const baseline={pricing:{state:'INSUFFICIENT_EVIDENCE'},trust:{state:'INSUFFICIENT_EVIDENCE'},conversion:{state:'INSUFFICIENT_EVIDENCE'}};
 const discoveryState=(states,legacy=null)=>build({market:{queries:rows(states)},discoveryOpportunity:legacy,...baseline}).candidates.find(x=>x.sense==='DISCOVERY');
+const build055Discovery=states=>build({market:{queries:states.map((_,i)=>`q${i+1}`),queryResults:rows(states)},discoveryOpportunity:null,...baseline}).candidates.find(x=>x.sense==='DISCOVERY');
 
 const cases=[
  {name:'provider unknown never becomes gap',actual:()=>discoveryState([UNKNOWN,UNKNOWN,UNKNOWN]).state,expected:'UNKNOWN'},
@@ -19,6 +20,9 @@ const cases=[
  {name:'repeated gaps become opportunity',actual:()=>discoveryState([WIN,GAP,GAP,GAP]).state,expected:'OPPORTUNITY'},
  {name:'strong visibility is healthy',actual:()=>discoveryState([WIN,WIN,WIN,GAP]).state,expected:'HEALTHY'},
  {name:'insufficient verified coverage stays unresolved',actual:()=>discoveryState([GAP,GAP,UNKNOWN,UNKNOWN,UNKNOWN]).state,expected:'UNKNOWN'},
+ {name:'Build 055 queryResults drive healthy judgment',actual:()=>build055Discovery([WIN,WIN,WIN,GAP]).state,expected:'HEALTHY'},
+ {name:'Build 055 queryResults drive repeated-gap judgment',actual:()=>build055Discovery([WIN,GAP,GAP,GAP]).state,expected:'OPPORTUNITY'},
+ {name:'Build 055 string queries never masquerade as verified evidence',actual:()=>build({market:{queries:['q1','q2','q3']},discoveryOpportunity:null,...baseline}).candidates.find(x=>x.sense==='DISCOVERY').diagnostics.verified,expected:0},
  {name:'pricing opportunity can lead when evidence supports it',actual:()=>build({market:{queries:rows([WIN,WIN,WIN])},discoveryOpportunity:null,pricing:{state:'PRICING_POWER_CANDIDATE',operator:{median:120},market:{median:180},deltaPct:50,research:{verified:5}},trust:{state:'INSUFFICIENT_EVIDENCE'},conversion:{state:'INSUFFICIENT_EVIDENCE'}}).primary.sense,expected:'PRICING'},
  {name:'conversion unknown is not labeled a problem',actual:()=>build({market:{queries:rows([WIN,WIN,WIN])},discoveryOpportunity:null,pricing:{state:'INSUFFICIENT_EVIDENCE'},trust:{state:'INSUFFICIENT_EVIDENCE'},conversion:{state:'INSUFFICIENT_EVIDENCE'}}).candidates.find(x=>x.sense==='CONVERSION').state,expected:'UNKNOWN'}
 ];

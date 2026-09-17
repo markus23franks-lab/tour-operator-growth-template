@@ -31,6 +31,22 @@ function extractSearches(profile){
   return out;
 }
 
+// The developer Lab historically expands its entered searches with broader demand probes.
+// In the one-URL autopilot path Build 055 has already done that thinking and selected the
+// representative evidence portfolio. Do not silently replace five deliberate searches with
+// a new 10-query legacy portfolio during Analyzer -> Lab -> Snapshot handoff.
+function installRepresentativeDemandGuard(){
+  if(params.get('auto')!=='1'||!window.GODemandIntelligence?.build)return false;
+  if(window.GODemandIntelligence.__goRepresentativeGuard)return true;
+  const original=window.GODemandIntelligence.build.bind(window.GODemandIntelligence);
+  window.GODemandIntelligence.build=input=>{
+    const result=original(input)||{};
+    return {...result,probes:[]};
+  };
+  window.GODemandIntelligence.__goRepresentativeGuard=true;
+  return true;
+}
+
 function installAnalyzerBridge(){
   const button=document.getElementById('open-snapshot');
   if(!button)return;
@@ -74,6 +90,7 @@ function installLabAutopilot(){
     return;
   }
 
+  installRepresentativeDemandGuard();
   const started=Date.now();
   const before=read('growthOperatorOpportunityBrain')?.savedAt||'';
   run.click();
@@ -91,6 +108,6 @@ function installLabAutopilot(){
   },90000);
 }
 
-window.GOZeroInputFlow={extractSearches,normalizeSearchValue};
+window.GOZeroInputFlow={extractSearches,normalizeSearchValue,installRepresentativeDemandGuard};
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>{installAnalyzerBridge();installLabAutopilot();});else{installAnalyzerBridge();installLabAutopilot();}
 })();

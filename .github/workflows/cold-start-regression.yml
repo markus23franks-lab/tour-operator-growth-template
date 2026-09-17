@@ -22,3 +22,5 @@ jobs:
         run: node scripts/cold-start-regression.mjs
       - name: Run Opportunity Brain evidence-integrity regression
         run: node scripts/opportunity-brain-regression.mjs
+      - name: Run Analyzer portfolio-judgment regression
+        run: node scripts/analyzer-judgment-regression.mjs

@@ -18,6 +18,13 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
+      - name: Check Build 055 JavaScript syntax
+        run: |
+          node --check js/cold-start-intelligence-v3.js
+          node --check js/cold-start-judgment-v1.js
+          node --check js/zero-input-operator-flow.js
+          node --check js/opportunity-brain.js
+          node --check js/operator-opportunity-brief.js
       - name: Run cold-start product-family regression
         run: node scripts/cold-start-regression.mjs
       - name: Run Opportunity Brain evidence-integrity regression

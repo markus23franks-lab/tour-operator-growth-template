@@ -3,17 +3,20 @@ import vm from 'node:vm';
 
 const source=fs.readFileSync(new URL('../js/zero-input-operator-flow.js',import.meta.url),'utf8');
 const sandbox={
-  window:{GOColdStartV3:{validQuery:q=>!/(book now|learn more|various packages)/i.test(q)}},
+  window:{
+    GOColdStartV3:{validQuery:q=>!/(book now|learn more|various packages)/i.test(q)},
+    GODemandIntelligence:{build:()=>({probes:[{query:'legacy broad demand 1'},{query:'legacy broad demand 2'}],meta:'preserved'})}
+  },
   console,
   URLSearchParams,
-  location:{search:''},
+  location:{search:'?auto=1'},
   localStorage:{getItem:()=>null,removeItem:()=>{},setItem:()=>{}},
   document:{readyState:'loading',addEventListener:()=>{},getElementById:()=>null,querySelector:()=>null,body:{classList:{add:()=>{}}}},
   setInterval:()=>0,clearInterval:()=>{},setTimeout:()=>0
 };
 vm.createContext(sandbox);
 vm.runInContext(source,sandbox,{filename:'zero-input-operator-flow.js'});
-const {extractSearches}=sandbox.window.GOZeroInputFlow;
+const {extractSearches,installRepresentativeDemandGuard}=sandbox.window.GOZeroInputFlow;
 
 const cases=[
  {name:'prefers selected queries and caps at five',profile:{pipelineDebug:{selectedQueries:['Moab canyoneering','Moab rock climbing','Canyonlands hiking tours','Moab rafting tours','Moab jeep tours','Moab ATV tours']}},expect:['Moab canyoneering','Moab rock climbing','Canyonlands hiking tours','Moab rafting tours','Moab jeep tours']},
@@ -23,5 +26,13 @@ const cases=[
 ];
 let failures=0;
 for(const c of cases){const actual=extractSearches(c.profile);const ok=JSON.stringify(actual)===JSON.stringify(c.expect);if(!ok){failures++;console.error(`FAIL ${c.name}:`,actual,'expected',c.expect);}else console.log(`PASS ${c.name}`);}
-if(failures){console.error(`\n${failures}/${cases.length} zero-input handoff checks failed`);process.exit(1);}
-console.log(`\n${cases.length}/${cases.length} zero-input handoff checks passed`);
+
+const guardInstalled=installRepresentativeDemandGuard();
+const guarded=sandbox.window.GODemandIntelligence.build({});
+if(!guardInstalled||guarded.probes.length!==0||guarded.meta!=='preserved'){
+  failures++;
+  console.error('FAIL zero-input representative demand guard:',{guardInstalled,guarded});
+}else console.log('PASS zero-input representative demand guard');
+
+if(failures){console.error(`\n${failures}/${cases.length+1} zero-input handoff checks failed`);process.exit(1);}
+console.log(`\n${cases.length+1}/${cases.length+1} zero-input handoff checks passed`);

@@ -1,0 +1,22 @@
+name: Cold-start regression
+
+on:
+  push:
+    branches:
+      - 'builder/build-055-cold-start-intelligence-v1'
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  cold-start:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Run cold-start product-family regression
+        run: node scripts/cold-start-regression.mjs

@@ -20,22 +20,16 @@ function installAnalyzerBridge(){
 function installLabAutopilot(){
   if(params.get('auto')!=='1')return;
   const profile=read('growthOperatorProspectProfile');
-  const load=document.getElementById('load-profile');
   const run=document.getElementById('run');
   const controls=document.querySelector('.controls');
-  if(!profile||!load||!run)return;
+  if(!profile||!run||!controls)return;
 
   document.body.classList.add('go-autopilot');
-  if(controls){
-    controls.innerHTML='<div class="go-auto-card"><p class="eyebrow">GO IS INVESTIGATING</p><h2>GO figured out the business. Now it is checking where the money may be hiding.</h2><p id="go-auto-copy">Building the search plan from the operator’s own products and market context — no keywords required.</p><div class="go-auto-progress"><i></i></div><small>Reading the business → testing demand → checking pricing, trust and the booking path → choosing what matters</small></div>';
-  }
-
-  // Recreate the hidden controls expected by the existing intelligence runner. This keeps
-  // the development harness intact while removing all operator-entered fields from the flow.
-  const hidden=document.createElement('div');
-  hidden.hidden=true;
-  hidden.innerHTML='<input id="website"><input id="business-name"><input id="location"><textarea id="queries"></textarea><button id="load-profile"></button><button id="run"></button><button id="load-caicos"></button>';
-  document.body.appendChild(hidden);
+  const card=document.createElement('div');
+  card.className='go-auto-card';
+  card.innerHTML='<p class="eyebrow">GO IS INVESTIGATING</p><h2>GO figured out the business. Now it is checking where the money may be hiding.</h2><p id="go-auto-copy">Building the search plan from the operator’s own products and market context — no keywords required.</p><div class="go-auto-progress"><i></i></div><small>Reading the business → testing demand → checking pricing, trust and the booking path → choosing what matters</small>';
+  controls.prepend(card);
+  [...controls.children].forEach(child=>{if(child!==card)child.style.display='none'});
 
   const p=profile;
   document.getElementById('website').value=p.website||p.url||'';
@@ -49,16 +43,13 @@ function installLabAutopilot(){
   if(!document.getElementById('location').value)missing.push('market location');
   if(!document.getElementById('queries').value)missing.push('commercial search plan');
   if(missing.length){
-    const copy=document.getElementById('go-auto-copy');
-    if(copy)copy.textContent=`GO could not safely infer ${missing.join(', ')} from the public site, so it stopped instead of inventing it.`;
+    document.getElementById('go-auto-copy').textContent=`GO could not safely infer ${missing.join(', ')} from the public site, so it stopped instead of inventing it.`;
     return;
   }
 
   const started=Date.now();
   const before=read('growthOperatorOpportunityBrain')?.savedAt||'';
-  // Existing listeners were attached before this bridge loaded, so dispatching a click uses
-  // the same tested Intelligence Lab pipeline without duplicating its provider logic.
-  document.getElementById('run').click();
+  run.click();
   const timer=setInterval(()=>{
     const handoff=read('growthOperatorOpportunityBrain');
     if(handoff?.savedAt&&handoff.savedAt!==before&&Date.now()-started>250){

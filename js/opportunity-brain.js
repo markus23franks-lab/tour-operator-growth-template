@@ -3,16 +3,19 @@
  const level=(value,high=.8,medium=.55)=>value>=high?'HIGH':value>=medium?'MEDIUM':'LOW';
 
  function discovery(market,legacy){
-  const rows=market?.queries||[];
-  const verified=rows.filter(r=>r.evidenceState!=='UNKNOWN');
+  // Build 055 keeps the representative query strings in market.queries and the scoped
+  // provider evidence in market.queryResults. Prefer evidence rows; only fall back to
+  // legacy object-shaped market.queries so strings can never masquerade as verified rows.
+  const evidenceRows=Array.isArray(market?.queryResults)?market.queryResults:[];
+  const legacyRows=Array.isArray(market?.queries)?market.queries.filter(r=>r&&typeof r==='object'):[];
+  const rows=evidenceRows.length?evidenceRows:legacyRows;
+  const verified=rows.filter(r=>r?.evidenceState&&r.evidenceState!=='UNKNOWN');
   const gaps=verified.filter(r=>r.evidenceState==='OBSERVED_GAP');
   const visible=verified.filter(r=>r.evidenceState==='OBSERVED_WIN');
   const coverage=rows.length?verified.length/rows.length:0;
   const gapRate=verified.length?gaps.length/verified.length:0;
   const visibleRate=verified.length?visible.length/verified.length:0;
   const enoughCoverage=verified.length>=3&&coverage>=.6;
-  // One weak/mixed result is a lead, not yet a business opportunity. A visibility opportunity
-  // requires a repeated pattern across a representative portfolio or stronger legacy evidence.
   const repeatedGap=enoughCoverage&&gaps.length>=2&&gapRate>=.4;
   const strongLegacy=legacy?.confidence==='High'&&legacy?.evidenceStrength>=4&&legacy?.priorityScore>=14;
   let state='UNKNOWN',finding='GO needs a little more search evidence before judging visibility.',action='Finish checking how customers find this business.',importance='MEDIUM';

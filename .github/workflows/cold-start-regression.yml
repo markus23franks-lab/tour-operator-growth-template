@@ -20,3 +20,5 @@ jobs:
           node-version: '22'
       - name: Run cold-start product-family regression
         run: node scripts/cold-start-regression.mjs
+      - name: Run Opportunity Brain evidence-integrity regression
+        run: node scripts/opportunity-brain-regression.mjs

@@ -6,11 +6,9 @@
    Page copy may establish what the operator sells; it may never become a query verbatim. */
 
 const priorDemand=window.buildDemandPlan;
-const priorPortfolio=window.buildRepresentativeSearchPortfolio;
 const priorMarket=window.readProfessionalMarket;
 const norm=v=>String(v||'').replace(/\s+/g,' ').trim();
 const key=v=>norm(v).toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();
-const esc=v=>String(v||'').replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
 
 const FAMILIES=[
  {id:'canyoneering',label:'canyoneering',patterns:[/\bcanyoneering\b/i,/\brappell?ing\b/i,/\bcanyon tours?\b/i]},
@@ -42,34 +40,27 @@ const FAMILIES=[
  {id:'ghost',label:'ghost tours',patterns:[/\bghost tours?\b/i]},
  {id:'zipline',label:'zipline tours',patterns:[/\bzip ?line(?:s| tours?)?\b/i]},
  {id:'ski',label:'ski tours',patterns:[/\bski tours?\b/i,/\bskiing\b/i]},
- {id:'snowmobile',label:'snowmobile tours',patterns:[/\bsnowmobil(?:e|ing)\b/i]},
- {id:'rentals',label:'equipment rentals',patterns:[/\bequipment rentals?\b/i,/\brentals?\b/i]}
+ {id:'snowmobile',label:'snowmobile tours',patterns:[/\bsnowmobil(?:e|ing)\b/i]}
 ];
 
 function cleanLocation(v){
  let s=norm(v).replace(/\b(?:United States|USA)\b/ig,'').replace(/\s*,\s*,/g,',').replace(/^[, ]+|[, ]+$/g,'');
- // Prefer city/destination over state/country suffix for natural queries.
  if(s.includes(',')) s=s.split(',')[0].trim();
  return s;
 }
 function sourceText(ctx){
- const chunks=[ctx?.combined,(ctx?.offers||[]).join(' '),(ctx?.commercialTruth?.primaryProducts||[]).map(x=>x.name||x).join(' '),(ctx?.commercialTruth?.segments||[]).map(x=>x.name||x).join(' ')];
- return chunks.filter(Boolean).join('\n');
+ return [ctx?.combined,(ctx?.offers||[]).join(' '),(ctx?.commercialTruth?.primaryProducts||[]).map(x=>x.name||x).join(' '),(ctx?.commercialTruth?.segments||[]).map(x=>x.name||x).join(' ')].filter(Boolean).join('\n');
 }
-function occurrences(text,family){
- return family.patterns.reduce((n,re)=>n+((text.match(new RegExp(re.source,re.flags.includes('g')?re.flags:re.flags+'g')))||[]).length,0);
-}
+function occurrences(text,family){return family.patterns.reduce((n,re)=>n+((text.match(new RegExp(re.source,re.flags.includes('g')?re.flags:re.flags+'g')))||[]).length,0)}
 function destinations(text){
  const out=[]; const seen=new Set();
  const patterns=[/\b([A-Z][A-Za-z'’.-]*(?:\s+[A-Z][A-Za-z'’.-]*){0,4}\s+National Park)\b/g,/\b([A-Z][A-Za-z'’.-]*(?:\s+[A-Z][A-Za-z'’.-]*){0,4}\s+State Park)\b/g,/\b([A-Z][A-Za-z'’.-]*(?:\s+[A-Z][A-Za-z'’.-]*){0,3}\s+National Monument)\b/g];
  patterns.forEach(re=>{for(const m of text.matchAll(re)){const v=norm(m[1]),k=key(v);if(v&&!seen.has(k)){seen.add(k);out.push(v)}}});
  return out.slice(0,4);
 }
-function queryFor(location,label){return norm(`${location} ${label}`)}
 function item(family,location,count,role='core',destination=''){
- const label=destination ? `${destination} ${family.label}` : family.label;
- const query=destination ? `${destination} ${family.label}` : queryFor(location,family.label);
- return {id:`intent-v3-${family.id}${destination?'-'+key(destination).replace(/ /g,'-'):''}`,coverageFamily:`intent-v3-${family.id}`,label,intent:family.label,query:norm(query),aliases:[],verifiedProductFamily:true,semanticProduct:true,commercialRole:role,websiteScore:Math.min(70,44+count*4),productSignalCount:count,websiteMentionCount:count,websiteEvidence:`First-party evidence supports the ${family.label} product family.`,intentObject:{destination:destination||location,activity:family.label,intent:'book-or-compare',specificity:destination?'destination-product':'core-category',familyId:family.id}};
+ const query=destination?`${destination} ${family.label}`:`${location} ${family.label}`;
+ return {id:`intent-v3-${family.id}${destination?'-'+key(destination).replace(/ /g,'-'):''}`,coverageFamily:`intent-v3-${family.id}`,label:destination?`${destination} ${family.label}`:family.label,intent:family.label,query:norm(query),aliases:[],verifiedProductFamily:true,semanticProduct:true,commercialRole:role,websiteScore:Math.min(70,44+count*4),productSignalCount:count,websiteMentionCount:count,websiteEvidence:`First-party evidence supports the ${family.label} product family.`,intentObject:{destination:destination||location,activity:family.label,intent:'book-or-compare',specificity:destination?'destination-product':'core-category',familyId:family.id}};
 }
 function validQuery(q){
  const s=norm(q); if(!s||s.length>72||s.split(' ').length>8)return false;
@@ -78,47 +69,43 @@ function validQuery(q){
 }
 
 window.buildDemandPlan=function(ctx){
- const text=sourceText(ctx); const location=cleanLocation(ctx?.businessContext?.location||ctx?.commercialTruth?.geography||'');
+ const text=sourceText(ctx),location=cleanLocation(ctx?.businessContext?.location||ctx?.commercialTruth?.geography||'');
  const found=FAMILIES.map(f=>({f,count:occurrences(text,f)})).filter(x=>x.count>0).sort((a,b)=>b.count-a.count);
- const out=[]; const seen=new Set();
+ const out=[],seen=new Set();
  const add=x=>{if(!x||!validQuery(x.query))return;const k=key(x.query);if(seen.has(k))return;seen.add(k);out.push(x)};
  found.forEach(x=>add(item(x.f,location,x.count,'core')));
- const parks=destinations(text);
  const hiking=found.find(x=>x.f.id==='hiking');
- if(hiking) parks.forEach(p=>add(item(hiking.f,location,hiking.count,'destination',p)));
- // Keep a strong legacy candidate only if it maps cleanly to an independently verified family.
+ if(hiking)destinations(text).forEach(p=>add(item(hiking.f,location,hiking.count,'destination',p)));
+ // Legacy extraction can confirm a family, but cannot invent a query phrase.
  const legacy=typeof priorDemand==='function'?priorDemand(ctx):[];
  for(const old of legacy){
-   if(out.length>=8)break;
-   const oq=key(old?.query||''),oi=key(old?.intent||'');
-   const family=found.find(x=>oq.includes(key(x.f.label))||oi===key(x.f.label));
-   if(family)add(item(family.f,location,Math.max(1,family.count),'core'));
+  if(out.length>=8)break;
+  const oi=key(old?.intent||''),oq=key(old?.query||'');
+  const family=found.find(x=>oi===key(x.f.label)||oq.includes(key(x.f.label)));
+  if(family)add(item(family.f,location,Math.max(1,family.count),'core'));
  }
  return out.slice(0,8);
 };
 
 window.buildRepresentativeSearchPortfolio=function(ctx,selected,demandPlan){
- const plan=Array.isArray(demandPlan)?demandPlan:[]; const location=cleanLocation(ctx?.businessContext?.location||ctx?.commercialTruth?.geography||'');
- const ordered=[selected,...plan].filter(Boolean); const out=[]; const seenFamilies=new Set();
+ const plan=Array.isArray(demandPlan)?demandPlan:[],ordered=[selected,...plan].filter(Boolean),out=[],seenFamilies=new Set();
  for(const p of ordered){
-   if(out.length>=5)break;
-   const io=p.intentObject||{}; const family=io.familyId||key(p.intent);
-   if(!p.verifiedProductFamily||seenFamilies.has(family)||!validQuery(p.query))continue;
-   seenFamilies.add(family); out.push(p.query);
+  if(out.length>=5)break;
+  const family=p.intentObject?.familyId||key(p.intent);
+  if(!p.verifiedProductFamily||seenFamilies.has(family)||!validQuery(p.query))continue;
+  seenFamilies.add(family);out.push(p.query);
  }
- // If a destination-specific hiking query is supported, it is more useful than a duplicate generic hiking variant.
  const destination=plan.find(p=>p.intentObject?.specificity==='destination-product'&&validQuery(p.query));
  if(destination&&!out.some(q=>key(q)===key(destination.query))){
-   const genericIndex=out.findIndex(q=>/\bhiking tours?\b/i.test(q));
-   if(genericIndex>=0)out[genericIndex]=destination.query; else if(out.length<5)out.push(destination.query);
+  const i=out.findIndex(q=>/\bhiking tours?\b/i.test(q));
+  if(i>=0)out[i]=destination.query;else if(out.length<5)out.push(destination.query);
  }
  return [...new Set(out)].slice(0,5);
 };
 
 function queryState(row){
- const local=Number(row?.targetLocalPosition)||null, organic=Number(row?.targetOrganicPosition)||null;
- const checked=(Number(row?.localResultsChecked)||0)+(Number(row?.organicResultsChecked)||0);
- const providerError=norm(row?.providerError);
+ const local=Number(row?.targetLocalPosition)||null,organic=Number(row?.targetOrganicPosition)||null;
+ const checked=(Number(row?.localResultsChecked)||0)+(Number(row?.organicResultsChecked)||0),providerError=norm(row?.providerError);
  if(local||organic)return 'OBSERVED_WIN';
  if(checked>0&&!providerError)return 'OBSERVED_GAP';
  return 'UNKNOWN';
@@ -131,11 +118,24 @@ function portfolioQuality(rows){
 window.readProfessionalMarket=async function(ctx){
  const market=typeof priorMarket==='function'?await priorMarket(ctx):null;
  if(!market)return market;
- // Recompute truth after all provider/fallback work. Provider absence stays UNKNOWN.
- if(Array.isArray(market.queryResults)) market.queryResults=market.queryResults.map(row=>({...row,evidenceState:queryState(row),evidenceVerified:queryState(row)!=='UNKNOWN'}));
+ const plan=window.buildDemandPlan(ctx);
+ const portfolio=window.buildRepresentativeSearchPortfolio(ctx,market.selectedDemand,plan);
+ const wanted=new Set(portfolio.map(q=>key(q)));
+ // Older Analyzer retrieval may have checked a broader candidate pool. Keep that work internally,
+ // but only hand the representative portfolio forward into operator judgment and UI.
+ if(Array.isArray(market.queryResults)&&wanted.size){
+  const selected=market.queryResults.filter(row=>wanted.has(key(row.query))).map(row=>({...row,evidenceState:queryState(row),evidenceVerified:queryState(row)!=='UNKNOWN'}));
+  if(selected.length)market.queryResults=selected;
+ }
+ market.queries=market.queryResults?.map(r=>r.query)||portfolio;
+ market.searchPages=(market.searchPages||[]).filter(p=>wanted.has(key(p.query)));
+ market.demandPlan=plan;
  market.portfolioQuality=portfolioQuality(market.queryResults);
  market.retrievalNote=`GO selected ${market.portfolioQuality.count} representative searches from verified product families. ${market.portfolioQuality.wins} showed observed visibility, ${market.portfolioQuality.gaps} showed an observed gap, and ${market.portfolioQuality.unknown} remained unknown rather than being treated as a weakness.`;
- if(market.pipelineDebug)market.pipelineDebug.coldStartV3={version:'B055-COLD-START-V1',portfolioQuality:market.portfolioQuality,intents:(market.demandPlan||[]).map(x=>x.intentObject).filter(Boolean)};
+ if(market.pipelineDebug){
+  market.pipelineDebug.selectedQueries=market.queries.slice();
+  market.pipelineDebug.coldStartV3={version:'B055-COLD-START-V1',portfolioQuality:market.portfolioQuality,intents:plan.map(x=>x.intentObject).filter(Boolean),candidateQueries:plan.map(x=>x.query),representativeQueries:portfolio.slice()};
+ }
  return market;
 };
 

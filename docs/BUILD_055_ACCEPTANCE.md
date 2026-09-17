@@ -55,14 +55,45 @@ The public result must be useful before the operator connects private data:
 Connected data should feel like replacing assumptions with the operator's real economics, not like paying GO before GO can demonstrate value.
 
 ## Regression categories
-The regression harness should cover structurally different operator types, including at minimum:
+The automated cold-start suite now covers:
 - land/adventure
 - water/tour/charter
 - food/culinary
-- off-road/rental
+- off-road
 - wildlife/sightseeing
+- museum/admission
+- sightseeing bus
+- equipment rentals
+- history/walking tours
 
 Caicos remains a regression fixture, not the product design target. Moab remains a cold-start reality check, not a hardcoded exception.
 
+## Automated acceptance status
+Current Build 055 CI checks:
+- Build 055 JavaScript syntax gate
+- 9 cross-category cold-start product-family/query fixtures
+- Opportunity Brain evidence-integrity checks
+- Analyzer portfolio-level judgment checks
+- zero-input Analyzer → Intelligence Lab search-handoff checks
+
+Current status: all automated gates pass on the Build 055 branch.
+
+The regression suite specifically protects these product rules:
+- provider failure remains UNKNOWN
+- a single search gap does not become a visibility opportunity
+- repeated portfolio-level gaps can become an opportunity
+- broadly healthy visibility is not converted into unnecessary SEO work
+- malformed CTA/page-copy phrases do not reach the operator search portfolio
+- the zero-input handoff preserves the representative portfolio and never serializes evidence objects as keyword text
+
 ## Founder test threshold
-Do not request founder testing for individual filters, query wording patches or evidence plumbing. Request founder testing when the full one-URL flow is materially improved and worth evaluating as a product.
+Do not request founder testing for individual filters, query wording patches or evidence plumbing.
+
+The automated threshold is now met. The next founder test should evaluate the full one-URL experience across several previously unseen operators, with emphasis on:
+1. Does GO understand what the business actually sells?
+2. Are the representative searches commercially believable?
+3. Does the public evidence feel credible and scoped correctly?
+4. Does GO distinguish healthy, mixed and problematic visibility appropriately?
+5. Does the resulting Snapshot make the operator want GO to keep working?
+
+Build 055 should not be called fully accepted until that founder product test is complete.

@@ -2,7 +2,7 @@ import {normalizeSerpEvidence,buildInvestigationSignals} from "./lib/investigati
 import {collectSearchSurfaces} from "./lib/serpapi-investigation-adapter.mjs";
 import {collectFirstPartyEvidence} from "./lib/first-party-investigation-adapter.mjs";
 import {buildBusinessDossierWithModel,buildInvestigationPlanWithModel} from "./lib/research-model-adapter.mjs";
-const LAB_BUILD_ID = "GO-INVESTIGATION-LAB-V0.5";
+const LAB_BUILD_ID = "GO-INVESTIGATION-LAB-V0.6";
 const ALLOWED_SURFACES = new Set([
   "FIRST_PARTY_RENDERED","ORGANIC_SERP","LOCAL_MAPS","BUSINESS_ENTITY",
   "REVIEW_REPUTATION","COMPETITOR_SITE","BOOKING_FLOW","VISUAL_SCREENSHOT","OTA_MARKETPLACE"
@@ -14,6 +14,31 @@ export default async (request) => {
   if (request.method !== "POST") return json(405,{ok:false,error:"Method not allowed"});
   let body={}; try{body=await request.json()}catch{return json(400,{ok:false,error:"Invalid JSON body"})}
   if(body.action==="runtime") return json(200,{ok:true,buildId:LAB_BUILD_ID,architecture:"BACKEND_INVESTIGATION_LAB",observedAt:new Date().toISOString()});
+  if(body.action==="run-proof"){
+    const website=String(body.website||"").trim();
+    if(!website)return json(400,{ok:false,error:"website is required"});
+    if(!process.env.OPENAI_API_KEY)return json(409,{ok:false,buildId:LAB_BUILD_ID,state:"MODEL_NOT_CONFIGURED",error:"OPENAI_API_KEY is required for the Investigation Lab proof"});
+    if(!process.env.SERPAPI_KEY)return json(409,{ok:false,buildId:LAB_BUILD_ID,state:"SEARCH_PROVIDER_NOT_CONFIGURED",error:"SERPAPI_KEY is required for the Investigation Lab proof"});
+    try{
+      const firstParty=await collectFirstPartyEvidence({website});
+      const dossierModel=await buildBusinessDossierWithModel({evidence:firstParty.records,apiKey:process.env.OPENAI_API_KEY});
+      const operator={name:dossierModel.dossier.businessName,website};
+      const initialPlanModel=await buildInvestigationPlanWithModel({dossier:dossierModel.dossier,evidence:firstParty.records,signals:{},apiKey:process.env.OPENAI_API_KEY});
+      const plannedQueries=[...new Set((initialPlanModel.plan.questions||[]).flatMap(q=>q.seedQueries||[]).filter(Boolean))].slice(0,5);
+      const marketBatches=await Promise.all(plannedQueries.map(async query=>{
+        try{
+          const collected=await collectSearchSurfaces({query,location:dossierModel.dossier.operatingMarket||"",apiKey:process.env.SERPAPI_KEY});
+          return {query,collected,records:normalizeSerpEvidence({query,payload:collected.payload,operator,provider:collected.provider})};
+        }catch(error){return {query,error:error instanceof Error?error.message:String(error),records:[]}}
+      }));
+      const marketRecords=marketBatches.flatMap(x=>x.records);
+      const allRecords=[...firstParty.records,...marketRecords];
+      const signals=buildInvestigationSignals({records:allRecords,operator});
+      const followUpModel=await buildInvestigationPlanWithModel({dossier:dossierModel.dossier,evidence:allRecords,signals,apiKey:process.env.OPENAI_API_KEY});
+      const validation=validateEvidenceRecords(allRecords);
+      return json(validation.ok?200:422,{ok:validation.ok,buildId:LAB_BUILD_ID,state:validation.ok?"PROOF_RESEARCHED":"EVIDENCE_REJECTED",dossier:dossierModel.dossier,initialPlan:initialPlanModel.plan,queriesResearched:plannedQueries,surfaceStatus:marketBatches.map(x=>({query:x.query,status:x.collected?.surfaceStatus||null,errors:x.collected?.errors||[x.error].filter(Boolean)})),signals,followUpPlan:followUpModel.plan,evidence:allRecords,telemetry:{firstPartyPages:firstParty.pagesRead,evidenceRecords:allRecords.length,model:[dossierModel,initialPlanModel,followUpModel].map(x=>({name:x.model,usage:x.usage||null}))},validation});
+    }catch(error){return json(502,{ok:false,buildId:LAB_BUILD_ID,error:error instanceof Error?error.message:String(error)})}
+  }
   if(body.action==="plan-investigation"){
     const dossier=body.dossier||null,records=Array.isArray(body.records)?body.records:[],signals=body.signals||{};
     if(!dossier)return json(400,{ok:false,error:"dossier is required"});

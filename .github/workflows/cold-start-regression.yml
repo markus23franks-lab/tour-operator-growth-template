@@ -32,6 +32,7 @@ jobs:
           node --check js/trust-intelligence.js
           node --check js/conversion-intelligence.js
           node --check js/competitive-intelligence.js
+          node --check js/positioning-intelligence.js
       - name: Run cold-start product-family regression
         run: node scripts/cold-start-regression.mjs
       - name: Run dedicated research-plan regression

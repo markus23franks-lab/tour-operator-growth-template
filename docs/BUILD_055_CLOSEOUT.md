@@ -224,3 +224,20 @@ The Analyzer now exposes an operator-facing GO Research Brief so the visible pro
 Regression coverage now additionally protects Business Dossier integrity, dossier-first pipeline ordering, qualified competitor positioning comparison, presentation integrity and like-for-like offer comparison.
 
 **Current founder status:** no action required. Builder should continue autonomously until the one-URL experience represents a material product-capability jump. Do not ask the founder to rerun Louisville or act as a mechanical regression tester.
+
+
+## V2 commercial judgment slice — 2026-09-22
+
+The cold-start V2 stack now goes materially beyond search evidence. First-party product evidence enriches the Business Dossier with observed price, duration, format, transaction model and source provenance. Qualified competitor pages are also converted into structured product evidence so pricing comparison can prefer actual competitor offers over loose search snippets.
+
+Comparable pricing is intentionally strict: loose snippets can remain directional evidence, but they cannot verify a pricing set. A promoted comparable set now requires structured competitor offers, matching commercial family/transaction type, observed duration and format compatibility, and multiple independent sources. Missing fields are not proof of equivalence.
+
+A conservative Booking Journey layer records positive public evidence for CTA, public price, product detail path and booking destination. It does not turn missing extraction into a conversion defect. A Product Architecture layer can identify repeated adjacent offer patterns across multiple direct competitors or flag differentiation as worth investigating when repeated competitor pressure coincides with category-parity positioning. These remain investigations rather than fabricated opportunities.
+
+An evidence-ranked Action Plan now separates VALIDATED_OPPORTUNITY, INVESTIGATE, LEVERAGE and MEASURE moves. The visible Analyzer and Snapshot use this synthesis for the next move instead of presenting every research signal as equivalent work.
+
+A runtime Presentation Gate now blocks malformed identity, unresolved core commercial truth, transaction-model conflicts, raw sentinel leakage and action plans that promote opportunities the Opportunity Brain did not validate. Failed presentation integrity prevents Analyzer → Snapshot handoff; GO holds the result rather than showing a polished but untrustworthy growth story.
+
+CI now covers offer evidence, strict comparable offers, booking journey, product architecture, action-plan synthesis, runtime presentation integrity, dossier-first ordering and trusted-only Snapshot handoff. Latest completed regression run at this checkpoint: #169 SUCCESS.
+
+Founder acceptance remains open. Do not treat green regressions as product acceptance; the next founder checkpoint should be a materially credible one-URL experience, not another mechanical test.

@@ -27,6 +27,10 @@ jobs:
           node --check js/operator-opportunity-brief.js
           node --check js/opportunity-brain-ui.js
           node --check js/discovery-harness.js
+          node --check js/operator-analyzer.js
+          node --check js/pricing-intelligence.js
+          node --check js/trust-intelligence.js
+          node --check js/conversion-intelligence.js
       - name: Run cold-start product-family regression
         run: node scripts/cold-start-regression.mjs
       - name: Run Opportunity Brain evidence-integrity regression

@@ -58,7 +58,7 @@
   return {sense:'CONVERSION',label:'Website sales',state:'FOUNDATION_OBSERVED',finding:'GO found the main public ingredients customers need to make a booking decision.',evidenceStrength:'MEDIUM',commercialImportance:'HIGH',confidence:'MEDIUM',economicImportance:'POTENTIALLY_HIGH',actionability:'INVESTIGATE_DEEPER',requiredNextEvidence:'Visits, booking starts, abandonment, mobile behavior and completed bookings',action:'Find out whether the traffic you already have can produce more bookings.',diagnostics:{present:c.present,total:c.total,pages:c.pages}}
  }
 
- function build({market,discoveryOpportunity,pricing:price,offerComparison,trust:trustIntel,conversion:conv,bookingJourney,competition,positioningComparison}){
+ function build({market,discoveryOpportunity,pricing:price,offerComparison,trust:trustIntel,conversion:conv,bookingJourney,productArchitecture,competition,positioningComparison}){
   const candidates=[discovery(market,discoveryOpportunity),pricing(price,offerComparison),trust(trustIntel),conversion(conv)],opportunities=candidates.filter(x=>x.state==='OPPORTUNITY'),unknown=candidates.filter(x=>x.state==='UNKNOWN'),d=candidates[0],p=candidates[1],t=candidates[2],c=candidates[3];
   let primary,headline,summary,mode='INVESTIGATION';
   if(opportunities.length){
@@ -90,8 +90,10 @@
   if(positioningComparison?.state==='CATEGORY_PARITY')strategicContext.push({type:'POSITIONING_PARITY',headline:positioningComparison.headline,summary:positioningComparison.summary,action:positioningComparison.action,evidenceStrength:'MEDIUM'});
   if(offerComparison?.state==='COMPARABLE_SET_VERIFIED')strategicContext.push({type:'COMPARABLE_OFFERS',headline:offerComparison.headline,summary:`GO verified ${offerComparison.matches?.length||0} like-for-like public offer matches across ${offerComparison.sources||0} independent sources.`,action:offerComparison.action,evidenceStrength:'HIGH'});
   if(bookingJourney?.state==='BOOKING_PATH_OBSERVED')strategicContext.push({type:'BOOKING_PATH',headline:bookingJourney.headline,summary:`GO positively observed ${bookingJourney.observed?.join(', ')||'the public booking path'}. Actual funnel performance remains unknown.`,action:bookingJourney.action,evidenceStrength:'MEDIUM'});
+  if(productArchitecture?.state==='ADJACENT_OFFER_PATTERN')strategicContext.push({type:'PRODUCT_ARCHITECTURE',headline:productArchitecture.headline,summary:`Multiple qualified direct competitors repeat an adjacent public offer pattern. This is a research lead, not proof the operator should add it.`,action:productArchitecture.action,evidenceStrength:'MEDIUM'});
+  if(productArchitecture?.state==='DIFFERENTIATION_INVESTIGATION')strategicContext.push({type:'PRODUCT_DIFFERENTIATION',headline:productArchitecture.headline,summary:'Repeated competitor pressure plus category-parity positioning makes product differentiation worth investigating.',action:productArchitecture.action,evidenceStrength:'MEDIUM'});
   const roi={state:'NEEDS_CONNECTED_DATA',headline:'GO needs your real booking data to put a reliable dollar value on the next opportunity.',needs:['website traffic','booking starts and completed bookings','product-level revenue or booking value','margin or capacity where relevant']};
-  return {version:'GO-OPPORTUNITY-BRAIN-V2.5',mode,headline,summary,primary,opportunities,unresolved:unknown,candidates,strategicContext,roi,decisionPrinciple:'GO promotes a public finding into an opportunity only when the evidence shows a repeated, commercially meaningful pattern. UNKNOWN and mixed evidence stay unresolved instead of becoming work.'}
+  return {version:'GO-OPPORTUNITY-BRAIN-V2.6',mode,headline,summary,primary,opportunities,unresolved:unknown,candidates,strategicContext,roi,decisionPrinciple:'GO promotes a public finding into an opportunity only when the evidence shows a repeated, commercially meaningful pattern. UNKNOWN and mixed evidence stay unresolved instead of becoming work.'}
  }
  global.GOOpportunityBrain={build};
 })(window);

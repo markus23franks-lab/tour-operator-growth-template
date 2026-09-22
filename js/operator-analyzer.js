@@ -2619,7 +2619,12 @@ function inferBusinessContext(text, home, url) {
     : matchedTypes.length === 1
       ? `${matchedTypes[0]} operator`
       : "tour and activity operator";
-  return { businessType, businessTypes: matchedTypes, location, domain: domainLabel(url) };
+  const transactionType = rentalTransaction ? "rental"
+    : /\b(?:private\s+)?charters?\b/i.test(haystack) ? "charter"
+    : /\b(?:admission|entry ticket|museum ticket|general admission)\b/i.test(haystack) ? "admission"
+    : /\b(?:tour|trip|cruise|ride|lesson|class|experience|excursion)\b/i.test(haystack) ? "tour"
+    : "";
+  return { businessType, businessTypes: matchedTypes, transactionType, location, domain: domainLabel(url) };
 }
 
 

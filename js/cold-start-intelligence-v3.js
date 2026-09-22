@@ -35,7 +35,7 @@ const FAMILIES=[
  {id:'surf',label:'surf lessons',patterns:[/\bsurf(?:ing)? lessons?\b/i]},
  {id:'paddleboard',label:'paddleboard rentals',patterns:[/\bpaddleboards?\b/i,/\bSUP rentals?\b/i]},
  {id:'jet-ski',label:'jet ski rentals',patterns:[/\bjet skis?\b/i,/\bjetski\b/i]},
- {id:'boat-rental',label:'boat rentals',patterns:[/\bboat rentals?\b/i,/\bpontoon rentals?\b/i]},
+ {id:'boat-rental',label:'boat rentals',patterns:[/\bboat rentals?\b/i,/\bpontoon rentals?\b/i,/\brent(?:al|als|ing)?\s+(?:a\s+)?(?:boat|powerboat|pontoon|vessel|dinghy)\b/i,/\b(?:boat|powerboat|pontoon|vessel|dinghy)\s+rentals?\b/i,/\b(?:self[- ]drive|bareboat)\b/i]},
  {id:'parasailing',label:'parasailing',patterns:[/\bparasail(?:ing)?\b/i]},
  {id:'whale',label:'whale watching',patterns:[/\bwhale watching\b/i]},
  {id:'dolphin',label:'dolphin tours',patterns:[/\bdolphin tours?\b/i,/\bdolphin watching\b/i]},
@@ -52,12 +52,29 @@ const FAMILIES=[
 
 function cleanLocation(v){let s=norm(v).replace(/\b(?:United States|USA)\b/ig,'').replace(/\s*,\s*,/g,',').replace(/^[, ]+|[, ]+$/g,'');if(s.includes(','))s=s.split(',')[0].trim();return s;}
 function sourceText(ctx){return [ctx?.combined,(ctx?.offers||[]).join(' '),(ctx?.commercialTruth?.primaryProducts||[]).map(x=>x.name||x).join(' '),(ctx?.commercialTruth?.segments||[]).map(x=>x.name||x).join(' ')].filter(Boolean).join('\n');}
+function structuredText(ctx){return [(ctx?.commercialTruth?.primaryProducts||[]).map(x=>x.name||x).join(' '),(ctx?.commercialTruth?.segments||[]).map(x=>x.name||x).join(' '),(ctx?.offers||[]).join(' '),(ctx?.siteArchitecture?.commercialPages||[]).map(x=>x.name||'').join(' '),(ctx?.siteArchitecture?.internalProducts||[]).map(x=>x.name||'').join(' ')].filter(Boolean).join('\n');}
 function occurrences(text,family){return family.patterns.reduce((n,re)=>n+((text.match(new RegExp(re.source,re.flags.includes('g')?re.flags:re.flags+'g')))||[]).length,0)}
+function transactionModel(ctx){
+ const all=sourceText(ctx),structured=structuredText(ctx);
+ const rental=/\b(?:rent|rents|rented|rental|rentals|hire|self[- ]drive|bareboat)\b/i;
+ const water=/\b(?:boat|powerboat|pontoon|catamaran|sailboat|yacht|vessel|dinghy)\b/i;
+ const rentalWater=new RegExp(`(?:${rental.source})[\\s\\S]{0,90}(?:${water.source})|(?:${water.source})[\\s\\S]{0,90}(?:${rental.source})`,'i');
+ return {rentalWater:rentalWater.test(all),structuredRentalWater:rentalWater.test(structured),structured};
+}
+function familyScore(ctx,f,count){
+ const tx=transactionModel(ctx),structuredCount=occurrences(tx.structured,f);
+ let score=count+(structuredCount*8);
+ if(tx.rentalWater){
+   if(f.id==='boat-rental')score+=80;
+   if(['boat-tour','snorkeling','sailing','sunset','private-charter'].includes(f.id)&&structuredCount===0)score-=60;
+ }
+ return {score,structuredCount};
+}
 function destinations(text){const out=[],seen=new Set();const patterns=[/\b([A-Z][A-Za-z'’.-]*(?:\s+[A-Z][A-Za-z'’.-]*){0,4}\s+National Park)\b/g,/\b([A-Z][A-Za-z'’.-]*(?:\s+[A-Z][A-Za-z'’.-]*){0,4}\s+State Park)\b/g,/\b([A-Z][A-Za-z'’.-]*(?:\s+[A-Z][A-Za-z'’.-]*){0,3}\s+National Monument)\b/g];patterns.forEach(re=>{for(const m of text.matchAll(re)){const v=norm(m[1]),k=key(v);if(v&&!seen.has(k)){seen.add(k);out.push(v)}}});return out.slice(0,4);}
 function item(family,location,count,role='core',destination=''){const query=destination?`${destination} ${family.label}`:`${location} ${family.label}`;return {id:`intent-v3-${family.id}${destination?'-'+key(destination).replace(/ /g,'-'):''}`,coverageFamily:`intent-v3-${family.id}`,label:destination?`${destination} ${family.label}`:family.label,intent:family.label,query:norm(query),aliases:[],verifiedProductFamily:true,semanticProduct:true,commercialRole:role,websiteScore:Math.min(70,44+count*4),productSignalCount:count,websiteMentionCount:count,websiteEvidence:`First-party evidence supports the ${family.label} product family.`,intentObject:{destination:destination||location,activity:family.label,intent:'book-or-compare',specificity:destination?'destination-product':'core-category',familyId:family.id}};}
 function validQuery(q){const s=norm(q);if(!s||s.length>72||s.split(' ').length>8)return false;if(/\b(?:book now|learn more|click|hours?|packages? designed|various packages|suit different|our tours|our adventures|available daily|view details|read more|reserve now)\b/i.test(s))return false;return true;}
 
-window.buildDemandPlan=function(ctx){const text=sourceText(ctx),location=cleanLocation(ctx?.businessContext?.location||ctx?.commercialTruth?.geography||'');if(!location)return [];const found=FAMILIES.map(f=>({f,count:occurrences(text,f)})).filter(x=>x.count>0).sort((a,b)=>b.count-a.count);const out=[],seen=new Set();const add=x=>{if(!x||!validQuery(x.query))return;const k=key(x.query);if(seen.has(k))return;seen.add(k);out.push(x)};found.forEach(x=>add(item(x.f,location,x.count,'core')));const hiking=found.find(x=>x.f.id==='hiking');if(hiking)destinations(text).forEach(p=>add(item(hiking.f,location,hiking.count,'destination',p)));const legacy=typeof priorDemand==='function'?priorDemand(ctx):[];for(const old of legacy){if(out.length>=8)break;const oi=key(old?.intent||''),oq=key(old?.query||'');const family=found.find(x=>oi===key(x.f.label)||oq.includes(key(x.f.label)));if(family)add(item(family.f,location,Math.max(1,family.count),'core'));}return out.slice(0,8);};
+window.buildDemandPlan=function(ctx){const text=sourceText(ctx),location=cleanLocation(ctx?.businessContext?.location||ctx?.commercialTruth?.geography||'');if(!location)return [];const tx=transactionModel(ctx);let found=FAMILIES.map(f=>{const count=occurrences(text,f),rank=familyScore(ctx,f,count);return {f,count,score:rank.score,structuredCount:rank.structuredCount}}).filter(x=>x.count>0||x.score>0);if(tx.rentalWater&&!found.some(x=>x.f.id==='boat-rental')){const f=FAMILIES.find(x=>x.id==='boat-rental');found.push({f,count:1,score:80,structuredCount:tx.structuredRentalWater?1:0});}found=found.filter(x=>x.score>0).sort((a,b)=>b.score-a.score||b.structuredCount-a.structuredCount||b.count-a.count);const out=[],seen=new Set();const add=x=>{if(!x||!validQuery(x.query))return;const k=key(x.query);if(seen.has(k))return;seen.add(k);out.push(x)};found.forEach(x=>add(item(x.f,location,x.count,'core')));const hiking=found.find(x=>x.f.id==='hiking');if(hiking)destinations(text).forEach(p=>add(item(hiking.f,location,hiking.count,'destination',p)));const legacy=typeof priorDemand==='function'?priorDemand(ctx):[];for(const old of legacy){if(out.length>=8)break;const oi=key(old?.intent||''),oq=key(old?.query||'');const family=found.find(x=>oi===key(x.f.label)||oq.includes(key(x.f.label)));if(family)add(item(family.f,location,Math.max(1,family.count),'core'));}return out.slice(0,8);};
 
 window.buildRepresentativeSearchPortfolio=function(ctx,selected,demandPlan){const plan=Array.isArray(demandPlan)?demandPlan:[],ordered=[selected,...plan].filter(Boolean),out=[],seenFamilies=new Set();for(const p of ordered){if(out.length>=5)break;const family=p.intentObject?.familyId||key(p.intent);if(!p.verifiedProductFamily||seenFamilies.has(family)||!validQuery(p.query))continue;seenFamilies.add(family);out.push(p.query);}const destination=plan.find(p=>p.intentObject?.specificity==='destination-product'&&validQuery(p.query));if(destination&&!out.some(q=>key(q)===key(destination.query))){const i=out.findIndex(q=>/\bhiking tours?\b/i.test(q));if(i>=0)out[i]=destination.query;else if(out.length<5)out.push(destination.query);}return [...new Set(out)].slice(0,5);};
 
@@ -77,5 +94,5 @@ window.readProfessionalMarket=async function(ctx){
  }catch(error){console.warn('GO Build 055 professional market unavailable; public fallback may run.',error);return null;}
 };
 
-window.GOColdStartV3={version:'B055-COLD-START-V1',validQuery,families:FAMILIES.map(({id,label})=>({id,label}))};
+window.GOColdStartV3={version:'B055-COLD-START-V1.1',validQuery,families:FAMILIES.map(({id,label})=>({id,label})),transactionModel};
 })();

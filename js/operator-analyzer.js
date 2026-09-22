@@ -3065,6 +3065,7 @@ function showResults(profile) {
   text("confidence-score", String(profile.analysisConfidence || "Medium").toUpperCase());
   text("confidence-copy", profile.confidenceCopy || "Live public evidence");
   renderProfileStrip(profile.publicProfile || {});
+  renderResearchRead(profile);
   const debugEnabled = new URLSearchParams(window.location.search).get("debug") === "1";
   const debugPanel = debugEnabled ? renderPipelineDebug(profile.pipelineDebug || {}) : "";
   document.getElementById("finding-list").innerHTML = debugPanel + profile.opportunities.map((item, index) => `
@@ -3147,6 +3148,28 @@ function renderSearchEvidence(item) {
         <p>${escapeHtml(item.searchSelectionWhy || 'GO selected searches that match the operator\'s products, location and commercially relevant traveler intent.')}</p>
       </div>
     </div>`;
+}
+
+function renderResearchRead(profile) {
+  const host=document.getElementById("research-read");
+  if(!host)return;
+  const r=profile.researchIntelligence||{},d=r.dossier||{},brain=r.brain||{},comp=r.competition||{},pos=r.positioningComparison||{},trust=r.trust||{},pricing=r.pricing||{};
+  if(!brain?.candidates?.length){host.innerHTML="";host.hidden=true;return;}
+  const verified=(d.products||[]).map(x=>x.name).filter(Boolean).slice(0,4);
+  const lead=comp?.leader?.name||"No repeated direct rival promoted";
+  const posText=pos.state==="POTENTIAL_DIFFERENTIATION"?(pos.differentiated||[]).map(x=>x.label).slice(0,2).join(" · "):pos.state==="CATEGORY_PARITY"?"Main positioning claims look like category parity":"Needs more qualified competitor evidence";
+  const primary=brain.primary||{};
+  const strength=(brain.candidates||[]).find(x=>/^HEALTHY/.test(x.state)||x.state==="FOUNDATION_OBSERVED");
+  host.hidden=false;
+  host.innerHTML=`
+    <div class="research-read-head"><div><p class="eyebrow">GO'S RESEARCH BRIEF</p><h3>This is the business GO thinks it is operating.</h3></div><span>PUBLIC EVIDENCE</span></div>
+    <div class="research-read-grid">
+      <div><small>COMMERCIAL TRUTH</small><strong>${escapeHtml([d.business?.transactionType,d.business?.businessType,d.business?.location].filter(Boolean).join(" · ")||"Still resolving")}</strong><p>${escapeHtml(verified.length?"Verified products: "+verified.join(" · "):"Commercial inventory needs stronger evidence.")}</p></div>
+      <div><small>MARKET CONTEXT</small><strong>${escapeHtml(lead)}</strong><p>${escapeHtml(comp.summary||"GO has not promoted a competitor without repeat commercial evidence.")}</p></div>
+      <div><small>POSITIONING</small><strong>${escapeHtml(posText)}</strong><p>${escapeHtml(pos.summary||r.positioning?.summary||"GO only calls positioning differentiated after comparison.")}</p></div>
+      <div><small>REPUTATION + PRICING</small><strong>${escapeHtml([trust.state&&"Trust: "+trust.state.replaceAll("_"," "),pricing.state&&"Pricing: "+pricing.state.replaceAll("_"," ")].filter(Boolean).join(" · ")||"Still resolving")}</strong><p>Pricing stays directional until comparable offers are verified. Reputation uses qualified direct competitors only.</p></div>
+    </div>
+    <div class="research-decision"><small>GO'S CURRENT JUDGMENT</small><strong>${escapeHtml(primary.finding||brain.headline||"Keep investigating")}</strong><p>${escapeHtml(primary.action||brain.summary||"GO has not found a defensible move yet.")}</p>${strength?.finding?`<em>Already working: ${escapeHtml(strength.finding)}</em>`:""}</div>`;
 }
 
 function renderProfileStrip(profile) {

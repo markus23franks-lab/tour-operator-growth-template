@@ -380,7 +380,7 @@ function buildWebsiteContext(url, pages, bookingLinkEvidence = "") {
 
   const preflight = buildOperatorPreflight(combined, offers, businessContext, siteArchitecture);
   const bookingProvider = detectBookingProvider(combined);
-  const dossier = window.GOBusinessDossier?.build?.({url,businessName,offers,businessContext,bookingProvider,pages})||null;
+  const dossier = window.GOBusinessDossier?.build?.({url,businessName,offers,businessContext,commercialTruth,bookingProvider,pages})||null;
   return { url, businessName, offers, businessContext, semanticModel, commercialTruth, preflight, siteArchitecture, bookingProvider, dossier, pages, combined };
 }
 

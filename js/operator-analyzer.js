@@ -2000,7 +2000,7 @@ async function runDedicatedOperatorResearch(ctx, market, acquisition) {
     ? (market.queryResults||[]).map(x=>x.query).filter(Boolean)
     : (market?.queries||[]).map(x=>typeof x==='string'?x:x?.query).filter(Boolean);
   const pricingPlan=window.GOPricingIntelligence?.plan?.({businessName:ctx.businessName,location:ctx.businessContext?.location||'',websiteQueries:discoveryQueries})||[];
-  const trustPlan=window.GOTrustIntelligence?.plan?.({businessName:ctx.businessName,location:ctx.businessContext?.location||''})||[];
+  const trustPlan=window.GOTrustIntelligence?.plan?.({businessName:ctx.businessName,location:ctx.businessContext?.location||'',websiteQueries:discoveryQueries})||[];
   const [pricingMarket,trustMarket]=await Promise.all([runResearchQueries(ctx,pricingPlan,'pricing'),runResearchQueries(ctx,trustPlan,'trust')]);
   const conversion=window.GOConversionIntelligence?.build?.(acquisition)||null;
   const pricing=window.GOPricingIntelligence?.build?.({pricingMarket,businessName:ctx.businessName,website:ctx.url})||null;

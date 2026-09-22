@@ -2042,22 +2042,1253 @@ function brainFinding(c) {
   const working=/^HEALTHY/.test(c.state)||c.state==='FOUNDATION_OBSERVED';
   return {kind:c.state==='OPPORTUNITY'?'opportunity':'investigation',pillar:meta[0],icon:'GO',title:c.finding,problem:working?c.finding+' GO treats this as working evidence, not a defect.':c.finding,whyItMatters:'GO compares this signal with the other public growth areas before deciding whether it deserves work.',action:c.action,metric:meta[1],moneyLabel:'Needs connected economics',confidence:String(c.confidence||'MEDIUM').toLowerCase().replace(/^./,x=>x.toUpperCase()),priorityReason:c.state==='OPPORTUNITY'?'The Opportunity Brain promoted this after comparing the available public signals.':'GO is keeping this below a mission until stronger evidence changes the decision.',counterEvidence:c.requiredNextEvidence?'This judgment can change when GO gets: '+c.requiredNextEvidence+'.':'Connected evidence could change the priority.',sources:[{type:'public',label:'GO public research',detail:c.finding},{type:'operator',label:'GO judgment',detail:'State: '+c.state+'.'}],priorityScore:c.state==='OPPORTUNITY'?20:working?10:6};
 }
-function mergeBrainFindings(brain,heuristics) {
+function mergeBrainFindings(brain) {
   const ordered=[];
   if(brain.primary){const x=brainFinding(brain.primary);if(x)ordered.push(x);}
-  for(const c of brain.candidates||[]){if(ordered.some(x=>x.title===c.finding))continue;const x=brainFinding(c);if(x)ordered.push(x);}
-  const used=new Set(ordered.map(x=>x.pillar));const extra=(heuristics||[]).find(x=>!used.has(x.pillar)&&x.priorityScore>=9);if(extra)ordered.push(extra);
+  for(const candidate of brain.candidates||[]){
+    if(ordered.some(x=>x.title===candidate.finding))continue;
+    const x=brainFinding(candidate);if(x)ordered.push(x);
+  }
+  // Once the evidence-backed Brain exists, legacy heuristic findings are never allowed
+  // back into the operator story as filler. That was a major source of plausible-looking
+  // but unsupported "opportunities" in early Build 055 tests.
   return ordered.slice(0,3);
 }
 function buildUniversalProfile(url, pages, market = emptyMarket(), bookingLinkEvidence = "", research = {}) {
   const combined = `${pages.map(page => page.markdown).join("\n\n")}\n\n${bookingLinkEvidence}`;
   const home = pages[0]?.markdown || combined;
+  const dossier = research?.dossier || null;
   const extractedBusinessName = extractBusinessName(home, url);
-  const businessName = canonicalBusinessName(extractedBusinessName, market?.target, url);
-  const offers = extractOffers(combined, businessName);
-  const prices = extractPrices(combined);
-  const businessContext = inferBusinessContext(combined, home, url);
-  const bookingProvider = detectBookingProvider(combined);
+  const businessName = dossier?.business?.name || canonicalBusinessName(extractedBusinessName, market?.target, url);
+  const rawOffers = extractOffers(combined, businessName);
+  const offers = dossier?.products?.length ? dossier.products.map(item=>item.name).filter(Boolean) : rawOffers;
+  const dossierPrices = (dossier?.products||[]).map(item=>item.price).filter(value=>value!=null).map(value=>typeof value==='number'?'
+  const marketplaces = detectMarketplacePresence(combined);
+  const preflight = buildOperatorPreflight(combined, offers, businessContext);
+  const trust = detectTrust(combined);
+  const contacts = detectContacts(combined);
+  const location = extractLocation(combined);
+  const callsToAction = countMatches(combined, /\b(book now|book online|reserve now|check availability|book your|book today|reserve your)\b/gi);
+  const internalPages = Math.max(1, pages.length);
+  const seo = assessSearchFoundation(home, businessName, location, offers);
+  const scores = scorePublicProfile({ offers, prices, bookingProvider, trust, contacts, callsToAction, internalPages, seo, combined });
+  const growthScore = Math.round(Object.values(scores).reduce((sum, value) => sum + value, 0) / Object.keys(scores).length);
+  const websiteFindings = buildWebsiteFindings({ businessName, url, offers, prices, bookingProvider, trust, contacts, location, callsToAction, internalPages, seo, scores, combined, businessContext });
+  const marketFindings = buildMarketFindings({ businessName, url, offers, prices, businessContext, market });
+  const heuristicOpportunities = mergeAndPrioritizeFindings(marketFindings, websiteFindings);
+  const opportunities = research?.brain ? mergeBrainFindings(research.brain) : heuristicOpportunities;
+  const liveResearch = Boolean(research?.brain?.candidates?.length);
+  const researchPrimary = research?.brain?.primary || null;
+  const researchStrength = liveResearch ? (research.brain.candidates||[]).find(item => /^HEALTHY/.test(item.state)||item.state==='FOUNDATION_OBSERVED') : null;
+  const heuristicSummary = summarizeBusiness({ businessName, offers, prices, bookingProvider, trust, opportunities, businessContext, market });
+  const operatorSummary = liveResearch
+    ? ([researchPrimary?.finding ? `GO's first priority: ${researchPrimary.finding}` : '', researchStrength?.finding ? `Already working: ${researchStrength.finding}` : ''].filter(Boolean).join(' ') || research.brain.headline || heuristicSummary)
+    : heuristicSummary;
+
+  return {
+    businessName,
+    website: url,
+    growthScore,
+    growthScoreLabel: (market.searchPages.length || market.discoveryDocs.length) ? "Provisional score · website + public market evidence" : "Provisional score · live public website evidence",
+    revenueOpportunity: null,
+    revenueLabel: "Connect business data",
+    scores,
+    analysisType: (market.searchPages.length || market.discoveryDocs.length) ? "Live public website + market scan" : "Live public website scan",
+    analysisConfidence: opportunities.some(item => item.confidence === "High") ? "Medium-high" : "Medium",
+    confidenceCopy: (market.searchPages.length || market.discoveryDocs.length)
+      ? `${pages.length} operator pages + ${market.searchPages.length + market.discoveryDocs.length} external market surface${market.searchPages.length + market.discoveryDocs.length === 1 ? "" : "s"}`
+      : `${pages.length} public page${pages.length === 1 ? "" : "s"} read live`,
+    summary: operatorSummary,
+    publicProfile: {
+      offers: offers.slice(0, 5),
+      pricing: prices.slice(0, 4),
+      bookingProvider: bookingProvider.label,
+      marketplaces,
+      inventoryFamilies: preflight.materialFamilies.map(item => item.label),
+      trust: trust.summary,
+      contact: contacts.summary,
+      location: businessContext.location || location || "Location needs verification",
+      businessContext,
+      market: {
+        queries: market.queries,
+        competitors: market.competitors.slice(0, 4).map(item => item.name),
+        status: (market.searchPages.length || market.discoveryDocs.length) ? "Public market evidence found" : "Public market retrieval limited"
+      }
+    },
+    marketEvidence: market,
+    discoveryIntelligence: buildDiscoveryIntelligence({ businessName, market, opportunities }),
+    researchIntelligence: research,
+    pipelineDebug: {
+      research: research?.brain ? { status: 'PUBLIC_RESEARCH', headline: research.brain.headline, primary: research.brain.primary, candidates: research.brain.candidates } : { status: 'UNAVAILABLE' },
+      runtime: { frontendBuildId: GO_FRONTEND_BUILD_ID, marketFunctionBuildId: market?.pipelineDebug?.marketFunctionBuildId || market?.handoffStatus?.buildId || GO_MARKET_HANDOFF_STATUS.buildId || "NO MARKET FUNCTION ID", marketHandoff: market?.pipelineDebug?.marketHandoff || market?.handoffStatus || { ...GO_MARKET_HANDOFF_STATUS }, runId: GO_ACTIVE_RUN_ID },
+      operatorTruth: { businessName, businessType: businessContext.businessType, geography: businessContext.location || location || "", bookingProvider: bookingProvider.label, bookingEvidence: bookingProvider.detail || bookingProvider.evidence || "" },
+      inventoryTruth: { offers: offers.slice(0, 12), primarySignals: preflight.primarySignals.slice(0, 20), materialFamilies: preflight.materialFamilies.slice(0, 10), semanticProducts: (market?.pipelineDebug?.demandPlan || []).filter(item => item.semanticProduct).map(item => item.label) },
+      market: market.pipelineDebug || null,
+      findingInput: opportunities.map(item => ({ title: item.title, pillar: item.pillar, confidence: item.confidence, problem: item.problem, action: item.action, metric: item.metric, priorityReason: item.priorityReason, checkedSearches: item.checkedSearches || [], sources: item.sources }))
+    },
+    opportunities,
+    watchItems: [
+      { title: "Exact Google / Maps rank", detail: (market.searchPages.length || market.discoveryDocs.length) ? "GO can verify public market presence and competitor evidence across independent discovery surfaces, but it does not convert that evidence into a universal Google or Maps rank. Local results vary by location and surface." : "Public market retrieval was limited in this scan, so GO is not claiming search position." },
+      { title: "Google review velocity", detail: market.reviewSignals.length ? "GO found public rating/review references in market evidence, but review velocity still requires dated review history." : "GO can see trust proof shown on websites, but reliable public review velocity remains a separate evidence layer." },
+      { title: "Actual conversion + revenue", detail: "Analytics and booking data are required before GO can prove where visitors drop out or attach dollars to an improvement." }
+    ]
+  };
+}
+
+function buildWebsiteFindings(ctx) {
+  const candidates = [];
+  const evidence = (label, detail) => ({ type: "public", label, detail });
+  const inferred = (label, detail) => ({ type: "operator", label, detail });
+  const combinedSignals = [];
+  if (ctx.offers.length) combinedSignals.push(`${ctx.offers.length} experience signals`);
+  if (ctx.prices.length) combinedSignals.push(`${ctx.prices.length} public price signals`);
+  if (ctx.callsToAction) combinedSignals.push(`${ctx.callsToAction} booking CTAs`);
+  if (ctx.bookingProvider.provider) combinedSignals.push(ctx.bookingProvider.label);
+  if (ctx.trust.score >= 2) combinedSignals.push("multiple trust signals");
+
+  const customPricingContext = /(private|custom|customized|bespoke|quote|call for price|contact for price|request a quote|per group|group size|itinerary)/i.test(ctx.combined);
+  const strongBookingPath = ctx.callsToAction >= 3 && Boolean(ctx.bookingProvider.provider);
+  const strongMerchandising = ctx.offers.length >= 3 && ctx.prices.length >= 2;
+  const strongTrust = ctx.trust.score >= 2;
+
+  const add = item => candidates.push({
+    kind: "opportunity",
+    severity: 2,
+    evidenceStrength: 2,
+    revenueProximity: 2,
+    actionability: 2,
+    uncertainty: 0,
+    supportCount: 2,
+    counterEvidence: "No material counter-evidence found in the public pages GO read.",
+    ...item
+  });
+
+  // Conversion: only promote a missing booking action when other evidence says customers should be able to transact online.
+  if (ctx.callsToAction === 0 && ctx.offers.length >= 2) {
+    const providerCounter = ctx.bookingProvider.provider
+      ? `${ctx.bookingProvider.label} is present, so a booking path may exist even though GO could not see a clear booking action in the readable page content.`
+      : "GO did not detect a booking provider that would explain a hidden handoff.";
+    add({
+      pillar: "Conversion", icon: "↗", title: "The experiences are visible, but the next step to buy is not",
+      problem: `GO found ${ctx.offers.length} experience signals for ${ctx.businessName}, but no clear “Book Now,” “Reserve,” or “Check Availability” action in the readable public content. That creates a possible gap between product interest and the next buying step.`,
+      action: "GO would first verify the real mobile and desktop booking path. If the action is genuinely hard to reach, GO would make the primary booking step unmistakable on the highest-intent pages and measure whether more visitors enter checkout.",
+      metric: "Experience-page visit → booking-flow start", moneyLabel: "Needs analytics + booking baseline", confidence: ctx.bookingProvider.provider ? "Medium-high" : "High",
+      priorityReason: "This sits directly between product interest and the booking flow, so it is closer to revenue than broader website polish.",
+      counterEvidence: providerCounter,
+      evidenceStrength: ctx.bookingProvider.provider ? 2 : 3,
+      revenueProximity: 3,
+      severity: 3,
+      uncertainty: ctx.bookingProvider.provider ? 1 : 0,
+      supportCount: ctx.bookingProvider.provider ? 2 : 3,
+      sources: [
+        evidence("Live website", `${ctx.offers.length} experience signals were detected across ${ctx.internalPages} public page${ctx.internalPages === 1 ? "" : "s"}.`),
+        evidence("Booking action", "No clear booking-oriented CTA was found in the readable content GO scanned."),
+        ...(ctx.bookingProvider.provider ? [evidence("Booking technology", `${ctx.bookingProvider.label} was detected elsewhere in the public site.`)] : [])
+      ]
+    });
+  }
+
+  // Strong booking path: this is not a defect. It becomes a qualified investigation because it is the closest measurable revenue handoff.
+  if (strongBookingPath) {
+    add({
+      kind: "investigation",
+      pillar: "Conversion", icon: "↗", title: `The website is getting travelers to ${ctx.bookingProvider.label} — GO would measure the handoff before changing it`,
+      problem: `GO found ${ctx.callsToAction} booking-oriented calls to action and detected ${ctx.bookingProvider.label}. ${ctx.prices.length ? `It also found public pricing (${ctx.prices.slice(0, 3).join(", ")}), which means travelers can qualify themselves before entering checkout.` : "That suggests a real path from interest into checkout already exists."}`,
+      action: "GO would preserve the visible booking path, establish the website → booking-flow → completed-booking baseline, and only change the handoff if the data shows customers are leaking there.",
+      metric: "Booking CTA click → checkout start → completed booking", moneyLabel: "Needs analytics + OBP data", confidence: "High",
+      priorityReason: "This is the closest public signal GO can see to actual revenue. Measuring it can tell us whether conversion work belongs on the website, inside the booking flow, or somewhere earlier in demand generation.",
+      counterEvidence: "The public evidence looks healthy here. GO is deliberately not calling the booking path broken without conversion data.",
+      severity: 1,
+      evidenceStrength: 3,
+      revenueProximity: 3,
+      actionability: 3,
+      uncertainty: 1,
+      supportCount: 3 + (ctx.prices.length ? 1 : 0),
+      sources: [
+        evidence("Live website", `${ctx.callsToAction} booking-oriented calls to action were detected across ${ctx.internalPages} page${ctx.internalPages === 1 ? "" : "s"}.`),
+        evidence("Booking technology", `${ctx.bookingProvider.label} signals were found in the public site.`),
+        ...(ctx.prices.length ? [evidence("Public pricing", `GO found ${ctx.prices.slice(0, 4).join(", ")}.`)] : []),
+        inferred("GO judgment", "The public path appears functional enough that measurement should come before a redesign.")
+      ]
+    });
+  }
+
+  // Pricing: missing pricing is only an opportunity if the business looks standardized enough that the absence is meaningful.
+  if (ctx.prices.length === 0 && ctx.offers.length >= 2 && !customPricingContext) {
+    add({
+      pillar: "Conversion", icon: "$", title: "Travelers can compare the experiences, but price is still an unanswered question",
+      problem: `${ctx.businessName} appears to offer ${ctx.offers.length} bookable experiences, but GO did not find clear public price signals. For a standardized tour catalog, that can force a traveler to enter the booking process before they know whether the experience fits their budget.`,
+      action: "GO would verify whether pricing is intentionally withheld. If not, GO would test clear price-from messaging on the highest-intent experience pages and measure whether qualified booking starts increase.",
+      metric: "Experience-page visit → qualified booking start", moneyLabel: "Needs traffic + booking baseline", confidence: "Medium-high",
+      priorityReason: "Price sits close to the buying decision and appears to affect multiple experiences, making it more consequential than cosmetic website changes.",
+      counterEvidence: "GO did not find strong private/custom/quote-dependent language that would clearly explain why pricing should stay hidden.",
+      severity: 2, evidenceStrength: 2, revenueProximity: 3, actionability: 3, uncertainty: 1, supportCount: 2,
+      sources: [
+        evidence("Experience inventory", `${ctx.offers.length} experience signals were detected.`),
+        evidence("Public pricing", "No obvious currency pricing was found in the readable pages GO scanned.")
+      ]
+    });
+  } else if (ctx.prices.length === 0 && ctx.offers.length >= 2 && customPricingContext) {
+    add({
+      kind: "investigation",
+      pillar: "Conversion", icon: "$", title: "Pricing is not obvious, but GO would not call that a conversion problem yet",
+      problem: `GO found multiple experience signals without clear public pricing, but the site also uses private/custom/quote-dependent language. That makes hidden or variable pricing potentially intentional rather than automatically broken.`,
+      action: "GO would confirm how pricing is actually determined and compare inquiry/booking behavior before recommending a public-pricing change.",
+      metric: "Inquiry rate + booking conversion by experience type", moneyLabel: "Needs operator context + booking data", confidence: "Medium-high",
+      priorityReason: "This is worth validating, but the counter-evidence is strong enough that GO would not spend implementation time here first.",
+      counterEvidence: "Private/custom/quote-dependent language suggests a fixed public price may not fit the product being sold.",
+      severity: 1, evidenceStrength: 2, revenueProximity: 2, actionability: 1, uncertainty: 2, supportCount: 2,
+      sources: [
+        evidence("Live website", `${ctx.offers.length} experience signals were detected without obvious public currency pricing.`),
+        evidence("Counter-evidence", "Private/custom/quote-dependent language was also detected in the public content."),
+        inferred("GO judgment", "GO would validate the pricing model before recommending a change.")
+      ]
+    });
+  }
+
+  // Visible pricing + product depth + trust is a healthy foundation. Treat the next step as market investigation, not a conversion defect.
+  if (strongMerchandising && strongTrust) {
+    add({
+      kind: "investigation",
+      pillar: "Intelligence", icon: "◎", title: "The buying basics are in place — GO would benchmark the market before changing them",
+      problem: `GO found ${ctx.offers.length} experience signals, public pricing such as ${ctx.prices.slice(0, 3).join(", ")}, and ${ctx.trust.summary.toLowerCase()}. Travelers can see what is for sale, what it costs, and reasons to trust the operator. That is useful context, but not enough to call pricing a problem. The next valuable question is how these offers compare with operators competing for the same relevant customer demand on price, visibility and trust.`,
+      action: "GO would preserve the working buying path and use the next public-intelligence layer to compare similar experiences, search position and review trust against real competitors before recommending a pricing or positioning change.",
+      metric: "Competitor price + search position + review trust → booking performance", moneyLabel: "Needs analytics + booking revenue", confidence: "Medium-high",
+      priorityReason: "GO is not seeing a missing buying foundation here. The higher-value next step is to compare this operator against businesses competing for the same demand before changing a working conversion path.",
+      counterEvidence: "Public evidence cannot prove that value positioning is underperforming. If these pages already convert strongly, GO should leave them alone and move to another constraint.",
+      severity: 1, evidenceStrength: 3, revenueProximity: 2, actionability: 2, uncertainty: 1, supportCount: 3,
+      sources: [
+        evidence("Experience inventory", `${ctx.offers.length} experience signals were detected.`),
+        evidence("Public pricing", `GO found ${ctx.prices.slice(0, 4).join(", ")}.`),
+        evidence("Trust proof", ctx.trust.detail),
+        inferred("GO inference", "With the buying basics present, value differentiation becomes a more plausible test than simply adding more booking buttons.")
+      ]
+    });
+  }
+
+  // Trust: weak proof only becomes a major opportunity when the site is already asking people to buy.
+  if (ctx.trust.score < 2 && (ctx.callsToAction >= 2 || ctx.prices.length >= 1)) {
+    add({
+      pillar: "Trust", icon: "★", title: "The site asks travelers to make a buying decision before showing much proof",
+      problem: `GO found ${ctx.callsToAction ? `${ctx.callsToAction} booking-oriented calls to action` : "public pricing"}, but only limited review/testimonial/history proof in the readable content. That means the site may be creating purchase intent faster than it is reducing perceived risk.`,
+      action: "GO would verify the operator's strongest public review assets, bring authentic proof closer to high-intent booking moments, and measure whether trust exposure improves booking starts and completion.",
+      metric: "Trust exposure → booking start/completion + review velocity", moneyLabel: "Needs public review scan + booking baseline", confidence: "Medium-high",
+      priorityReason: "This is tied to existing buying intent, so it is more actionable than simply recommending 'get more reviews' in isolation.",
+      counterEvidence: "GO has only assessed trust proof visible in the pages it could read. Strong Google/Tripadvisor proof may already exist off-site and could weaken this finding.",
+      severity: 2, evidenceStrength: 2, revenueProximity: 3, actionability: 3, uncertainty: 1, supportCount: 2,
+      sources: [
+        evidence("Buying intent", `${ctx.callsToAction} booking-oriented CTA${ctx.callsToAction === 1 ? "" : "s"} and ${ctx.prices.length} public price signal${ctx.prices.length === 1 ? "" : "s"} were detected.`),
+        evidence("On-site trust", ctx.trust.detail),
+        inferred("Needs next evidence layer", "Public Google/Tripadvisor review strength is not yet verified by this scan.")
+      ]
+    });
+  }
+
+  // SEO: only promote a weak foundation when GO has enough site depth to trust the observation.
+  if (ctx.seo.score < 2 && ctx.offers.length >= 2 && ctx.internalPages >= 2) {
+    add({
+      pillar: "Visibility", icon: "⌖", title: "GO can understand the experiences better than the search context around them",
+      problem: ctx.seo.problem,
+      action: "GO would strengthen service/location context on the pages already representing real experiences, then verify whether those pages gain visibility for high-intent searches before expanding content volume.",
+      metric: "High-intent search visibility + organic visits + organic bookings", moneyLabel: "Needs live search landscape + Search Console", confidence: "High",
+      priorityReason: "The issue appears across real experience pages rather than a single metadata field, giving GO a stronger reason to investigate visibility before producing more content.",
+      counterEvidence: "On-page search context does not prove ranking performance. The business may already rank well despite this foundation, so live search evidence is still required.",
+      severity: 2, evidenceStrength: 3, revenueProximity: 2, actionability: 3, uncertainty: 1, supportCount: 3,
+      sources: [
+        evidence("Live website", ctx.seo.detail),
+        evidence("Experience inventory", `${ctx.offers.length} experience signals were detected across ${ctx.internalPages} pages.`),
+        inferred("Needs next evidence layer", "GO has not yet verified actual Google rankings or search demand.")
+      ]
+    });
+  }
+
+  const ranked = prioritizeFindings(candidates);
+  const qualified = ranked.filter(item => item.kind === "opportunity" && item.priorityScore >= 8 && item.supportCount >= 2);
+  const investigations = ranked.filter(item => item.kind === "investigation" && item.priorityScore >= 6);
+
+  // Top slots are scarce. GO may return fewer than three rather than manufacture weak opportunities.
+  const selected = qualified.slice(0, 3);
+  if (selected.length < 3) {
+    investigations.forEach(item => {
+      if (selected.length < 3) selected.push(item);
+    });
+  }
+  return selected;
+}
+
+function prioritizeFindings(items) {
+  return items
+    .map(item => {
+      const score = (item.severity || 0) + (item.evidenceStrength || 0) + (item.revenueProximity || 0) + (item.actionability || 0) - (item.uncertainty || 0);
+      return { ...item, priorityScore: score };
+    })
+    .sort((a, b) => {
+      if (b.priorityScore !== a.priorityScore) return b.priorityScore - a.priorityScore;
+      if ((b.supportCount || 0) !== (a.supportCount || 0)) return (b.supportCount || 0) - (a.supportCount || 0);
+      return (b.revenueProximity || 0) - (a.revenueProximity || 0);
+    })
+    .map((item, index, all) => ({
+      ...item,
+      rankExplanation: index === 0
+        ? `GO ranked this first because it has the strongest combination of evidence, proximity to bookings/revenue and a testable next action among the ${all.length} qualified patterns it found.`
+        : `GO ranked this behind #1 because its evidence, revenue proximity or certainty is weaker. GO would not work on it first unless connected data changes the picture.`
+    }));
+}
+
+function scorePublicProfile(ctx) {
+  const conversion = clamp(42 + Math.min(22, ctx.callsToAction * 4) + (ctx.prices.length ? 9 : 0) + (ctx.bookingProvider.provider ? 9 : 0));
+  const trust = clamp(44 + ctx.trust.score * 10 + (ctx.contacts.hasPhone ? 5 : 0) + (ctx.contacts.hasSocial ? 4 : 0));
+  const visibility = clamp(45 + ctx.seo.score * 11 + Math.min(8, ctx.internalPages * 2));
+  const operations = clamp(48 + (ctx.bookingProvider.provider ? 15 : 0) + (ctx.contacts.hasPhone ? 7 : 0) + (ctx.contacts.hasEmail ? 6 : 0));
+  const intelligence = 50; // Public website scan cannot verify analytics discipline yet.
+  const growth = clamp(Math.round((conversion + trust + visibility + operations + intelligence) / 5));
+  return { Visibility: visibility, Trust: trust, Conversion: conversion, Operations: operations, Intelligence: intelligence, Growth: growth };
+}
+
+function summarizeBusiness(ctx) {
+  const offerText = ctx.offers.length ? `${ctx.offers.length} clear experience signal${ctx.offers.length === 1 ? "" : "s"}` : "a bookable experience business";
+  const priceText = ctx.prices.length ? "public pricing" : "no obvious public pricing";
+  const bookingText = ctx.bookingProvider.provider ? ctx.bookingProvider.label : "no OBP GO could confidently identify";
+  const context = ctx.businessContext || {};
+  const identity = [context.businessType, context.location].filter(Boolean).join(" in ");
+  if ((ctx.market?.searchPages?.length || ctx.market?.discoveryDocs?.length) && ctx.market?.competitors?.length) {
+    const names = ctx.market.competitors.slice(0, 3).map(item => item.name).filter(Boolean).join(", ");
+    return `GO reads ${ctx.businessName} as ${identity || "a tour and activity business"} with ${offerText}, ${priceText}, and ${bookingText}. Build 029 then moved outside the website and found external market evidence around the same demand, including ${names}. GO can now use that evidence to decide whether market position deserves attention before changing the buying experience.`;
+  }
+  return `GO reads ${ctx.businessName} as ${identity || "a tour and activity business"} with ${offerText}, ${priceText}, and ${bookingText}. Website evidence establishes the business context; the public market layer could not be verified strongly enough in this scan, so GO withheld market-level claims.`;
+}
+
+function extractBusinessName(markdown, url) {
+  const domain = domainLabel(url);
+  const candidates = [];
+
+  const addCandidate = (value, weight, source) => {
+    const rawIdentity = String(value || '');
+    if (/https?:\/\/|\]\(|\[[^\]]*\]\(/i.test(rawIdentity)) return;
+    const cleaned = cleanBusinessIdentity(rawIdentity);
+    if (!cleaned || cleaned.length < 3 || cleaned.length > 90) return;
+    // Broken reader fragments such as "the C" are not credible business identities.
+    // Prefer stronger title/domain/entity evidence rather than letting a malformed fragment
+    // become operator-facing copy.
+    if (/^(?:the\s+)?[a-z]$/i.test(cleaned) || /^the\s+[a-z]$/i.test(cleaned)) return;
+
+    const key = cleaned.toLowerCase().replace(/[^a-z0-9]/g, "");
+    if (!key) return;
+
+    const existing = candidates.find(item => item.key === key);
+
+    if (existing) {
+      existing.score += weight;
+      existing.sources.push(source);
+    } else {
+      candidates.push({
+        name: cleaned,
+        key,
+        score: weight,
+        sources: [source]
+      });
+    }
+  };
+
+  // Page title is useful, but it is no longer allowed to decide identity alone.
+  const title = markdown.match(/^Title:\s*(.+)$/mi)?.[1];
+  if (title) {
+    addCandidate(title, 2, "title");
+
+    // Titles often look like:
+    // "Simply the Best Tours | Five Star Adventures Tours"
+    // Score the individual brand-like pieces too.
+    title
+      .split(/\s*[|–—]\s*/)
+      .forEach(part => addCandidate(part, 2, "title-part"));
+  }
+
+  // H1 headings often contain the actual public-facing brand.
+  const h1Matches = markdown.match(/^#\s+(.+)$/gm) || [];
+  h1Matches.slice(0, 5).forEach(line => {
+    addCandidate(line.replace(/^#\s+/, ""), 3, "h1");
+  });
+
+  // Look for explicit business identity language.
+  const identityPatterns = [
+    /(?:welcome to|about|operated by|owned by|provided by|company name[:\s]+)\s+([^\n.!?]{3,80})/gi,
+    /(?:copyright|©)\s*(?:20\d{2})?\s*([^\n|]{3,80})/gi
+  ];
+
+  identityPatterns.forEach(pattern => {
+    let match;
+
+    while ((match = pattern.exec(markdown)) !== null) {
+      addCandidate(match[1], 4, "explicit-identity");
+    }
+  });
+
+  // Repeated branded names are stronger than a single SEO phrase.
+  const brandPattern =
+    /\b([A-Z][A-Za-z0-9'&.-]*(?:\s+[A-Z][A-Za-z0-9'&.-]*){1,5}\s+(?:Tours?|Adventures?|Excursions?|Charters?|Cruises?|Rentals?|Experiences?))\b/g;
+
+  const repeated = {};
+  let brandMatch;
+
+  while ((brandMatch = brandPattern.exec(markdown)) !== null) {
+    const cleaned = cleanBusinessIdentity(brandMatch[1]);
+    const key = cleaned.toLowerCase().replace(/[^a-z0-9]/g, "");
+
+    if (!key) continue;
+
+    if (!repeated[key]) {
+      repeated[key] = {
+        name: cleaned,
+        count: 0
+      };
+    }
+
+    repeated[key].count += 1;
+  }
+
+  Object.values(repeated).forEach(item => {
+    addCandidate(
+      item.name,
+      Math.min(6, 2 + item.count),
+      "repeated-brand"
+    );
+  });
+
+  // The domain remains a useful fallback/supporting clue.
+  if (domain) {
+    const domainWords = domain
+      .replace(/\.(com|net|org|co|io)$/i, "")
+      .replace(/[-_]+/g, " ")
+      .trim();
+
+    addCandidate(domainWords, 1, "domain");
+
+    // Reward candidates whose initials/words align with the domain.
+    candidates.forEach(candidate => {
+      const initials = candidate.name
+        .split(/\s+/)
+        .filter(word => !/^(the|and|of|in|at)$/i.test(word))
+        .map(word => word[0])
+        .join("")
+        .toLowerCase();
+
+      const compactDomain = domainWords.replace(/\s+/g, "").toLowerCase();
+
+      if (
+        compactDomain &&
+        (
+          candidate.key.includes(compactDomain) ||
+          compactDomain.includes(candidate.key) ||
+          (initials.length >= 2 && compactDomain.includes(initials))
+        )
+      ) {
+        candidate.score += 4;
+        candidate.sources.push("domain-match");
+      }
+    });
+  }
+
+  candidates.sort((a, b) => b.score - a.score);
+
+  return candidates[0]?.name || domain || "Tour Operator";
+}
+
+function canonicalBusinessName(extractedName, target, url) {
+  const targetName = cleanBusinessIdentity(target?.name || target?.title || '');
+  let extracted = cleanBusinessIdentity(extractedName || '');
+
+  // Resolved Google/local entity is the strongest public brand signal.
+  if (targetName && target?.identityVerified) return targetName;
+
+  // Common SEO-title patterns should never become the operator name. Preserve the brand
+  // phrase embedded inside copy such as "Private charters with Caicos Dream Tours today".
+  const embeddedBrandPatterns = [
+    /\b(?:with|from|by)\s+(.{3,64}?)\s+(?:today|online|official(?:\s+site)?|now)$/i,
+    /^(?:book|explore|discover|experience)\s+(.{3,64}?)\s+(?:today|online|now)$/i
+  ];
+  for (const pattern of embeddedBrandPatterns) {
+    const match = extracted.match(pattern);
+    if (match?.[1]) {
+      const candidate = cleanBusinessIdentity(match[1]);
+      if (candidate && candidate.length >= 3) extracted = candidate;
+    }
+  }
+
+  const genericLead = /^(private|best|top|book|things to do|tours? with|charters? with|experiences? with)\b/i;
+  if (targetName && (!extracted || genericLead.test(extracted) || extracted.length > targetName.length + 18)) return targetName;
+
+  return extracted || targetName || domainLabel(url) || 'Tour Operator';
+}
+
+function cleanBusinessIdentity(value) {
+  return cleanText(value || "")
+    .replace(/\[([^\]]+)\]\([^)]*\)/g, "$1")
+    .replace(/https?:\/\/\S+/gi, "")
+    .replace(/^#+\s*/, "")
+    .replace(/\s*[|–—]\s*(official site|home|book online)$/i, "")
+    .replace(/^(welcome to|about)\s+/i, "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 90);
+}
+
+function extractOffers(text, businessName) {
+  const lines = text.split(/\n+/).map(cleanText).filter(Boolean);
+  const keywords = /(tour|charter|cruise|rental|rentals|adventure|excursion|experience|trip|ride|rafting|kayak|paddle|snorkel|dive|fishing|sailing|yacht|atv|utv|zipline|horse|boat|jet ski|jetski|lesson|escape room|museum|ticket)/i;
+  const noise = /(privacy|terms|contact|about us|faq|login|cart|menu|navigation|copyright|facebook|instagram|youtube|review)/i;
+  const seen = new Set();
+  const offers = [];
+  for (const line of lines) {
+    const candidate = line.replace(/^#{1,6}\s*/, "").replace(/^[-*]\s*/, "").trim();
+    if (candidate.length < 4 || candidate.length > 82 || noise.test(candidate) || !keywords.test(candidate)) continue;
+    if (businessName && candidate.toLowerCase() === businessName.toLowerCase()) continue;
+    const normalized = candidate.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+    if (seen.has(normalized)) continue;
+    seen.add(normalized);
+    offers.push(candidate);
+    if (offers.length >= 8) break;
+  }
+  return offers;
+}
+
+function extractPrices(text) {
+  const matches = text.match(/(?:US\$|USD\s*|CA\$|CI\$|£|€|\$)\s?\d{1,5}(?:[,.]\d{2})?/gi) || [];
+  const unique = [...new Set(matches.map(value => value.replace(/\s+/g, " ").trim()))];
+  return unique.sort((a, b) => priceNumber(a) - priceNumber(b)).slice(0, 8);
+}
+
+function priceNumber(value) {
+  const match = String(value || "").replace(/,/g, "").match(/\d+(?:\.\d+)?/);
+  return match ? Number(match[0]) : Number.POSITIVE_INFINITY;
+}
+
+function inferBusinessContext(text, home, url) {
+  const haystack = `${home}\n${text}`;
+  const location = inferDestinationLocation(haystack) || extractLocation(text) || "";
+
+  const rentalTransaction = /\b(?:rent|rents|rental|rentals|hire|self[- ]drive|bareboat)\b/i.test(haystack);
+  const watercraft = /\b(?:boat|powerboat|pontoon|catamaran|sailboat|yacht|vessel|dinghy)\b/i.test(haystack);
+  const types = [
+    ["guided sightseeing", /(sightseeing|celebrity homes?|modernism|architecture|legends? and icons?|city tour)/i],
+    ["transportation / bus tours", /(charter bus|motorcoach|sprinter|luxury van|transportation|bus tour)/i],
+    ["boat / water rentals", /\b(?:boat|powerboat|pontoon|catamaran|sailboat|yacht|vessel|dinghy)\b/i],
+    ["boat / water / diving experiences", /(boat|powerboat|catamaran|snorkel|scuba|div(?:e|ing)|sailing|yacht|fishing|stingray|starfish|reef|cruise)/i],
+    ["outdoor adventure", /(jeep|hummer|atv|utv|off-road|rafting|kayak|hiking|adventure tour)/i]
+  ];
+  let matchedTypes = types.filter(([, regex]) => regex.test(haystack)).map(([label]) => label);
+  if (rentalTransaction && watercraft) {
+    // The transaction model matters more than incidental activity language. A boat rental
+    // business may mention snorkeling or sailing without selling guided snorkeling/sailing tours.
+    matchedTypes = ["boat / water rentals", ...matchedTypes.filter(label => label !== "boat / water rentals" && label !== "boat / water / diving experiences")];
+  }
+  const businessType = matchedTypes.length > 1
+    ? `multi-segment operator (${matchedTypes.slice(0, 3).join(" + ")})`
+    : matchedTypes.length === 1
+      ? `${matchedTypes[0]} operator`
+      : "tour and activity operator";
+  return { businessType, businessTypes: matchedTypes, location, domain: domainLabel(url) };
+}
+
+
+function buildSemanticOperatorModel(text, offers, businessContext, businessName, siteArchitecture = null) {
+  const raw = String(text || "");
+  const primaryProducts = extractPrimaryProductModel(raw, offers, businessName, siteArchitecture);
+  const geography = extractValidatedGeography(raw, businessContext?.location || "", primaryProducts);
+
+  return {
+    primaryProducts,
+    geography,
+    commerce: {
+      bookingEvidencePresent: /BOOKING LINK:|book now|book a |book your|reserve|check availability/i.test(raw),
+      marketplacePresence: detectMarketplacePresence(raw)
+    },
+    readyForMarket: Boolean(geography?.value && primaryProducts.length)
+  };
+}
+
+function extractPrimaryProductModel(text, offers, businessName, siteArchitecture = null) {
+  const raw = String(text || "");
+  const links = extractMarkdownLinks(raw);
+  const headings = (raw.match(/^#{1,4}\s+.+$/gm) || [])
+    .map(line => cleanText(line.replace(/^#{1,4}\s+/, "")));
+  const candidates = new Map();
+
+  const add = (value, score, source, url = "") => {
+    const name = normalizePrimaryProductName(value, businessName);
+    if (!name || !looksLikeBookableProductName(name)) return;
+    const key = name.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+    if (!key) return;
+
+    const current = candidates.get(key) || {
+      name,
+      score: 0,
+      evidence: [],
+      urls: []
+    };
+    current.score += score;
+    if (source && !current.evidence.includes(source)) current.evidence.push(source);
+    if (url && !current.urls.includes(url)) current.urls.push(url);
+    candidates.set(key, current);
+  };
+
+  // Explicit calls to book/reserve are the strongest open-ended signal because they tell GO
+  // what the customer can actually transact on without requiring a predefined activity list.
+  links.forEach(link => {
+    const label = cleanText(link.label || "");
+    const href = String(link.url || "");
+    if (/^(book|reserve|check availability|buy tickets?|schedule)\b/i.test(label)) {
+      add(label, 14, "booking action", href);
+    } else if (/\/(tour|tours|experience|experiences|activity|activities|ride|rides|lesson|lessons|charter|charters|cruise|cruises|rental|rentals|trip|trips|ticket|tickets)\b/i.test(href)) {
+      add(label, 10, "product page", href);
+    }
+  });
+
+  // Site information architecture is first-class evidence. A product does not need to contain
+  // a tourism keyword; its role as a repeated internal commercial link/detail page is enough.
+  (siteArchitecture?.internalProducts || []).forEach(item => add(item.name, Math.max(11, Number(item.score || 0)), item.evidence || "site architecture", item.url));
+  (siteArchitecture?.commercialPages || []).forEach(item => add(item.name, Math.max(14, Number(item.score || 0)), item.evidence || "commercial detail page", item.url));
+
+  // STRUCTURED FIRST-PARTY COPY FALLBACK
+  // Some sites expose their real inventory as short bullets/cards under commercial sections
+  // rather than clean product URLs. Preserve that information architecture without requiring
+  // an activity dictionary. This is intentionally role-based: short customer-facing items
+  // beneath headings such as Experiences / Services / Discover / "... with us" are candidates.
+  extractStructuredProductPhrases(raw).forEach(item => add(item.name, item.score, item.evidence));
+
+  // Existing offer extraction is useful supporting evidence, but is no longer the sole ontology.
+  (offers || []).forEach(offer => add(offer, 10, "offer inventory"));
+
+  // Headings that repeat in booking/product evidence are promoted without knowing the activity type.
+  headings.forEach(heading => {
+    const normalized = normalizePrimaryProductName(heading, businessName);
+    if (!normalized) return;
+    const lower = normalized.toLowerCase();
+    const linkedOrOffered = [...candidates.values()].some(item => {
+      const itemLower = item.name.toLowerCase();
+      return itemLower.includes(lower) || lower.includes(itemLower);
+    });
+    if (linkedOrOffered) add(normalized, 6, "product heading");
+  });
+
+  // Merge near-duplicates such as "Trail Ride" / "Trail Rides" and retain the strongest wording.
+  const ranked = [...candidates.values()]
+    .filter(item => item.score >= 9)
+    .sort((a, b) => b.score - a.score);
+
+  const deduped = [];
+  ranked.forEach(item => {
+    const compact = item.name.toLowerCase().replace(/[^a-z0-9]/g, "").replace(/s$/, "");
+    const existing = deduped.find(row => {
+      const other = row.name.toLowerCase().replace(/[^a-z0-9]/g, "").replace(/s$/, "");
+      return compact === other || compact.includes(other) || other.includes(compact);
+    });
+    if (!existing) deduped.push(item);
+    else {
+      existing.score += Math.round(item.score / 2);
+      item.evidence.forEach(e => { if (!existing.evidence.includes(e)) existing.evidence.push(e); });
+      item.urls.forEach(u => { if (!existing.urls.includes(u)) existing.urls.push(u); });
+    }
+  });
+
+  return deduped.slice(0, 10);
+}
+
+function extractStructuredProductPhrases(text) {
+  const lines = String(text || "").split(/\n+/);
+  const out = [];
+  let commercialSectionDepth = 0;
+  let sectionBudget = 0;
+
+  const sectionSignal = value => /\b(experiences?|services?|activities|adventures?|things to do|discover|explore|choose|with us|our tours?|our trips?|our charters?|our rides?|our courses?|our rentals?)\b/i.test(value);
+  const reject = value => /^(home|about|contact|faq|gallery|rates?|pricing|reviews?|testimonials?|follow us|menu|close menu|book now|learn more)$/i.test(value)
+    || /privacy|terms|copyright|all rights reserved|call or whatsapp|newsletter|social/i.test(value);
+
+  for (const rawLine of lines) {
+    const line = cleanText(rawLine);
+    if (!line) continue;
+    const heading = rawLine.match(/^\s*(#{1,4})\s+(.+)$/);
+    if (heading) {
+      const depth = heading[1].length;
+      const label = cleanText(heading[2]);
+      if (sectionSignal(label)) {
+        commercialSectionDepth = depth;
+        sectionBudget = 14;
+      } else if (commercialSectionDepth && depth <= commercialSectionDepth) {
+        commercialSectionDepth = 0;
+        sectionBudget = 0;
+      }
+      continue;
+    }
+
+    if (!commercialSectionDepth || sectionBudget <= 0) continue;
+    sectionBudget -= 1;
+
+    const candidate = line.replace(/^[-*•]+\s*/, "").trim();
+    if (reject(candidate) || candidate.length < 3 || candidate.length > 70) continue;
+    const words = candidate.split(/\s+/).filter(Boolean);
+    if (words.length > 9 || /[.!?]$/.test(candidate)) continue;
+    if (/^(small groups?|experienced|professional|safety|all |our |the |you |we |get in touch|total flexibility|expert guidance|intimate groups)/i.test(candidate)) continue;
+    out.push({ name: candidate, score: 12, evidence: "structured commercial section" });
+  }
+
+  return out.slice(0, 24);
+}
+
+function normalizePrimaryProductName(value, businessName = "") {
+  let text = cleanText(String(value || ""))
+    .replace(/^(book|reserve|schedule|buy|check availability(?: for)?|learn more about)\s+(?:a|an|the|your)?\s*/i, "")
+    .replace(/\b(book now|reserve now|learn more|details|more info)\b/gi, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  if (businessName) {
+    const escaped = escapeRegExp(businessName);
+    text = text.replace(new RegExp(`\\b${escaped}\\b`, "ig"), " ").replace(/\s+/g, " ").trim();
+  }
+
+  text = text
+    .replace(/^[|–—:;\-]+|[|–—:;\-]+$/g, "")
+    .replace(/\b(?:from|starting at)\s*[$€£]\s*\d[\d,.]*/gi, "")
+    .trim();
+
+  if (text.length < 3 || text.length > 75) return "";
+  return text;
+}
+
+function looksLikeBookableProductName(value) {
+  const text = String(value || "").trim();
+  if (!text) return false;
+  if (/^(home|about|contact|services?|activities|tours?|experiences?|book|booking|reserve|gallery|faq|reviews?|donate|shop|menu|search)$/i.test(text)) return false;
+  if (/privacy|terms|cookie|newsletter|sign in|log in|cart|gift card/i.test(text)) return false;
+  if (/^[\d\s$€£.,-]+$/.test(text)) return false;
+
+  // Reject marketing/editorial headings. These are meaningful website copy, but they are not
+  // inventory and must never become traveler demand (e.g. "Dive Safe With Us").
+  if (/\b(with us|why choose|our story|meet (?:the|our)|what to expect|safe(?:ty)?|welcome|top rated|best in|about our|our team|our crew|learn more|read more|blog|news)\b/i.test(text)) return false;
+  if (/^(the|our|your|we|you|why|how|what)\b/i.test(text) && !/\b(tour|charter|cruise|rental|ride|lesson|course|diving|dive|snorkel|fishing|sailing|excursion|trip|experience)\b/i.test(text)) return false;
+
+  // A product does not need to belong to a known activity taxonomy. It only needs to look like
+  // a concise customer-facing noun phrase rather than navigation or prose.
+  const words = text.split(/\s+/).filter(Boolean);
+  return words.length <= 8 && /[A-Za-z]/.test(text);
+}
+
+function primaryProductIntent(name) {
+  const intent = String(name || "")
+    .replace(/\b(?:guided|basic|beginner|private appointment|appointment)\b/gi, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .toLowerCase();
+  if (!intent || /\b(with us|why choose|our story|what to expect|safe with us)\b/i.test(intent)) return "";
+  return intent;
+}
+
+function extractValidatedGeography(text, inferredCandidate, primaryProducts) {
+  const raw = String(text || "");
+  const candidates = [];
+
+  const add = (value, score, source) => {
+    const clean = cleanText(value || "").replace(/\s+/g, " ").trim();
+    if (!clean || clean.length < 2 || clean.length > 80) return;
+    if (isProductLikeGeography(clean, primaryProducts)) return;
+    candidates.push({ value: clean, score, source });
+  };
+
+  // Strongest signal: city/state or city/region inside an explicit street address.
+  const addressPatterns = [
+    /\b\d{1,6}\s+[A-Za-z0-9.'#\- ]{3,60}\s+(?:Rd|Road|St|Street|Ave|Avenue|Blvd|Boulevard|Dr|Drive|Ln|Lane|Way|Hwy|Highway|Pkwy|Parkway)\.?(?:[^,\n]{0,35}),?\s+([A-Z][A-Za-z.' -]{2,35}),\s*([A-Z]{2})\s+\d{5}(?:-\d{4})?/g,
+    /(?:located at|address(?: is)?|location(?: address)?(?: is)?|visit us at)\s*:?\s*[^\n]{0,90}?\b([A-Z][A-Za-z.' -]{2,35}),\s*([A-Z]{2})\s+\d{5}(?:-\d{4})?/gi
+  ];
+  addressPatterns.forEach(pattern => {
+    let match;
+    while ((match = pattern.exec(raw)) !== null) add(`${match[1]}, ${match[2]}`, 20, "street address");
+  });
+
+  // Explicit destination language is stronger than an inferred title phrase.
+  const explicitPatterns = [
+    /(?:located in|based in|serving|tours? in|experiences? in|rides? in|activities? in)\s+([A-Z][^\n.!?]{2,60})/gi,
+    /(?:destination|city|region|location)\s*[:\-]\s*([A-Z][^\n]{2,60})/gi
+  ];
+  explicitPatterns.forEach(pattern => {
+    let match;
+    while ((match = pattern.exec(raw)) !== null) add(match[1], 12, "explicit geography");
+  });
+
+  if (inferredCandidate && !isProductLikeGeography(inferredCandidate, primaryProducts)) {
+    add(inferredCandidate, 5, "inferred geography");
+  }
+
+  candidates.sort((a, b) => b.score - a.score);
+  if (candidates.length) {
+    return { value: candidates[0].value, confidence: candidates[0].score >= 15 ? "High" : "Medium-high", source: candidates[0].source };
+  }
+
+  return {
+    value: "",
+    confidence: "Low",
+    rejectedCandidate: inferredCandidate || "",
+    source: "No validated geography"
+  };
+}
+
+function isProductLikeGeography(value, primaryProducts) {
+  const candidate = cleanText(value || "").toLowerCase();
+  if (!candidate) return true;
+
+  // Semantic-role guardrail: if the candidate substantially overlaps something the customer
+  // can book, it cannot simultaneously be trusted as geography.
+  const overlap = (primaryProducts || []).some(product => {
+    const productName = String(product?.name || "").toLowerCase();
+    return productName && (candidate.includes(productName) || productName.includes(candidate));
+  });
+  if (overlap) return true;
+
+  return /\b(tour|tours|ride|rides|riding|lesson|lessons|charter|charters|cruise|cruises|rental|rentals|experience|experiences|adventure|adventures|excursion|excursions|activity|activities|safari|trip|trips)\b/i.test(candidate);
+}
+
+function buildOperatorPreflight(text, offers, businessContext, siteArchitecture = null) {
+  const raw = String(text || "");
+  const offerText = (offers || []).join(" ");
+  const links = extractMarkdownLinks(raw);
+  const headings = (raw.match(/^#{1,4}\s+.+$/gm) || []).map(line => cleanText(line.replace(/^#{1,4}\s+/, "")));
+
+  // Product hierarchy: GO separates things the operator appears to SELL from things merely
+  // INCLUDED in an experience. Only strong first-party product/category evidence can promote
+  // a specific activity into the representative search portfolio.
+  const productLike = value => /\b(tour|tours|charter|charters|cruise|cruises|excursion|excursions|safari|safaris|trip|trips|experience|experiences|rental|rentals)\b/i.test(value);
+  const productLinks = links
+    .filter(link => /\/(tour|tours|experience|experiences|excursion|excursions|activity|activities|charter|charters|cruise|cruises)\b/i.test(link.url) || productLike(link.label))
+    .map(link => cleanText(`${link.label} ${link.url}`));
+  const productHeadings = headings.filter(productLike);
+  const architectureSignals = [
+    ...(siteArchitecture?.internalProducts || []).map(item => cleanText(`${item.name} ${item.url || ""}`)),
+    ...(siteArchitecture?.commercialPages || []).map(item => cleanText(`${item.name} ${item.url || ""}`))
+  ];
+  const primarySignals = [...new Set([...architectureSignals, ...productLinks, ...productHeadings, ...(offers || [])].map(cleanText).filter(Boolean))];
+
+  const families = [
+    { id: "water", label: "Boat / water experiences", pattern: /boat|powerboat|catamaran|snorkel|sail(?:ing)?|yacht|cruise|reef|sea tours?|water tours?|ocean|stingray|dolphin|whale/i },
+    { id: "adventure", label: "Outdoor adventure", pattern: /jeep|hummer|atv|utv|off-road|rafting|kayak|zipline|horseback|hiking|buggy|safari/i },
+    { id: "sightseeing", label: "Sightseeing / history", pattern: /sightseeing|city tour|history tour|historical|landmark|celebrity|architecture|modernism/i },
+    { id: "fishing", label: "Fishing", pattern: /fishing|sportfishing|deep sea|fly fishing/i },
+    { id: "food", label: "Food / culinary", pattern: /food tour|culinary|tasting tour|foodie/i },
+    { id: "wine", label: "Wine / winery", pattern: /wine tour|winery|vineyard|wine tasting/i }
+  ];
+
+  const materialFamilies = families.map(family => {
+    const primaryMatches = primarySignals.filter(signal => family.pattern.test(signal));
+    const offerMatches = countPatternMatches(offerText, family.pattern);
+    const bodyMatches = countPatternMatches(raw, family.pattern);
+    const strength = (primaryMatches.length * 10) + (offerMatches * 5) + Math.min(4, bodyMatches);
+    if (!strength) return null;
+    return {
+      id: family.id,
+      label: family.label,
+      strength,
+      primaryMatches: primaryMatches.length,
+      primaryEvidence: primaryMatches.slice(0, 6),
+      offerMatches,
+      bodyMatches,
+      verifiedProductFamily: primaryMatches.length > 0 || offerMatches > 0
+    };
+  }).filter(Boolean).sort((a, b) => b.strength - a.strength);
+
+  return {
+    materialFamilies,
+    primarySignals: primarySignals.slice(0, 24),
+    multiSegment: materialFamilies.filter(item => item.verifiedProductFamily).length > 1 || (businessContext?.businessTypes || []).length > 1,
+    coverageConfidence: materialFamilies.some(item => item.verifiedProductFamily) ? "High" : (materialFamilies.length ? "Medium-high" : "Medium")
+  };
+}
+
+function inferDestinationLocation(text) {
+  const source = String(text || "");
+  const candidates = new Map();
+
+  const add = (value, weight = 1) => {
+    const cleaned = cleanText(value || "")
+      .replace(/^(the|in|at|from|near)\s+/i, "")
+      .replace(/\s+(tours?|adventures?|excursions?|activities|experiences?)$/i, "")
+      .replace(/[|–—].*$/, "")
+      .trim();
+    if (!cleaned || cleaned.length < 3 || cleaned.length > 70) return;
+    if (/^(home|contact|book now|about us|privacy|terms)$/i.test(cleaned)) return;
+    const key = cleaned.toLowerCase();
+    const current = candidates.get(key) || { value: cleaned, score: 0 };
+    current.score += weight;
+    candidates.set(key, current);
+  };
+
+  const explicitPatterns = [
+    /(?:located in|based in|serving|departing from|departure from|meet us at|visit us at|tours? in|experiences? in)\s+([^\n.!?]{3,70})/gi,
+    /(?:destination|location|address)[:\s]+([^\n]{3,80})/gi
+  ];
+  explicitPatterns.forEach(pattern => {
+    let match;
+    while ((match = pattern.exec(source)) !== null) add(match[1], 6);
+  });
+
+  // Capture destination-shaped place names without requiring a hand-maintained city list.
+  const placePattern = /\b((?:[A-Z][A-Za-z'.-]+\s+){0,3}[A-Z][A-Za-z'.-]+\s+(?:Islands?|Beach|Bay|Harbour|Harbor|Springs|Valley|Coast|County|City|Village|Keys|Cays?|National Park))\b/g;
+  let placeMatch;
+  while ((placeMatch = placePattern.exec(source)) !== null) add(placeMatch[1], 3);
+
+  // Repeated title/heading geography is useful for destinations such as "Grand Cayman"
+  // that do not contain a generic suffix like "Island" or "City".
+  const titleHeadingText = [
+    ...(source.match(/^Title:\s*(.+)$/gmi) || []),
+    ...(source.match(/^#{1,3}\s+(.+)$/gm) || [])
+  ].join("\n");
+  const repeatedPlacePattern = /\b([A-Z][A-Za-z'.-]+(?:\s+[A-Z][A-Za-z'.-]+){1,2})\b/g;
+  const counts = new Map();
+  let repeatedMatch;
+  while ((repeatedMatch = repeatedPlacePattern.exec(titleHeadingText)) !== null) {
+    const value = cleanText(repeatedMatch[1]);
+    if (/Growth Operator|Book Now|Learn More|Cayman Ocean Adventures/i.test(value)) continue;
+    counts.set(value, (counts.get(value) || 0) + 1);
+  }
+  counts.forEach((count, value) => { if (count >= 2) add(value, Math.min(5, count)); });
+
+  return [...candidates.values()].sort((a, b) => b.score - a.score)[0]?.value || "";
+}
+
+function collectBookingLinkEvidence(pages) {
+  const rows = [];
+  (pages || []).forEach(page => {
+    const markdown = String(page?.markdown || '');
+    for (const link of extractMarkdownLinks(markdown, page?.url || '')) {
+      const label = cleanText(link.label || '');
+      const href = link.url;
+      if (/book|reserve|availability|checkout|ticket|peek|fareharbor|junglebee|bokun|rezdy|xola|tripworks|checkfront|bookeo|rezgo|rocketrez/i.test(`${label} ${href}`)) {
+        rows.push(`BOOKING LINK: ${label} ${href}`);
+      }
+    }
+  });
+  return [...new Set(rows)].slice(0, 30).join('\n');
+}
+
+function detectBookingProvider(text) {
+  const raw = String(text || "");
+  const providers = [
+    ["Peek Pro", /book\.peek\.com|peek\.com\/pro|peekpro\.com|peek pro|powered by peek|book with peek/i],
+    ["FareHarbor", /fareharbor\.com|fareharbor/i],
+    ["Junglebee", /junglebee\.(?:com|io)|powered by junglebee|junglebee booking/i],
+    ["Bókun", /bokun\.io|bokun\.com|bokun/i],
+    ["Rezdy", /rezdy\.com|rezdy/i],
+    ["Xola", /xola\.com|xola/i],
+    ["TripWorks", /tripworks\.com|tripworks/i],
+    ["Checkfront", /checkfront\.com|checkfront/i],
+    ["Bookeo", /bookeo\.com|bookeo/i],
+    ["Rezgo", /rezgo\.com|rezgo/i],
+    ["RocketRez", /rocketrez\.com|rocketrez/i]
+  ];
+  for (const [label, regex] of providers) {
+    if (regex.test(raw)) return { provider: label, label, kind: "direct-booking" };
+  }
+
+  // General fallback: if GO can verify a real booking/reservation path but the vendor name is
+  // not exposed publicly, report the verified fact instead of pretending no booking system exists.
+  const hasBookingFlow = /BOOKING LINK:|book now|book a |book your|reserve now|reserve your|check availability|payment is due at (?:the )?time of booking/i.test(raw);
+  if (hasBookingFlow) {
+    return {
+      provider: "Direct booking flow",
+      label: "Direct booking flow detected · provider not publicly exposed",
+      kind: "direct-booking-unknown-provider"
+    };
+  }
+
+  return { provider: null, label: "Booking provider not confidently detected", kind: "unknown" };
+}
+function detectMarketplacePresence(text) {
+  const marketplaces = [
+    ["Viator", /viator\.com|\bviator\b/i],
+    ["Tripadvisor", /tripadvisor\.com|\btripadvisor\b/i],
+    ["GetYourGuide", /getyourguide\.com|\bgetyourguide\b/i]
+  ];
+  return marketplaces.filter(([, regex]) => regex.test(text)).map(([label]) => label);
+}
+
+function detectTrust(text) {
+  let score = 0;
+  const signals = [];
+  if (/testimonial|what our guests say|guest reviews|customer reviews/i.test(text)) { score += 1; signals.push("testimonials"); }
+  if (/tripadvisor|google reviews?|yelp/i.test(text)) { score += 1; signals.push("review platform proof"); }
+  if (/\b4\.[5-9]\s*(?:\/\s*5|stars?|★)/i.test(text) || /5\s*[- ]?star/i.test(text)) { score += 1; signals.push("rating language"); }
+  if (/since\s+(19|20)\d{2}|\d{1,2}\+?\s+years/i.test(text)) { score += 1; signals.push("experience/history"); }
+  return {
+    score,
+    summary: signals.length ? `Trust signals found: ${signals.join(", ")}` : "Limited on-site trust proof detected",
+    detail: signals.length ? `GO found ${signals.join(", ")} in the live website content.` : "GO did not find strong review-platform, rating, testimonial or long-history signals in the content it could read."
+  };
+}
+
+function detectContacts(text) {
+  const hasPhone = /(?:\+?1[-.\s]?)?\(?\d{3}\)?[-.\s]\d{3}[-.\s]\d{4}|\+\d{1,3}[\s.-]\d{2,4}[\s.-]\d{3,4}/.test(text);
+  const hasEmail = /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i.test(text);
+  const hasSocial = /instagram\.com|facebook\.com|tiktok\.com|youtube\.com/i.test(text);
+  const hasWhatsapp = /wa\.me|whatsapp/i.test(text);
+  const labels = [hasPhone && "phone", hasEmail && "email", hasWhatsapp && "WhatsApp", hasSocial && "social links"].filter(Boolean);
+  return { hasPhone, hasEmail, hasSocial, hasWhatsapp, summary: labels.length ? labels.join(" + ") : "Limited contact signals" };
+}
+
+function extractLocation(text) {
+  const patterns = [
+    /(?:located in|based in|serving|departing from|departure from|meet us at|visit us at)\s+([^\n.]{3,70})/i,
+    /(?:Address|Location):\s*([^\n]{3,90})/i
+  ];
+  for (const pattern of patterns) {
+    const match = text.match(pattern);
+    if (match) return cleanText(match[1]).replace(/\s{2,}/g, " ").slice(0, 80);
+  }
+  return "";
+}
+
+function assessSearchFoundation(home, businessName, location, offers) {
+  let score = 0;
+  const details = [];
+  const title = cleanText(home.match(/^Title:\s*(.+)$/mi)?.[1] || "");
+  const headings = (home.match(/^#{1,3}\s+.+$/gm) || []).map(cleanText);
+  if (title && title.length >= 25 && title.length <= 75) { score += 1; details.push("descriptive page title"); }
+  if (headings.length >= 3) { score += 1; details.push("structured headings"); }
+  if (offers.length >= 2) { score += 1; details.push("experience-specific language"); }
+  if (location || /(near|located|island|city|beach|river|harbor|harbour|marina|county|downtown)/i.test(home)) { score += 1; details.push("local context"); }
+  const detail = details.length ? `GO found ${details.join(", ")} on the live website.` : "GO found very little descriptive search context in the readable homepage content.";
+  const problem = score >= 2
+    ? `${businessName} is giving search engines useful context through ${details.join(", ")}. Build 026 can assess that foundation, but it does not yet prove where the business ranks or how much search demand exists.`
+    : `${businessName} appears to give search engines limited service/location context in the public content GO could read.`;
+  return { score, detail, problem };
+}
+
+function discoverUsefulLinks(markdown, baseUrl) {
+  let origin;
+  try { origin = new URL(baseUrl).origin; } catch { return []; }
+
+  const utility = /^(home|about|contact|faq|faqs|blog|news|gallery|reviews?|privacy|terms|policy|login|sign in|cart|checkout|donate|shop|search|menu)$/i;
+  const candidates = [];
+  const seen = new Set();
+
+  for (const item of extractMarkdownLinks(markdown, baseUrl)) {
+    try {
+      const parsed = new URL(item.url);
+      if (parsed.origin !== origin) continue;
+      parsed.hash = "";
+      const clean = parsed.toString();
+      const label = cleanText(item.label || "");
+      if (!label || utility.test(label) || clean === baseUrl || seen.has(clean)) continue;
+      if (/\/(privacy|terms|policy|contact|about|faq|blog|news|gallery|login|account|cart|checkout|donate|shop)(?:\/|$)/i.test(parsed.pathname)) continue;
+      if (!looksLikeBookableProductName(label)) continue;
+      seen.add(clean);
+      const depth = parsed.pathname.split('/').filter(Boolean).length;
+      let score = 4;
+      if (label.split(/\s+/).length >= 2) score += 2;
+      if (depth >= 1 && depth <= 3) score += 2;
+      if (/\/(tours?|experiences?|activities?|services?|products?|book)(?:\/|$)/i.test(parsed.pathname)) score += 3;
+      candidates.push({ url: clean, score });
+    } catch {}
+  }
+
+  return candidates.sort((a, b) => b.score - a.score).slice(0, MAX_EXTRA_PAGES).map(item => item.url);
+}
+
+function showResults(profile) {
+  text("result-business", profile.businessName);
+  text("result-summary", profile.summary);
+  text("confidence-score", String(profile.analysisConfidence || "Medium").toUpperCase());
+  text("confidence-copy", profile.confidenceCopy || "Live public evidence");
+  renderProfileStrip(profile.publicProfile || {});
+  renderResearchRead(profile);
+  const debugEnabled = new URLSearchParams(window.location.search).get("debug") === "1";
+  const debugPanel = debugEnabled ? renderPipelineDebug(profile.pipelineDebug || {}) : "";
+  document.getElementById("finding-list").innerHTML = debugPanel + profile.opportunities.map((item, index) => `
+    <article class="finding-card">
+      <div class="finding-number">0${index + 1}</div>
+      <div class="finding-copy">
+        <div class="finding-kicker"><span>${escapeHtml(item.icon || "↗")}</span><small>${escapeHtml((item.pillar || "Growth").toUpperCase())} · ${escapeHtml(item.kind === "investigation" ? "INVESTIGATE FIRST" : "OPPORTUNITY")} · ${escapeHtml(String(item.confidence || "Medium").toUpperCase())} CONFIDENCE</small></div>
+        <h3>${escapeHtml(item.title)}</h3>
+        <p>${escapeHtml(item.problem)}</p>
+        ${item.whyItMatters ? `<div class="operator-why"><small>WHY IT MATTERS</small><p>${escapeHtml(item.whyItMatters)}</p></div>` : ""}
+        ${renderSearchEvidence(item)}
+        <div class="reasoning-strip">
+          <div><small>WHY THIS RANKS HERE</small><p>${escapeHtml(item.rankExplanation || item.priorityReason || "GO ranked this against the other patterns it found.")}</p></div>
+          <div><small>WHAT COULD WEAKEN THIS</small><p>${escapeHtml(item.counterEvidence || "Connected data could change the priority.")}</p></div>
+        </div>
+        <div class="source-stack">${(item.sources || []).map(source => `<div class="source-chip ${source.type === "operator" ? "operator" : "public"}"><b>${escapeHtml(source.label)}</b><span>${escapeHtml(source.detail)}</span></div>`).join("")}</div>
+      </div>
+      <div class="finding-action"><small>${item.kind === "investigation" ? "WHAT GO WOULD VERIFY" : "WHAT GO WOULD DO"}</small><p>${escapeHtml(item.action)}</p><div><span>GO WOULD MEASURE</span><strong>${escapeHtml(item.metric)}</strong></div><em>${escapeHtml(item.moneyLabel || "Needs connected data")}</em></div>
+    </article>
+  `).join("") + renderWatchItems(profile.watchItems || []);
+  scanPanel.hidden = true;
+  unsupported.hidden = true;
+  results.hidden = false;
+  results.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+
+function renderPipelineDebug(debug) {
+  const json = JSON.stringify(debug || {}, null, 2);
+  return `
+    <details style="margin:0 0 18px;border:1px solid rgba(91,181,255,.35);border-radius:14px;background:rgba(4,20,36,.78);padding:14px 16px;">
+      <summary style="cursor:pointer;font-weight:800;color:#8fd0ff;letter-spacing:.06em;">GO PIPELINE DEBUG — INTERNAL ONLY</summary>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin:10px 0 8px;">
+        <code style="padding:5px 8px;border:1px solid rgba(91,181,255,.3);border-radius:7px;color:#dcecff;">FE: ${escapeHtml(debug?.runtime?.frontendBuildId || debug?.market?.frontendBuildId || GO_FRONTEND_BUILD_ID)}</code>
+        <code style="padding:5px 8px;border:1px solid rgba(91,181,255,.3);border-radius:7px;color:#dcecff;">MI: ${escapeHtml(debug?.runtime?.marketFunctionBuildId || debug?.market?.marketFunctionBuildId || "MISSING")}</code>
+        <code style="padding:5px 8px;border:1px solid rgba(91,181,255,.3);border-radius:7px;color:#dcecff;">RUN: ${escapeHtml(debug?.runtime?.runId || debug?.market?.runId || "MISSING")}</code>
+      </div>
+      <p style="margin:8px 0 10px;color:#9fb3c8;font-size:12px;line-height:1.5;">If FE/MI are not the Runtime Truth IDs, we are debugging stale code. Operator truth → inventory truth → market request → generated demand → selected searches → raw results → qualified evidence → final finding input.</p>
+      <pre style="white-space:pre-wrap;overflow:auto;max-height:720px;margin:0;background:#06101c;border-radius:10px;padding:14px;color:#dcecff;font-size:11px;line-height:1.45;">${escapeHtml(json)}</pre>
+    </details>`;
+}
+
+
+function renderSearchEvidence(item) {
+  const rows = Array.isArray(item.checkedSearches) ? item.checkedSearches : [];
+  if (!rows.length) return '';
+
+  const rowHtml = rows.map(row => {
+    const localClass = row.localPosition != null ? 'found' : 'not-observed';
+    const organicClass = row.organicPosition != null ? 'found' : 'not-observed';
+    return `
+      <div class="search-evidence-row">
+        <div class="search-query-cell">
+          <strong>${escapeHtml(row.query)}</strong>
+          <small>${escapeHtml(row.demandLabel || '')}</small>
+        </div>
+        <div class="search-status-cell ${localClass}">
+          <small>GOOGLE MAPS RESULTS</small>
+          <strong>${escapeHtml(row.localStatus)}</strong>
+        </div>
+        <div class="search-status-cell ${organicClass}">
+          <small>REGULAR GOOGLE RESULTS</small>
+          <strong>${escapeHtml(row.organicStatus)}</strong>
+        </div>
+      </div>`;
+  }).join('');
+
+  return `
+    <div class="search-evidence">
+      <div class="search-evidence-heading">
+        <div>
+          <small>SEARCHES GO ACTUALLY CHECKED</small>
+          <strong>Here is what GO observed for each search.</strong>
+        </div>
+        <span>${rows.length} SEARCH${rows.length === 1 ? '' : 'ES'}</span>
+      </div>
+      <div class="search-evidence-grid">${rowHtml}</div>
+      <div class="search-evidence-why">
+        <small>WHY GO CHOSE THESE SEARCHES</small>
+        <p>${escapeHtml(item.searchSelectionWhy || 'GO selected searches that match the operator\'s products, location and commercially relevant traveler intent.')}</p>
+      </div>
+    </div>`;
+}
+
+function renderResearchRead(profile) {
+  const host=document.getElementById("research-read");
+  if(!host)return;
+  const r=profile.researchIntelligence||{},d=r.dossier||{},brain=r.brain||{},plan=r.actionPlan||{},comp=r.competition||{},pos=r.positioningComparison||{},trust=r.trust||{},pricing=r.pricing||{},offers=r.offerComparison||{},journey=r.bookingJourney||{},architecture=r.productArchitecture||{};
+  if(r.presentationGate?.pass===false){host.hidden=false;host.innerHTML=`<div class="research-read-head"><div><p class="eyebrow">GO'S RESEARCH BRIEF</p><h3>GO held this result instead of showing you a story it does not trust yet.</h3></div><span>RESEARCH CONTINUES</span></div><div class="research-decision"><small>WHY GO STOPPED</small><strong>${escapeHtml(r.presentationGate.issues?.[0]||'The operator model needs stronger evidence.')}</strong><p>GO will not turn malformed identity, conflicting commercial models or raw extraction artifacts into growth advice.</p></div>`;return;}
+  if(!brain?.candidates?.length){host.innerHTML="";host.hidden=true;return;}
+  const verified=(d.products||[]).map(x=>x.name).filter(Boolean).slice(0,4);
+  const lead=comp?.leader?.name||"No repeated direct rival promoted";
+  const posText=pos.state==="POTENTIAL_DIFFERENTIATION"?(pos.differentiated||[]).map(x=>x.label).slice(0,2).join(" · "):pos.state==="CATEGORY_PARITY"?"Main positioning claims look like category parity":"Needs more qualified competitor evidence";
+  const primary=brain.primary||{};
+  const strength=(brain.candidates||[]).find(x=>/^HEALTHY/.test(x.state)||x.state==="FOUNDATION_OBSERVED");
+  host.hidden=false;
+  host.innerHTML=`
+    <div class="research-read-head"><div><p class="eyebrow">GO'S RESEARCH BRIEF</p><h3>This is the business GO thinks it is operating.</h3></div><span>PUBLIC EVIDENCE</span></div>
+    <div class="research-read-grid">
+      <div><small>COMMERCIAL TRUTH</small><strong>${escapeHtml([d.business?.transactionType,d.business?.businessType,d.business?.location].filter(Boolean).join(" · ")||"Still resolving")}</strong><p>${escapeHtml(verified.length?"Verified products: "+verified.join(" · "):"Commercial inventory needs stronger evidence.")}</p></div>
+      <div><small>MARKET CONTEXT</small><strong>${escapeHtml(lead)}</strong><p>${escapeHtml(comp.summary||"GO has not promoted a competitor without repeat commercial evidence.")}</p></div>
+      <div><small>POSITIONING</small><strong>${escapeHtml(posText)}</strong><p>${escapeHtml(pos.summary||r.positioning?.summary||"GO only calls positioning differentiated after comparison.")}</p></div>
+      <div><small>BOOKING JOURNEY</small><strong>${escapeHtml((journey.state||'Still resolving').replaceAll('_',' '))}</strong><p>${escapeHtml(journey.headline||'GO has not promoted public extraction gaps into conversion defects.')}</p></div>
+      <div><small>PRODUCT STRATEGY</small><strong>${escapeHtml((architecture.state||'Still resolving').replaceAll('_',' '))}</strong><p>${escapeHtml(architecture.headline||'GO has not verified a product architecture move yet.')}</p></div>
+      <div><small>REPUTATION + PRICING</small><strong>${escapeHtml([trust.state&&"Trust: "+trust.state.replaceAll("_"," "),pricing.state&&"Pricing: "+pricing.state.replaceAll("_"," ")].filter(Boolean).join(" · ")||"Still resolving")}</strong><p>${escapeHtml(offers.headline||'Pricing stays directional until comparable offers are verified.')} Reputation uses qualified direct competitors only.</p></div>
+    </div>
+    <div class="research-decision"><small>GO'S CURRENT JUDGMENT</small><strong>${escapeHtml(plan.headline||primary.finding||brain.headline||"Keep investigating")}</strong><p>${escapeHtml(plan.next||primary.action||brain.summary||"GO has not found a defensible move yet.")}</p>${plan.moves?.[0]?.state?`<em>${escapeHtml(plan.moves[0].state.replaceAll('_',' '))} · ${escapeHtml(plan.moves[0].proof||'GO will keep validating this before execution.')}</em>`:(strength?.finding?`<em>Already working: ${escapeHtml(strength.finding)}</em>`:"")}</div>`;
+}
+
+function renderProfileStrip(profile) {
+  const offers = Array.isArray(profile.offers) && profile.offers.length ? profile.offers.slice(0, 3).join(" · ") : "Needs deeper crawl";
+  const pricing = Array.isArray(profile.pricing) && profile.pricing.length ? profile.pricing.slice(0, 3).join(" · ") : "Not found publicly";
+  document.getElementById("profile-strip").innerHTML = `
+    <div><small>GO UNDERSTANDS THE BUSINESS</small><strong>${escapeHtml([profile.businessContext?.businessType, profile.businessContext?.location].filter(Boolean).join(" · ") || offers)}</strong></div>
+    <div><small>PUBLIC PRICING</small><strong>${escapeHtml(pricing)}</strong></div>
+    <div><small>BOOKING HANDOFF</small><strong>${escapeHtml(profile.bookingProvider || "Needs verification")}</strong></div>
+    <div><small>TRUST / MARKET</small><strong>${escapeHtml([profile.trust, profile.market?.status].filter(Boolean).join(" · ") || profile.contact || "Needs verification")}</strong></div>
+  `;
+}
+
+function renderWatchItems(items) {
+  if (!items.length) return "";
+  return `<article class="watch-card"><span>◉</span><div><small>GO IS NOT CLAIMING THESE YET</small><h3>${escapeHtml(items[0].title)}</h3><p>${escapeHtml(items.map(item => item.detail).join(" "))}</p></div></article>`;
+}
+
+function beginScan() {
+  results.hidden = true;
+  unsupported.hidden = true;
+  scanPanel.hidden = false;
+  progress.style.width = "4%";
+  scanState.innerHTML = "<i></i> WORKING";
+  document.querySelectorAll("[data-stage]").forEach(stage => {
+    stage.classList.remove("active", "done", "partial");
+    stage.querySelector("b").textContent = "WAITING";
+  });
+  scanPanel.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+function setStage(name, state, label) {
+  const node = document.querySelector(`[data-stage="${name}"]`);
+  if (!node) return;
+  node.classList.remove("active", "done", "partial");
+  if (state) node.classList.add(state);
+  node.querySelector("b").textContent = label;
+}
+
+function showUnsupported(rawUrl, reason) {
+  scanPanel.hidden = true;
+  results.hidden = true;
+  text("unsupported-url", rawUrl || "This website");
+  text("unsupported-reason", reason);
+  unsupported.hidden = false;
+  unsupported.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+function reset() {
+  ++scanToken;
+  activeProfile = null;
+  scanPanel.hidden = true;
+  results.hidden = true;
+  unsupported.hidden = true;
+  progress.style.width = "0";
+  window.scrollTo({ top: 0, behavior: "smooth" });
+  setTimeout(() => urlInput.focus(), 250);
+}
+
+function normalizeUrl(value) {
+  if (!value) return null;
+  let candidate = value.trim();
+  if (!/^https?:\/\//i.test(candidate)) candidate = `https://${candidate}`;
+  try {
+    const parsed = new URL(candidate);
+    if (!parsed.hostname.includes(".")) return null;
+    parsed.hash = "";
+    return parsed.toString();
+  } catch { return null; }
+}
+
+function isCayman(url) { return false; }
+function domainLabel(url) { try { return new URL(url).hostname.replace(/^www\./, "").split(".")[0].replace(/[-_]/g, " ").replace(/\b\w/g, char => char.toUpperCase()); } catch { return "This Business"; } }
+function countMatches(text, regex) { return (text.match(regex) || []).length; }
+function cleanText(value) { return String(value || "").replace(/\[(.*?)\]\([^)]*\)/g, "$1").replace(/[*_`>#]/g, " ").replace(/\s+/g, " ").trim(); }
+function clamp(value) { return Math.max(35, Math.min(92, Math.round(value))); }
+function setProgress(value) { progress.style.width = `${Math.max(0, Math.min(100, value))}%`; }
+function wait(ms) { return new Promise(resolve => setTimeout(resolve, ms)); }
+function text(id, value) { const node = document.getElementById(id); if (node) node.textContent = value; }
+function escapeHtml(value) { return String(value ?? "").replace(/[&<>'"]/g, char => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" }[char])); }+value:String(value));
+  const prices = dossierPrices.length ? dossierPrices : extractPrices(combined);
+  const inferredContext = inferBusinessContext(combined, home, url);
+  const businessContext = dossier?.business ? {...inferredContext,businessType:dossier.business.businessType||inferredContext.businessType,transactionType:dossier.business.transactionType||inferredContext.transactionType,location:dossier.business.location||inferredContext.location} : inferredContext;
+  const detectedBookingProvider = detectBookingProvider(combined);
+  const bookingProvider = dossier?.booking?.provider ? {...detectedBookingProvider,label:dossier.booking.provider,provider:dossier.booking.provider} : detectedBookingProvider;
   const marketplaces = detectMarketplacePresence(combined);
   const preflight = buildOperatorPreflight(combined, offers, businessContext);
   const trust = detectTrust(combined);

@@ -1,0 +1,13 @@
+import fs from 'node:fs';import vm from 'node:vm';
+function load(path,key){const source=fs.readFileSync(new URL(path,import.meta.url),'utf8');const sandbox={window:{},URL};vm.createContext(sandbox);vm.runInContext(source,sandbox);return sandbox.window[key]}
+const trust=load('../js/trust-intelligence.js','GOTrustIntelligence');
+const pricing=load('../js/pricing-intelligence.js','GOPricingIntelligence');
+const local=(title,rating,reviews,website)=>({title,rating,reviews,website,position:1});
+const trustMarket={target:{identityVerified:true,name:'Food Co',rating:4.7,reviews:100,website:'https://foodco.com'},queries:[{query:'Food Co reviews',evidenceState:'OBSERVED_WIN',localResults:[local('Food Co',4.7,100,'https://foodco.com'),local('Random Restaurant',4.9,2000,'https://restaurant.com'),local('Real Rival',4.9,500,'https://rival.com')]}]};
+const cases=[
+ ['unqualified local business cannot become trust benchmark',()=>trust.build({trustMarket,businessName:'Food Co',website:'https://foodco.com',qualifiedCompetitors:[{name:'Real Rival'}]}).market.competitors,1],
+ ['trust benchmark uses qualified rival',()=>trust.build({trustMarket,businessName:'Food Co',website:'https://foodco.com',qualifiedCompetitors:[{name:'Real Rival'}]}).market.medianReviews,500],
+ ['pricing needs multiple independent market sources',()=>pricing.build({businessName:'Food Co',website:'https://foodco.com',pricingMarket:{queries:[{evidenceState:'OBSERVED_WIN',organicResults:[{title:'Food Co',link:'https://foodco.com',snippet:'From $100'},{title:'One Rival',link:'https://rival.com/a',snippet:'$140'},{title:'One Rival',link:'https://rival.com/b',snippet:'$145'},{title:'One Rival',link:'https://rival.com/c',snippet:'$150'}],localResults:[]}]}}).state,'INSUFFICIENT_EVIDENCE'],
+ ['pricing candidate can use multiple independent sources',()=>pricing.build({businessName:'Food Co',website:'https://foodco.com',pricingMarket:{queries:[{evidenceState:'OBSERVED_WIN',organicResults:[{title:'Food Co',link:'https://foodco.com',snippet:'From $100'},{title:'Rival A',link:'https://a.com',snippet:'$140'},{title:'Rival B',link:'https://b.com',snippet:'$145'},{title:'Rival C',link:'https://c.com',snippet:'$150'}],localResults:[]}]}}).state,'PRICING_POWER_CANDIDATE']
+];
+let fail=0;for(const [name,fn,expected] of cases){const actual=fn();if(actual!==expected){fail++;console.error('FAIL '+name+': expected '+expected+', got '+actual)}else console.log('PASS '+name+': '+actual)}if(fail)process.exit(1);console.log('\n'+cases.length+'/'+cases.length+' research-integrity checks passed');

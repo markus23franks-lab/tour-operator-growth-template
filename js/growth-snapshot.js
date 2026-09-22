@@ -17,6 +17,7 @@ const score = Number(profile.growthScore ?? fallback.growthScore);
 const totalOpportunity = isProspect ? Number(profile.revenueOpportunity || 0) : Number(profile.revenueOpportunity || fallback.revenueOpportunity);
 const scores = profile.scores || fallback.scores;
 const opportunities = Array.isArray(profile.opportunities) && profile.opportunities.length ? profile.opportunities : buildOpportunities(scores, totalOpportunity);
+const hasLiveResearch = Boolean(profile?.researchIntelligence?.brain?.candidates?.length || read("growthOperatorOpportunityBrain", null)?.brain?.candidates?.length);
 
 document.addEventListener("DOMContentLoaded", () => {
   text("business-name", businessName);
@@ -146,51 +147,19 @@ function renderOpportunities() {
 }
 
 function evidenceVisual(item) {
+  if (isProspect || hasLiveResearch) {
+    const sources=Array.isArray(item.sources)?item.sources:[];
+    if(!sources.length)return "";
+    return `<div class="snapshot-live-proof"><div class="evidence-label"><span>VERIFIED EVIDENCE</span><small>LIVE PUBLIC RESEARCH</small></div>${sources.map(source=>`<div class="snapshot-source ${source.type||"public"}"><b>${source.label||"Evidence"}</b><span>${source.detail||""}</span></div>`).join("")}</div>`;
+  }
   const label = `<div class="evidence-label"><span>WHAT GO SEES</span><small>VISUAL PREVIEW • LIVE DATA COMING NEXT</small></div>`;
 
-  if (item.evidenceType === "competitor") {
-    return `${label}<div class="proof-visual competitor-proof">
-      <div class="proof-bar"><span>Your business</span><i><b style="width:${item.pillarScore}%"></b></i><strong>${item.pillarScore}</strong></div>
-      <div class="proof-bar competitor"><span>Competitor avg.</span><i><b style="width:${Math.min(92,item.pillarScore+18)}%"></b></i><strong>${Math.min(92,item.pillarScore+18)}</strong></div>
-      <div class="proof-callout">GO watches the gap across visibility, reviews, pricing and positioning.</div>
-    </div>`;
-  }
-
-  if (item.evidenceType === "priority") {
-    return `${label}<div class="proof-visual priority-proof">
-      <div class="priority-row first"><b>1</b><span><strong>Fix first</strong><small>Highest expected booking impact</small></span><em>NOW</em></div>
-      <div class="priority-row"><b>2</b><span><strong>Next</strong><small>Important, but not before #1</small></span><em>NEXT</em></div>
-      <div class="priority-row"><b>3</b><span><strong>Later</strong><small>GO keeps watching it</small></span><em>WATCH</em></div>
-    </div>`;
-  }
-
-  if (item.evidenceType === "conversion") {
-    return `${label}<div class="proof-visual booking-proof">
-      <div class="booking-step done"><span>1</span><strong>Website</strong></div><i>→</i>
-      <div class="booking-step done"><span>2</span><strong>Tour</strong></div><i>→</i>
-      <div class="booking-step friction"><span>3</span><strong>Availability</strong><small>FRICTION</small></div><i>→</i>
-      <div class="booking-step"><span>4</span><strong>Book</strong></div>
-    </div>`;
-  }
-
-  if (item.evidenceType === "reviews") {
-    return `${label}<div class="proof-visual review-proof">
-      <div><span>Your reviews</span><strong>184</strong><i><b style="width:43%"></b></i></div>
-      <div><span>Competitor avg.</span><strong>427</strong><i><b style="width:100%"></b></i></div>
-      <small>Example comparison until GO completes the live public review scan.</small>
-    </div>`;
-  }
-
-  if (item.evidenceType === "visibility") {
-    return `${label}<div class="proof-visual search-proof">
-      <div><b>#1</b><span>Competitor</span></div><div><b>#2</b><span>Competitor</span></div><div class="your-rank"><b>#7</b><span>Your business</span><em>GO sees upside</em></div>
-      <small>Example high-intent search position until the live local scan is connected.</small>
-    </div>`;
-  }
-
-  return `${label}<div class="proof-visual followup-proof">
-    <div><b>NEW LEAD</b><span>0 min</span></div><i>→</i><div class="warning"><b>FOLLOW-UP</b><span>Too slow</span></div><i>→</i><div><b>BOOKING</b><span>At risk</span></div>
-  </div>`;
+  if (item.evidenceType === "competitor") return `${label}<div class="proof-visual competitor-proof"><div class="proof-bar"><span>Your business</span><i><b style="width:${item.pillarScore}%"></b></i><strong>${item.pillarScore}</strong></div><div class="proof-bar competitor"><span>Competitor avg.</span><i><b style="width:${Math.min(92,item.pillarScore+18)}%"></b></i><strong>${Math.min(92,item.pillarScore+18)}</strong></div></div>`;
+  if (item.evidenceType === "priority") return `${label}<div class="proof-visual priority-proof"><div class="priority-row first"><b>1</b><span><strong>Fix first</strong><small>Highest expected booking impact</small></span><em>NOW</em></div></div>`;
+  if (item.evidenceType === "conversion") return `${label}<div class="proof-visual booking-proof"><div class="booking-step done"><span>1</span><strong>Website</strong></div><i>→</i><div class="booking-step friction"><span>2</span><strong>Booking</strong></div></div>`;
+  if (item.evidenceType === "reviews") return `${label}<div class="proof-visual review-proof"><small>Preview data only. Live prospect scans never use these example values.</small></div>`;
+  if (item.evidenceType === "visibility") return `${label}<div class="proof-visual search-proof"><small>Preview data only. Live prospect scans never use these example rankings.</small></div>`;
+  return `${label}<div class="proof-visual followup-proof"><div><b>NEW LEAD</b></div><i>→</i><div><b>BOOKING</b></div></div>`;
 }
 
 function wire() {

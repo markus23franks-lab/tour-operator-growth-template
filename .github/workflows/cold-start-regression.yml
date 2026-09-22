@@ -41,6 +41,7 @@ jobs:
           node --check js/product-architecture-intelligence.js
           node --check js/action-plan-intelligence.js
           node --check js/presentation-gate.js
+          node --check netlify/functions/investigation-lab.mjs
       - name: Run cold-start product-family regression
         run: node scripts/cold-start-regression.mjs
       - name: Run dedicated research-plan regression
@@ -65,6 +66,8 @@ jobs:
         run: node scripts/action-plan-regression.mjs
       - name: Run runtime presentation-gate regression
         run: node scripts/presentation-gate-regression.mjs
+      - name: Run Investigation Lab truth-contract regression
+        run: node scripts/investigation-lab-regression.mjs
       - name: Run dossier-first research pipeline regression
         run: node scripts/research-pipeline-regression.mjs
       - name: Run operator presentation-integrity regression

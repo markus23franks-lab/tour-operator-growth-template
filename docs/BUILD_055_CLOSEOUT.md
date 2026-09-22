@@ -1,0 +1,180 @@
+# Build 055 — Cold-Start Intelligence V1 Closeout
+
+## Status
+
+**Automated implementation gate: COMPLETE**
+
+**Founder product acceptance: PENDING**
+
+Build 055 should not be merged or described as fully accepted until the founder runs the one-URL experience against several previously unseen operators and judges the resulting Snapshot credible, useful and commercially interesting.
+
+## Capability delivered
+
+Build 055 establishes the first disciplined cold-start contract for Growth Operator:
+
+```
+one public URL
+→ business identity
+→ traveler-facing geography
+→ verified product inventory
+→ commercial product families
+→ representative traveler search portfolio
+→ public market evidence
+→ evidence-aware judgment
+→ Opportunity Brain
+→ operator Snapshot
+```
+
+The operator is not expected to provide business name, location or keywords in the public Analyzer flow.
+
+## Representative search portfolio
+
+The cold-start system now selects a small representative portfolio, generally up to five searches, from verified product families and destination context.
+
+The portfolio is intentionally not a giant keyword list. It is a commercial investigation sample.
+
+Guardrails:
+- searches must map to supported inventory or destination-product combinations
+- natural traveler language only
+- CTA and page-copy fragments are rejected
+- branded product names do not automatically outrank their commercial family
+- GO does not claim these are the highest-volume searches without verified demand-volume evidence
+
+## Evidence contract
+
+Build 055 separates the search plan from the evidence returned for that plan.
+
+- `market.queries` may contain the representative query strings in cold-start profile/debug data.
+- `market.queryResults` contains the corresponding evidence rows when Build 055 has executed the checks.
+- Legacy Intelligence Lab payloads may still expose object-shaped evidence rows in `market.queries`.
+- Opportunity Brain V2.2 prefers `market.queryResults` and only falls back to object-shaped legacy `market.queries`.
+- String query arrays can never masquerade as verified evidence.
+
+This compatibility rule allows the current Lab to remain useful without weakening the new cold-start evidence boundary.
+
+## Judgment contract
+
+Discovery evidence follows these rules:
+
+- provider failure or empty retrieval remains **UNKNOWN**
+- one observed gap does not automatically become a business opportunity
+- mixed evidence remains mixed/unresolved
+- repeated commercially meaningful gaps can become an opportunity
+- strong observed visibility can be explicitly healthy
+- healthy visibility does not cause GO to manufacture SEO work
+- exact positions apply only to the exact query/result set observed
+
+Pricing, Trust and Conversion remain separate evidence senses feeding the same Opportunity Brain.
+
+Pricing requires comparable-product validation before GO recommends a price change.
+
+Public conversion signals establish a foundation; they do not prove actual conversion performance.
+
+Trust evidence distinguishes the operator's reputation from competitor evidence.
+
+## Zero-input handoff
+
+The Analyzer → Intelligence Lab → Snapshot handoff now preserves the representative portfolio selected by Build 055.
+
+In the one-URL autopilot path:
+- the handoff prefers `pipelineDebug.selectedQueries`
+- values are normalized and deduplicated
+- malformed queries are rejected
+- the portfolio is capped at five
+- legacy Intelligence Lab demand expansion is disabled for that path
+- evidence objects are never serialized into keyword text
+
+This prevents five deliberate representative searches from silently becoming a broader legacy ten-query portfolio before the Snapshot is created.
+
+## Opportunity Brain behavior
+
+Opportunity Brain V2.2 consumes Discovery, Pricing, Trust and Conversion and chooses the strongest defensible next investigation.
+
+Important behavior:
+- UNKNOWN is preserved
+- public findings are not automatically promoted into work
+- pricing can lead when public evidence supports a pricing-power investigation
+- conversion remains unresolved without performance data
+- when discovery is healthy and the public booking foundation exists, GO can move toward the next growth edge instead of inventing a weakness
+- reliable operator-specific ROI remains gated on connected first-party economics
+
+## Automated regression coverage
+
+The Build 055 workflow currently runs:
+
+1. JavaScript syntax checks across the cold-start, judgment, handoff, Opportunity Brain, Snapshot brief and Intelligence Lab handoff surfaces.
+2. Nine cross-category product-family/query fixtures:
+   - land/adventure
+   - water/tour/charter
+   - food/culinary
+   - off-road
+   - wildlife/sightseeing
+   - museum/admission
+   - sightseeing bus
+   - equipment rentals
+   - history/walking tours
+3. Opportunity Brain evidence-integrity regression.
+4. Analyzer portfolio-level judgment regression.
+5. Zero-input handoff regression.
+
+The suite protects:
+- provider failure → UNKNOWN
+- single gap → unresolved
+- mixed evidence → unresolved
+- repeated meaningful gaps → opportunity
+- strong visibility → healthy
+- insufficient verified coverage → unresolved
+- Build 055 `queryResults` evidence contract
+- string query arrays cannot become evidence
+- representative portfolio preservation through zero-input handoff
+- CTA/page-copy leakage rejection
+- no legacy demand re-expansion in the autopilot path
+
+## Known V1 boundaries
+
+Build 055 does not claim:
+- verified search volume
+- exhaustive discovery-channel coverage
+- actual conversion rate
+- operator-specific revenue impact from public evidence alone
+- complete comparable-product pricing certainty
+- complete first-party business understanding
+
+Those are intentional evidence boundaries, not reasons to manufacture precision.
+
+## Founder acceptance test
+
+The next founder test should use several previously unseen and diverse operators.
+
+For each operator, judge:
+
+1. **Business understanding** — Did GO understand what the business actually sells and where it operates?
+2. **Search credibility** — Are the representative searches commercially believable?
+3. **Evidence credibility** — Are observed wins, gaps and unknowns scoped correctly?
+4. **Judgment quality** — Does GO distinguish healthy, mixed and problematic evidence without forcing a weakness?
+5. **Operator value** — Does the Snapshot make the operator want GO to keep working?
+
+The Analyzer V1 product standard remains approximately **4 of 5 unfamiliar cold analyses credible enough to discuss with the operator without operator-specific tuning**.
+
+## After acceptance
+
+Once founder testing clears that threshold:
+
+1. freeze Cold-Start Intelligence / Analyzer V1 as a dedicated build phase
+2. merge Build 055
+3. move primary product effort to Operator Snapshot / Growth Score V2
+4. continue Analyzer intelligence as a subsystem that improves through regression fixtures and real operator learning rather than endless dedicated tuning
+
+Build 055 is infrastructure for the larger Growth Operator loop:
+
+```
+public investigation
+→ Growth Snapshot
+→ prioritized opportunity
+→ Growth Review
+→ connected baseline
+→ GO execution
+→ measured impact
+→ memory
+→ next priority
+```

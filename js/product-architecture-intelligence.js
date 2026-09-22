@@ -6,7 +6,7 @@ const tokens=v=>new Set(clean(v).toLowerCase().split(/[^a-z0-9]+/).filter(x=>x.l
 function sameFamily(a,b){const A=tokens(a),B=tokens(b);if(!A.size||!B.size)return clean(a).toLowerCase()===clean(b).toLowerCase();let hit=0;for(const x of A)if(B.has(x))hit++;return hit/Math.min(A.size,B.size)>=.6}
 function build({dossier,competitors=[],positioningComparison,competition}={}){
  const qualified=(competition?.market?.sample||[]).map(x=>clean(x.name).toLowerCase()).filter(Boolean);
- const nameMatch=(a,b)=>{a=clean(a).toLowerCase();b=clean(b).toLowerCase();return a&&b&&(a===b||a.includes(b)||b.includes(a))};
+ const nameMatch=(a,b)=>{a=clean(a).toLowerCase();b=clean(b).toLowerCase();return a&&b&&(a===b||(Math.min(a.length,b.length)>=5&&(a.includes(b)||b.includes(a))))};
  const own=dossier?.products||[],rivals=(competitors||[]).filter(c=>(c.products||[]).length&&qualified.some(name=>nameMatch(name,c.name)));
  const ownFamilies=[...new Set(own.map(p=>clean(p.family||p.name).toLowerCase()).filter(Boolean))];
  const rivalFamilies=new Map();

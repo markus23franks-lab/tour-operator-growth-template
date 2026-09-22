@@ -47,6 +47,8 @@ jobs:
         run: node scripts/positioning-regression.mjs
       - name: Run business-dossier regression
         run: node scripts/business-dossier-regression.mjs
+      - name: Run operator presentation-integrity regression
+        run: node scripts/presentation-integrity-regression.mjs
 
       - name: Run Opportunity Brain evidence-integrity regression
         run: node scripts/opportunity-brain-regression.mjs

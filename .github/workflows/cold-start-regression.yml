@@ -25,6 +25,8 @@ jobs:
           node --check js/zero-input-operator-flow.js
           node --check js/opportunity-brain.js
           node --check js/operator-opportunity-brief.js
+          node --check js/opportunity-brain-ui.js
+          node --check js/discovery-harness.js
       - name: Run cold-start product-family regression
         run: node scripts/cold-start-regression.mjs
       - name: Run Opportunity Brain evidence-integrity regression

@@ -2004,11 +2004,12 @@ async function runDedicatedOperatorResearch(ctx, market, acquisition) {
   const trustPlan=window.GOTrustIntelligence?.plan?.({businessName:ctx.businessName,location:ctx.businessContext?.location||'',websiteQueries:discoveryQueries})||[];
   const [pricingMarket,trustMarket]=await Promise.all([runResearchQueries(ctx,pricingPlan,'pricing'),runResearchQueries(ctx,trustPlan,'trust')]);
   const conversion=window.GOConversionIntelligence?.build?.(acquisition)||null;
+  const competition=window.GOCompetitiveIntelligence?.build?.({market})||null;
   const pricing=window.GOPricingIntelligence?.build?.({pricingMarket,businessName:ctx.businessName,website:ctx.url})||null;
   const trust=window.GOTrustIntelligence?.build?.({trustMarket:trustMarket||{queries:[],target:market?.target||null},businessName:ctx.businessName,website:ctx.url})||null;
   const discoveryOpportunity=buildMarketFindings({businessName:ctx.businessName,url:ctx.url,offers:ctx.offers||[],prices:extractPrices(ctx.combined||''),businessContext:ctx.businessContext||{},market})?.find?.(x=>x.pillar==='Visibility')||null;
   const brain=window.GOOpportunityBrain?.build?.({market,discoveryOpportunity,pricing,trust,conversion})||null;
-  return {version:'GO-OPERATOR-RESEARCH-V2',pricing,trust,conversion,brain,researchPlans:{discovery:discoveryQueries.slice(0,5),pricing:pricingPlan,trust:trustPlan},evidence:{pricingMarket:pricingMarket?{provider:pricingMarket.provider||'SerpApi',observedAt:pricingMarket.observedAt||'',queries:pricingMarket.queries||[]}:null,trustMarket:trustMarket?{provider:trustMarket.provider||'SerpApi',observedAt:trustMarket.observedAt||'',queries:trustMarket.queries||[],target:trustMarket.target||null}:null}};
+  return {version:'GO-OPERATOR-RESEARCH-V3',pricing,trust,conversion,competition,brain,researchPlans:{discovery:discoveryQueries.slice(0,5),pricing:pricingPlan,trust:trustPlan},evidence:{pricingMarket:pricingMarket?{provider:pricingMarket.provider||'SerpApi',observedAt:pricingMarket.observedAt||'',queries:pricingMarket.queries||[]}:null,trustMarket:trustMarket?{provider:trustMarket.provider||'SerpApi',observedAt:trustMarket.observedAt||'',queries:trustMarket.queries||[],target:trustMarket.target||null}:null}};
 }
 function brainFinding(c) {
   if(!c)return null;

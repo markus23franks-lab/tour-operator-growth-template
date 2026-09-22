@@ -196,3 +196,31 @@ public investigation
 → memory
 → next priority
 ```
+
+
+## V2 architecture correction — 2026-09-22
+
+Founder product acceptance for the original Build 055 experience is **not complete and must not be inferred from green CI**. Dockside DVI and Louisville Food Tours exposed a deeper product problem: GO could have mechanically valid search evidence while still misunderstanding the operator or producing research that was not commercially interesting. Those tests superseded the earlier expectation that Build 055 could close on query-quality alone.
+
+The cold-start architecture is now explicitly:
+
+```
+UNDERSTAND
+→ RESEARCH
+→ COMPARE
+→ JUDGE
+→ RECOMMEND
+→ EXPLAIN VALUE
+```
+
+A formal Business Dossier is now built before market research. It carries business identity, operating market, commercial transaction model, commercial-truth product inventory, booking-provider evidence and first-party provenance. If identity, commercial inventory or operating market cannot be established, GO stops before competitor/search judgment rather than allowing a bad business model to contaminate downstream research.
+
+Pricing has also gained a separate comparable-offer layer. Loose public price medians may remain directional evidence, but a pricing-power opportunity is suppressed unless GO can establish a like-for-like set across compatible product family and transaction type; observed duration/format differences must also be compatible. Multiple independent sources are required before the set is promoted.
+
+Competitive pressure and relative positioning now survive into Opportunity Brain as strategic context without automatically becoming fake opportunities. Positioning parity can change what GO investigates next while remaining distinct from a verified revenue constraint.
+
+The Analyzer now exposes an operator-facing GO Research Brief so the visible product explains the business GO believes it is operating, verified products, market context, positioning, reputation/pricing state, current judgment and evidence already working. This is the beginning of the V2 operator experience, not founder acceptance.
+
+Regression coverage now additionally protects Business Dossier integrity, dossier-first pipeline ordering, qualified competitor positioning comparison, presentation integrity and like-for-like offer comparison.
+
+**Current founder status:** no action required. Builder should continue autonomously until the one-URL experience represents a material product-capability jump. Do not ask the founder to rerun Louisville or act as a mechanical regression tester.

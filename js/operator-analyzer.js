@@ -2025,7 +2025,7 @@ async function runDedicatedOperatorResearch(ctx, market, acquisition) {
   const competitorPositioning=(market?.competitors||[]).filter(x=>qualifiedNames.some(name=>namesLikelyMatch(name,x.name))).map(x=>({name:x.name,positioning:window.GOPositioningIntelligence?.build?.({pages:x.pageEvidence||x.pages||[]})||null})).filter(x=>x.positioning?.signals?.length);
   const positioningComparison=window.GOPositioningComparison?.build?.({operator:positioning,competitors:competitorPositioning})||null;
   const pricing=window.GOPricingIntelligence?.build?.({pricingMarket,businessName:ctx.businessName,website:ctx.url})||null;
-  const offerComparison=window.GOOfferComparison?.build?.({dossier,pricing})||null;
+  const offerComparison=window.GOOfferComparison?.build?.({dossier,pricing,competitors:market?.competitors||[]})||null;
   if(pricing&&pricing.state==='PRICING_POWER_CANDIDATE'&&offerComparison?.state!=='COMPARABLE_SET_VERIFIED'){pricing.state='INSUFFICIENT_EVIDENCE';pricing.headline='GO found directional pricing evidence, but not a verified like-for-like offer set.';pricing.recommendation='Do not recommend a price move until product family, transaction type and observed format details are comparable.';}
   const trust=window.GOTrustIntelligence?.build?.({trustMarket:trustMarket||{queries:[],target:market?.target||null},businessName:ctx.businessName,website:ctx.url,qualifiedCompetitors:competition?.market?.sample||[]})||null;
   const discoveryOpportunity=buildMarketFindings({businessName:ctx.businessName,url:ctx.url,offers:ctx.offers||[],prices:extractPrices(ctx.combined||''),businessContext:ctx.businessContext||{},market})?.find?.(x=>x.pillar==='Visibility')||null;

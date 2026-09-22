@@ -57,7 +57,7 @@
   return {sense:'CONVERSION',label:'Website sales',state:'FOUNDATION_OBSERVED',finding:'GO found the main public ingredients customers need to make a booking decision.',evidenceStrength:'MEDIUM',commercialImportance:'HIGH',confidence:'MEDIUM',economicImportance:'POTENTIALLY_HIGH',actionability:'INVESTIGATE_DEEPER',requiredNextEvidence:'Visits, booking starts, abandonment, mobile behavior and completed bookings',action:'Find out whether the traffic you already have can produce more bookings.',diagnostics:{present:c.present,total:c.total,pages:c.pages}}
  }
 
- function build({market,discoveryOpportunity,pricing:price,trust:trustIntel,conversion:conv}){
+ function build({market,discoveryOpportunity,pricing:price,trust:trustIntel,conversion:conv,competition,positioningComparison}){
   const candidates=[discovery(market,discoveryOpportunity),pricing(price),trust(trustIntel),conversion(conv)],opportunities=candidates.filter(x=>x.state==='OPPORTUNITY'),unknown=candidates.filter(x=>x.state==='UNKNOWN'),d=candidates[0],p=candidates[1],t=candidates[2],c=candidates[3];
   let primary,headline,summary,mode='INVESTIGATION';
   if(opportunities.length){
@@ -83,8 +83,12 @@
    headline='GO has not found an obvious weakness yet — so it is looking for the next growth edge.';
    summary='GO will keep investigating where more bookings, better pricing or stronger economics may be hiding.';
   }
+  const strategicContext=[];
+  if(competition?.state==='REPEATED_COMPETITOR_PRESSURE')strategicContext.push({type:'COMPETITOR_PRESSURE',headline:competition.headline,summary:competition.summary,action:competition.action,evidenceStrength:'MEDIUM'});
+  if(positioningComparison?.state==='POTENTIAL_DIFFERENTIATION')strategicContext.push({type:'POSITIONING_LEAD',headline:positioningComparison.headline,summary:positioningComparison.summary,action:positioningComparison.action,evidenceStrength:'MEDIUM'});
+  if(positioningComparison?.state==='CATEGORY_PARITY')strategicContext.push({type:'POSITIONING_PARITY',headline:positioningComparison.headline,summary:positioningComparison.summary,action:positioningComparison.action,evidenceStrength:'MEDIUM'});
   const roi={state:'NEEDS_CONNECTED_DATA',headline:'GO needs your real booking data to put a reliable dollar value on the next opportunity.',needs:['website traffic','booking starts and completed bookings','product-level revenue or booking value','margin or capacity where relevant']};
-  return {version:'GO-OPPORTUNITY-BRAIN-V2.3',mode,headline,summary,primary,opportunities,unresolved:unknown,candidates,roi,decisionPrinciple:'GO promotes a public finding into an opportunity only when the evidence shows a repeated, commercially meaningful pattern. UNKNOWN and mixed evidence stay unresolved instead of becoming work.'}
+  return {version:'GO-OPPORTUNITY-BRAIN-V2.4',mode,headline,summary,primary,opportunities,unresolved:unknown,candidates,strategicContext,roi,decisionPrinciple:'GO promotes a public finding into an opportunity only when the evidence shows a repeated, commercially meaningful pattern. UNKNOWN and mixed evidence stay unresolved instead of becoming work.'}
  }
  global.GOOpportunityBrain={build};
 })(window);

@@ -56,6 +56,12 @@ function installAnalyzerBridge(){
     if(!profile)return;
     event.preventDefault();
     event.stopImmediatePropagation();
+    const research=profile.researchIntelligence;
+    if(research?.brain?.candidates?.length){
+      localStorage.setItem('growthOperatorOpportunityBrain',JSON.stringify({savedAt:new Date().toISOString(),source:'operator-analyzer-direct',website:profile.website||profile.url||'',businessName:profile.businessName||profile.name||'',location:profile.publicProfile?.location||profile.businessContext?.location||'',brain:research.brain,pricing:research.pricing||null,trust:research.trust||null,conversion:research.conversion||null,market:profile.marketEvidence||null,researchPlans:research.researchPlans||null}));
+      location.href='growth-snapshot.html?source=operator-analyzer-direct';
+      return;
+    }
     localStorage.removeItem('growthOperatorOpportunityBrain');
     location.href='discovery-harness.html?auto=1';
   },true);

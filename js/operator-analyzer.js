@@ -2284,6 +2284,10 @@ function extractBusinessName(markdown, url) {
   const addCandidate = (value, weight, source) => {
     const cleaned = cleanBusinessIdentity(value);
     if (!cleaned || cleaned.length < 3 || cleaned.length > 90) return;
+    // Broken reader fragments such as "the C" are not credible business identities.
+    // Prefer stronger title/domain/entity evidence rather than letting a malformed fragment
+    // become operator-facing copy.
+    if (/^(?:the\s+)?[a-z]$/i.test(cleaned) || /^the\s+[a-z]$/i.test(cleaned)) return;
 
     const key = cleaned.toLowerCase().replace(/[^a-z0-9]/g, "");
     if (!key) return;
@@ -2477,15 +2481,23 @@ function inferBusinessContext(text, home, url) {
   const haystack = `${home}\n${text}`;
   const location = inferDestinationLocation(haystack) || extractLocation(text) || "";
 
+  const rentalTransaction = /\b(?:rent|rents|rental|rentals|hire|self[- ]drive|bareboat)\b/i.test(haystack);
+  const watercraft = /\b(?:boat|powerboat|pontoon|catamaran|sailboat|yacht|vessel|dinghy)\b/i.test(haystack);
   const types = [
     ["guided sightseeing", /(sightseeing|celebrity homes?|modernism|architecture|legends? and icons?|city tour)/i],
     ["transportation / bus tours", /(charter bus|motorcoach|sprinter|luxury van|transportation|bus tour)/i],
+    ["boat / water rentals", /\b(?:boat|powerboat|pontoon|catamaran|sailboat|yacht|vessel|dinghy)\b/i],
     ["boat / water / diving experiences", /(boat|powerboat|catamaran|snorkel|scuba|div(?:e|ing)|sailing|yacht|fishing|stingray|starfish|reef|cruise)/i],
     ["outdoor adventure", /(jeep|hummer|atv|utv|off-road|rafting|kayak|hiking|adventure tour)/i]
   ];
-  const matchedTypes = types.filter(([, regex]) => regex.test(haystack)).map(([label]) => label);
+  let matchedTypes = types.filter(([, regex]) => regex.test(haystack)).map(([label]) => label);
+  if (rentalTransaction && watercraft) {
+    // The transaction model matters more than incidental activity language. A boat rental
+    // business may mention snorkeling or sailing without selling guided snorkeling/sailing tours.
+    matchedTypes = ["boat / water rentals", ...matchedTypes.filter(label => label !== "boat / water rentals" && label !== "boat / water / diving experiences")];
+  }
   const businessType = matchedTypes.length > 1
-    ? `multi-segment tour operator (${matchedTypes.slice(0, 3).join(" + ")})`
+    ? `multi-segment operator (${matchedTypes.slice(0, 3).join(" + ")})`
     : matchedTypes.length === 1
       ? `${matchedTypes[0]} operator`
       : "tour and activity operator";

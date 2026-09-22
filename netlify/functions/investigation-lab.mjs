@@ -1,8 +1,8 @@
 import {normalizeSerpEvidence,buildInvestigationSignals} from "./lib/investigation-core.mjs";
 import {collectSearchSurfaces} from "./lib/serpapi-investigation-adapter.mjs";
 import {collectFirstPartyEvidence} from "./lib/first-party-investigation-adapter.mjs";
-import {buildBusinessDossierWithModel} from "./lib/research-model-adapter.mjs";
-const LAB_BUILD_ID = "GO-INVESTIGATION-LAB-V0.4";
+import {buildBusinessDossierWithModel,buildInvestigationPlanWithModel} from "./lib/research-model-adapter.mjs";
+const LAB_BUILD_ID = "GO-INVESTIGATION-LAB-V0.5";
 const ALLOWED_SURFACES = new Set([
   "FIRST_PARTY_RENDERED","ORGANIC_SERP","LOCAL_MAPS","BUSINESS_ENTITY",
   "REVIEW_REPUTATION","COMPETITOR_SITE","BOOKING_FLOW","VISUAL_SCREENSHOT","OTA_MARKETPLACE"
@@ -14,6 +14,16 @@ export default async (request) => {
   if (request.method !== "POST") return json(405,{ok:false,error:"Method not allowed"});
   let body={}; try{body=await request.json()}catch{return json(400,{ok:false,error:"Invalid JSON body"})}
   if(body.action==="runtime") return json(200,{ok:true,buildId:LAB_BUILD_ID,architecture:"BACKEND_INVESTIGATION_LAB",observedAt:new Date().toISOString()});
+  if(body.action==="plan-investigation"){
+    const dossier=body.dossier||null,records=Array.isArray(body.records)?body.records:[],signals=body.signals||{};
+    if(!dossier)return json(400,{ok:false,error:"dossier is required"});
+    const validation=validateEvidenceRecords(records);if(!validation.ok)return json(422,{ok:false,buildId:LAB_BUILD_ID,validation});
+    if(!process.env.OPENAI_API_KEY)return json(409,{ok:false,buildId:LAB_BUILD_ID,state:"MODEL_NOT_CONFIGURED",error:"OPENAI_API_KEY is required for adaptive investigation planning"});
+    try{
+      const modeled=await buildInvestigationPlanWithModel({dossier,evidence:records,signals,apiKey:process.env.OPENAI_API_KEY});
+      return json(200,{ok:true,buildId:LAB_BUILD_ID,state:"INVESTIGATION_PLANNED",plan:modeled.plan,model:{name:modeled.model,responseId:modeled.responseId,usage:modeled.usage}});
+    }catch(error){return json(502,{ok:false,buildId:LAB_BUILD_ID,error:error instanceof Error?error.message:String(error)})}
+  }
   if(body.action==="understand-business"){
     const website=String(body.website||"").trim();
     if(!website)return json(400,{ok:false,error:"website is required"});

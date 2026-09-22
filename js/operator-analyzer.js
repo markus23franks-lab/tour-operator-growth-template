@@ -2017,8 +2017,8 @@ async function runDedicatedOperatorResearch(ctx, market, acquisition) {
   const [pricingMarket,trustMarket]=await Promise.all([runResearchQueries(ctx,pricingPlan,'pricing'),runResearchQueries(ctx,trustPlan,'trust')]);
   const conversion=window.GOConversionIntelligence?.build?.(acquisition)||null;
   const competition=window.GOCompetitiveIntelligence?.build?.({market})||null;
-  const qualifiedNames=new Set((competition?.market?.sample||[]).map(x=>String(x.name||'').toLowerCase()));
-  const competitorPositioning=(market?.competitors||[]).filter(x=>qualifiedNames.has(String(x.name||'').toLowerCase())).map(x=>({name:x.name,positioning:window.GOPositioningIntelligence?.build?.({pages:x.pageEvidence||x.pages||[]})||null})).filter(x=>x.positioning?.signals?.length);
+  const qualifiedNames=(competition?.market?.sample||[]).map(x=>x.name).filter(Boolean);
+  const competitorPositioning=(market?.competitors||[]).filter(x=>qualifiedNames.some(name=>namesLikelyMatch(name,x.name))).map(x=>({name:x.name,positioning:window.GOPositioningIntelligence?.build?.({pages:x.pageEvidence||x.pages||[]})||null})).filter(x=>x.positioning?.signals?.length);
   const positioningComparison=window.GOPositioningComparison?.build?.({operator:positioning,competitors:competitorPositioning})||null;
   const pricing=window.GOPricingIntelligence?.build?.({pricingMarket,businessName:ctx.businessName,website:ctx.url})||null;
   const offerComparison=window.GOOfferComparison?.build?.({dossier,pricing})||null;

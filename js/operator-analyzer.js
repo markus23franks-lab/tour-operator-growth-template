@@ -2006,11 +2006,14 @@ async function runDedicatedOperatorResearch(ctx, market, acquisition) {
   const conversion=window.GOConversionIntelligence?.build?.(acquisition)||null;
   const competition=window.GOCompetitiveIntelligence?.build?.({market})||null;
   const positioning=window.GOPositioningIntelligence?.build?.(acquisition)||null;
+  const qualifiedNames=new Set((competition?.market?.sample||[]).map(x=>String(x.name||'').toLowerCase()));
+  const competitorPositioning=(market?.competitors||[]).filter(x=>qualifiedNames.has(String(x.name||'').toLowerCase())).map(x=>({name:x.name,positioning:window.GOPositioningIntelligence?.build?.({pages:x.pageEvidence||x.pages||[]})||null})).filter(x=>x.positioning?.signals?.length);
+  const positioningComparison=window.GOPositioningComparison?.build?.({operator:positioning,competitors:competitorPositioning})||null;
   const pricing=window.GOPricingIntelligence?.build?.({pricingMarket,businessName:ctx.businessName,website:ctx.url})||null;
   const trust=window.GOTrustIntelligence?.build?.({trustMarket:trustMarket||{queries:[],target:market?.target||null},businessName:ctx.businessName,website:ctx.url,qualifiedCompetitors:competition?.market?.sample||[]})||null;
   const discoveryOpportunity=buildMarketFindings({businessName:ctx.businessName,url:ctx.url,offers:ctx.offers||[],prices:extractPrices(ctx.combined||''),businessContext:ctx.businessContext||{},market})?.find?.(x=>x.pillar==='Visibility')||null;
   const brain=window.GOOpportunityBrain?.build?.({market,discoveryOpportunity,pricing,trust,conversion})||null;
-  return {version:'GO-OPERATOR-RESEARCH-V4',pricing,trust,conversion,competition,positioning,brain,researchPlans:{discovery:discoveryQueries.slice(0,5),pricing:pricingPlan,trust:trustPlan},evidence:{pricingMarket:pricingMarket?{provider:pricingMarket.provider||'SerpApi',observedAt:pricingMarket.observedAt||'',queries:pricingMarket.queries||[]}:null,trustMarket:trustMarket?{provider:trustMarket.provider||'SerpApi',observedAt:trustMarket.observedAt||'',queries:trustMarket.queries||[],target:trustMarket.target||null}:null}};
+  return {version:'GO-OPERATOR-RESEARCH-V5',pricing,trust,conversion,competition,positioning,positioningComparison,brain,researchPlans:{discovery:discoveryQueries.slice(0,5),pricing:pricingPlan,trust:trustPlan},evidence:{pricingMarket:pricingMarket?{provider:pricingMarket.provider||'SerpApi',observedAt:pricingMarket.observedAt||'',queries:pricingMarket.queries||[]}:null,trustMarket:trustMarket?{provider:trustMarket.provider||'SerpApi',observedAt:trustMarket.observedAt||'',queries:trustMarket.queries||[],target:trustMarket.target||null}:null}};
 }
 function brainFinding(c) {
   if(!c)return null;

@@ -68,17 +68,22 @@
    primary={...c,actionability:'GROWTH_EDGE',action:'Find out if the demand you already have can produce more revenue before spending more to acquire traffic.',requiredNextEvidence:'Website traffic, booking starts, completed bookings, product mix and margins'};
    headline='You are already doing many of the obvious things right. GO is looking for the next layer of growth.';
    summary=`${d.finding} ${p.finding} ${t.finding} The next opportunity is more likely to come from monetizing existing demand better than from simply chasing more traffic.`;
+  }else if(candidates.some(x=>x.state!=='UNKNOWN')){
+   const known=candidates.filter(x=>x.state!=='UNKNOWN');
+   primary=known.find(x=>x.state==='HEALTHY_OR_ADVANTAGE')||known.find(x=>x.state==='HEALTHY')||known.find(x=>x.state==='FOUNDATION_OBSERVED')||known[0];
+   headline='GO found evidence of what is already working — and will use that advantage to look for the next growth edge.';
+   summary=`${primary.finding} GO will preserve proven strengths instead of manufacturing a weakness; unresolved areas stay on the research list until the evidence is strong enough to change a business decision.`;
   }else if(unknown.some(x=>x.commercialImportance==='HIGH')){
    primary=unknown.find(x=>x.commercialImportance==='HIGH');
-   headline='GO found a high-value area that needs better data before making a recommendation.';
-   summary=`${primary.finding} GO will not invent a weakness just to create work.`;
+   headline='GO has not found a defensible public growth move yet.';
+   summary=`${primary.finding} GO will keep the result unresolved rather than invent work from weak evidence.`;
   }else{
-   primary=candidates.find(x=>x.actionability==='INVESTIGATE_DEEPER')||unknown[0]||d;
+   primary=unknown[0]||d;
    headline='GO has not found an obvious weakness yet — so it is looking for the next growth edge.';
-   summary='Healthy fundamentals are useful evidence. GO will keep investigating where more bookings, better pricing or stronger economics may be hiding.';
+   summary='GO will keep investigating where more bookings, better pricing or stronger economics may be hiding.';
   }
   const roi={state:'NEEDS_CONNECTED_DATA',headline:'GO needs your real booking data to put a reliable dollar value on the next opportunity.',needs:['website traffic','booking starts and completed bookings','product-level revenue or booking value','margin or capacity where relevant']};
-  return {version:'GO-OPPORTUNITY-BRAIN-V2.2',mode,headline,summary,primary,opportunities,unresolved:unknown,candidates,roi,decisionPrinciple:'GO promotes a public finding into an opportunity only when the evidence shows a repeated, commercially meaningful pattern. UNKNOWN and mixed evidence stay unresolved instead of becoming work.'}
+  return {version:'GO-OPPORTUNITY-BRAIN-V2.3',mode,headline,summary,primary,opportunities,unresolved:unknown,candidates,roi,decisionPrinciple:'GO promotes a public finding into an opportunity only when the evidence shows a repeated, commercially meaningful pattern. UNKNOWN and mixed evidence stay unresolved instead of becoming work.'}
  }
  global.GOOpportunityBrain={build};
 })(window);

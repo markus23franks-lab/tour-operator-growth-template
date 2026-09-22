@@ -2,7 +2,7 @@
 'use strict';
 const clean=v=>String(v||'').replace(/\s+/g,' ').trim();
 const transaction=(ctx={})=>clean(ctx.transactionType||ctx.businessContext?.transactionType||'');
-function dominantTransaction(products=[],ctx={}){const counts={};for(const p of products){const t=clean(p.transactionType).toLowerCase();if(t)counts[t]=(counts[t]||0)+1}const ranked=Object.entries(counts).sort((a,b)=>b[1]-a[1]);if(ranked.length&&(!ranked[1]||ranked[0][1]>ranked[1][1]))return ranked[0][0];return transaction(ctx)}
+function dominantTransaction(products=[],ctx={}){const counts={};for(const p of products){const t=clean(p.transactionType).toLowerCase();if(t)counts[t]=(counts[t]||0)+1}const ranked=Object.entries(counts).sort((a,b)=>b[1]-a[1]);if(ranked.length===1)return ranked[0][0];if(ranked.length>1&&ranked[0][1]===ranked[1][1])return 'mixed';if(ranked.length>1)return ranked[0][0];return transaction(ctx)}
 function productRows(ctx={}){
  const raw=[...(ctx.commercialTruth?.primaryProducts||[]),...(ctx.products||[]),...(ctx.offers||[])],seen=new Set(),out=[];
  for(const item of raw){const name=clean(typeof item==='string'?item:item?.name||item?.label);if(!name)continue;const k=name.toLowerCase();if(seen.has(k))continue;seen.add(k);out.push({name,transactionType:clean(item?.transactionType||transaction(ctx)),family:clean(item?.family||item?.activity||item?.intent||''),price:item?.price||null,duration:item?.duration||null,format:clean(item?.format||''),urls:Array.isArray(item?.urls)?item.urls.filter(Boolean):[],evidence:item?.evidence||'first-party public page'});}

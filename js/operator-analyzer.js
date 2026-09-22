@@ -3170,7 +3170,7 @@ function renderSearchEvidence(item) {
 function renderResearchRead(profile) {
   const host=document.getElementById("research-read");
   if(!host)return;
-  const r=profile.researchIntelligence||{},d=r.dossier||{},brain=r.brain||{},comp=r.competition||{},pos=r.positioningComparison||{},trust=r.trust||{},pricing=r.pricing||{};
+  const r=profile.researchIntelligence||{},d=r.dossier||{},brain=r.brain||{},comp=r.competition||{},pos=r.positioningComparison||{},trust=r.trust||{},pricing=r.pricing||{},offers=r.offerComparison||{};
   if(!brain?.candidates?.length){host.innerHTML="";host.hidden=true;return;}
   const verified=(d.products||[]).map(x=>x.name).filter(Boolean).slice(0,4);
   const lead=comp?.leader?.name||"No repeated direct rival promoted";
@@ -3184,7 +3184,7 @@ function renderResearchRead(profile) {
       <div><small>COMMERCIAL TRUTH</small><strong>${escapeHtml([d.business?.transactionType,d.business?.businessType,d.business?.location].filter(Boolean).join(" · ")||"Still resolving")}</strong><p>${escapeHtml(verified.length?"Verified products: "+verified.join(" · "):"Commercial inventory needs stronger evidence.")}</p></div>
       <div><small>MARKET CONTEXT</small><strong>${escapeHtml(lead)}</strong><p>${escapeHtml(comp.summary||"GO has not promoted a competitor without repeat commercial evidence.")}</p></div>
       <div><small>POSITIONING</small><strong>${escapeHtml(posText)}</strong><p>${escapeHtml(pos.summary||r.positioning?.summary||"GO only calls positioning differentiated after comparison.")}</p></div>
-      <div><small>REPUTATION + PRICING</small><strong>${escapeHtml([trust.state&&"Trust: "+trust.state.replaceAll("_"," "),pricing.state&&"Pricing: "+pricing.state.replaceAll("_"," ")].filter(Boolean).join(" · ")||"Still resolving")}</strong><p>Pricing stays directional until comparable offers are verified. Reputation uses qualified direct competitors only.</p></div>
+      <div><small>REPUTATION + PRICING</small><strong>${escapeHtml([trust.state&&"Trust: "+trust.state.replaceAll("_"," "),pricing.state&&"Pricing: "+pricing.state.replaceAll("_"," ")].filter(Boolean).join(" · ")||"Still resolving")}</strong><p>\${escapeHtml(offers.headline||'Pricing stays directional until comparable offers are verified.')} Reputation uses qualified direct competitors only.</p></div>
     </div>
     <div class="research-decision"><small>GO'S CURRENT JUDGMENT</small><strong>${escapeHtml(primary.finding||brain.headline||"Keep investigating")}</strong><p>${escapeHtml(primary.action||brain.summary||"GO has not found a defensible move yet.")}</p>${strength?.finding?`<em>Already working: ${escapeHtml(strength.finding)}</em>`:""}</div>`;
 }

@@ -2053,6 +2053,12 @@ function buildUniversalProfile(url, pages, market = emptyMarket(), bookingLinkEv
   const marketFindings = buildMarketFindings({ businessName, url, offers, prices, businessContext, market });
   const heuristicOpportunities = mergeAndPrioritizeFindings(marketFindings, websiteFindings);
   const opportunities = research?.brain ? mergeBrainFindings(research.brain, heuristicOpportunities) : heuristicOpportunities;
+  const liveResearch = Boolean(research?.brain?.candidates?.length);
+  const researchPrimary = research?.brain?.primary || null;
+  const researchStrength = liveResearch ? (research.brain.candidates||[]).find(item => /^HEALTHY/.test(item.state)||item.state==='FOUNDATION_OBSERVED') : null;
+  const operatorSummary = liveResearch
+    ? [researchPrimary?.finding ? `GO's first priority: ${researchPrimary.finding}` : '', researchStrength?.finding ? `Already working: ${researchStrength.finding}` : ''].filter(Boolean).join(' ')
+    : summarizeBusiness({ businessName, offers, prices, bookingProvider, trust, opportunities, businessContext, market });
 
   return {
     businessName,
@@ -2067,7 +2073,7 @@ function buildUniversalProfile(url, pages, market = emptyMarket(), bookingLinkEv
     confidenceCopy: (market.searchPages.length || market.discoveryDocs.length)
       ? `${pages.length} operator pages + ${market.searchPages.length + market.discoveryDocs.length} external market surface${market.searchPages.length + market.discoveryDocs.length === 1 ? "" : "s"}`
       : `${pages.length} public page${pages.length === 1 ? "" : "s"} read live`,
-    summary: summarizeBusiness({ businessName, offers, prices, bookingProvider, trust, opportunities, businessContext, market }),
+    summary: operatorSummary,
     publicProfile: {
       offers: offers.slice(0, 5),
       pricing: prices.slice(0, 4),

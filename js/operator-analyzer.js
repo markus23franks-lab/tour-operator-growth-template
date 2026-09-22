@@ -2014,7 +2014,7 @@ async function runDedicatedOperatorResearch(ctx, market, acquisition) {
   const pricing=window.GOPricingIntelligence?.build?.({pricingMarket,businessName:ctx.businessName,website:ctx.url})||null;
   const trust=window.GOTrustIntelligence?.build?.({trustMarket:trustMarket||{queries:[],target:market?.target||null},businessName:ctx.businessName,website:ctx.url,qualifiedCompetitors:competition?.market?.sample||[]})||null;
   const discoveryOpportunity=buildMarketFindings({businessName:ctx.businessName,url:ctx.url,offers:ctx.offers||[],prices:extractPrices(ctx.combined||''),businessContext:ctx.businessContext||{},market})?.find?.(x=>x.pillar==='Visibility')||null;
-  const brain=window.GOOpportunityBrain?.build?.({market,discoveryOpportunity,pricing,trust,conversion})||null;
+  const brain=window.GOOpportunityBrain?.build?.({market,discoveryOpportunity,pricing,trust,conversion,competition,positioningComparison})||null;
   return {version:'GO-OPERATOR-RESEARCH-V6',dossier,pricing,trust,conversion,competition,positioning,positioningComparison,brain,researchPlans:{discovery:discoveryQueries.slice(0,5),pricing:pricingPlan,trust:trustPlan},evidence:{pricingMarket:pricingMarket?{provider:pricingMarket.provider||'SerpApi',observedAt:pricingMarket.observedAt||'',queries:pricingMarket.queries||[]}:null,trustMarket:trustMarket?{provider:trustMarket.provider||'SerpApi',observedAt:trustMarket.observedAt||'',queries:trustMarket.queries||[],target:trustMarket.target||null}:null}};
 }
 function brainFinding(c) {

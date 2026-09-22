@@ -50,6 +50,8 @@ jobs:
         run: node scripts/business-dossier-regression.mjs
       - name: Run comparable-offer regression
         run: node scripts/offer-comparison-regression.mjs
+      - name: Run dossier-first research pipeline regression
+        run: node scripts/research-pipeline-regression.mjs
       - name: Run operator presentation-integrity regression
         run: node scripts/presentation-integrity-regression.mjs
 

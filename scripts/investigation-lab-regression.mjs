@@ -1,0 +1,13 @@
+import {validateEvidenceRecord,validateEvidenceRecords,validateFinding} from '../netlify/functions/investigation-lab.mjs';
+let fail=0;const check=(name,actual,expected)=>{if(actual!==expected){fail++;console.error('FAIL',name,{actual,expected})}else console.log('PASS',name)};
+const observed={id:'ev_local_1',surface:'LOCAL_MAPS',claimType:'BUSINESS_ENTITY_OBSERVED',subject:{entityId:'e1',label:'Example Raft Co'},observation:{position:3},source:{provider:'DataForSEO',query:'example rafting tours'},observedAt:'2026-09-22T00:00:00Z',confidence:'HIGH',status:'OBSERVED'};
+const unknown={id:'ev_search_2',surface:'ORGANIC_SERP',claimType:'TARGET_PRESENCE',subject:{entityId:'e1',label:'Example Raft Co'},observation:{providerError:'timeout'},source:{provider:'Provider B',query:'example rafting tours'},observedAt:'2026-09-22T00:00:00Z',confidence:'LOW',status:'UNKNOWN'};
+const contradiction={id:'ev_entity_3',surface:'BUSINESS_ENTITY',claimType:'ENTITY_MATCH',subject:{entityId:'e2',label:'Example Raft Company'},observation:{sameBusiness:null},source:{provider:'GO Reconciler',providerRef:'reconcile:e1:e2'},observedAt:'2026-09-22T00:00:00Z',confidence:'MEDIUM',status:'CONTRADICTED'};
+check('observed evidence passes',validateEvidenceRecord(observed).ok,true);
+check('observed fact without provenance fails',validateEvidenceRecord({...observed,source:{provider:'x'}}).ok,false);
+check('duplicate evidence ids fail',validateEvidenceRecords([observed,{...observed}]).ok,false);
+check('investigation can cite mixed/unknown evidence',validateFinding({type:'INVESTIGATE',headline:'Resolve entity identity',evidenceIds:['ev_local_1','ev_entity_3']},[observed,contradiction]).ok,true);
+check('validated opportunity cannot rest on UNKNOWN',validateFinding({type:'VALIDATED_OPPORTUNITY',headline:'Fix visibility',evidenceIds:['ev_search_2']},[unknown]).ok,false);
+check('model cannot cite nonexistent evidence',validateFinding({type:'INVESTIGATE',headline:'Investigate something',evidenceIds:['ev_fake']},[observed]).ok,false);
+check('economic claim requires boundary',validateFinding({type:'INVESTIGATE',headline:'Potential upside',evidenceIds:['ev_local_1'],economicClaim:'Could add revenue'},[observed]).ok,false);
+if(fail){console.error('\n'+fail+' Investigation Lab checks failed');process.exit(1)}console.log('\nInvestigation Lab truth contract passed');

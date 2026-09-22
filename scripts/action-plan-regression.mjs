@@ -1,0 +1,7 @@
+import fs from 'node:fs';import vm from 'node:vm';const box={window:{}};vm.createContext(box);vm.runInContext(fs.readFileSync(new URL('../js/action-plan-intelligence.js',import.meta.url),'utf8'),box);const build=box.window.GOActionPlan.build;
+const none=build({brain:{},productArchitecture:{state:'NO_VERIFIED_ARCHITECTURE_GAP'}});
+const adjacent=build({brain:{},productArchitecture:{state:'ADJACENT_OFFER_PATTERN',headline:'Private tours repeat',action:'Investigate private format'}});
+const pricing=build({brain:{primary:{sense:'PRICING',state:'OPPORTUNITY',finding:'Comparable pricing may support more revenue',action:'Test price',requiredNextEvidence:'margin',confidence:'MEDIUM'}},offerComparison:{state:'COMPARABLE_SET_VERIFIED',headline:'Like-for-like set verified',action:'Validate economics'}});
+const booking=build({brain:{},bookingJourney:{state:'BOOKING_PATH_OBSERVED',headline:'Booking path observed',action:'Measure funnel'}});
+const cases=[['no evidence produces no invented action',none.state,'KEEP_RESEARCHING'],['adjacent pattern is investigation',adjacent.moves[0].state,'INVESTIGATE'],['validated brain opportunity outranks supporting context',pricing.moves[0].state,'VALIDATED_OPPORTUNITY'],['booking foundation becomes measurement not defect',booking.moves[0].state,'MEASURE']];
+let fail=0;for(const [n,a,e] of cases){if(a!==e){fail++;console.error('FAIL '+n+': '+a+' != '+e)}else console.log('PASS '+n)}if(fail)process.exit(1);console.log('\n'+cases.length+'/'+cases.length+' action-plan checks passed');

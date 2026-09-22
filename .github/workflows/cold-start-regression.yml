@@ -33,6 +33,9 @@ jobs:
           node --check js/conversion-intelligence.js
       - name: Run cold-start product-family regression
         run: node scripts/cold-start-regression.mjs
+      - name: Run dedicated research-plan regression
+        run: node scripts/research-plan-regression.mjs
+
       - name: Run Opportunity Brain evidence-integrity regression
         run: node scripts/opportunity-brain-regression.mjs
       - name: Run Analyzer portfolio-judgment regression

@@ -440,7 +440,7 @@ async function investigatePublicMarket(ctx) {
       const prices = extractPrices(page.markdown);
       const trust = detectTrust(page.markdown);
       const specialization = detectMarketSpecialization(page.markdown, market.queries);
-      market.competitors.push({ ...candidate, name, offers: offers.slice(0, 4), prices: prices.slice(0, 4), trust, specialization });
+      market.competitors.push({ ...candidate, name, offers: offers.slice(0, 4), prices: prices.slice(0, 4), trust, specialization, pageEvidence:[{url:page.url||candidate.url,markdown:page.markdown,source:'direct-html'}] });
     } catch (error) {
       market.competitors.push({
         ...candidate,

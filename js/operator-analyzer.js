@@ -3178,7 +3178,7 @@ function renderSearchEvidence(item) {
 function renderResearchRead(profile) {
   const host=document.getElementById("research-read");
   if(!host)return;
-  const r=profile.researchIntelligence||{},d=r.dossier||{},brain=r.brain||{},comp=r.competition||{},pos=r.positioningComparison||{},trust=r.trust||{},pricing=r.pricing||{},offers=r.offerComparison||{},journey=r.bookingJourney||{},architecture=r.productArchitecture||{};
+  const r=profile.researchIntelligence||{},d=r.dossier||{},brain=r.brain||{},plan=r.actionPlan||{},comp=r.competition||{},pos=r.positioningComparison||{},trust=r.trust||{},pricing=r.pricing||{},offers=r.offerComparison||{},journey=r.bookingJourney||{},architecture=r.productArchitecture||{};
   if(!brain?.candidates?.length){host.innerHTML="";host.hidden=true;return;}
   const verified=(d.products||[]).map(x=>x.name).filter(Boolean).slice(0,4);
   const lead=comp?.leader?.name||"No repeated direct rival promoted";
@@ -3196,7 +3196,7 @@ function renderResearchRead(profile) {
       <div><small>PRODUCT STRATEGY</small><strong>${escapeHtml((architecture.state||'Still resolving').replaceAll('_',' '))}</strong><p>${escapeHtml(architecture.headline||'GO has not verified a product architecture move yet.')}</p></div>
       <div><small>REPUTATION + PRICING</small><strong>${escapeHtml([trust.state&&"Trust: "+trust.state.replaceAll("_"," "),pricing.state&&"Pricing: "+pricing.state.replaceAll("_"," ")].filter(Boolean).join(" · ")||"Still resolving")}</strong><p>${escapeHtml(offers.headline||'Pricing stays directional until comparable offers are verified.')} Reputation uses qualified direct competitors only.</p></div>
     </div>
-    <div class="research-decision"><small>GO'S CURRENT JUDGMENT</small><strong>${escapeHtml(primary.finding||brain.headline||"Keep investigating")}</strong><p>${escapeHtml(primary.action||brain.summary||"GO has not found a defensible move yet.")}</p>${strength?.finding?`<em>Already working: ${escapeHtml(strength.finding)}</em>`:""}</div>`;
+    <div class="research-decision"><small>GO'S CURRENT JUDGMENT</small><strong>${escapeHtml(plan.headline||primary.finding||brain.headline||"Keep investigating")}</strong><p>${escapeHtml(plan.next||primary.action||brain.summary||"GO has not found a defensible move yet.")}</p>${plan.moves?.[0]?.state?`<em>${escapeHtml(plan.moves[0].state.replaceAll('_',' '))} · ${escapeHtml(plan.moves[0].proof||'GO will keep validating this before execution.')}</em>`:(strength?.finding?`<em>Already working: ${escapeHtml(strength.finding)}</em>`:"")}</div>`;
 }
 
 function renderProfileStrip(profile) {

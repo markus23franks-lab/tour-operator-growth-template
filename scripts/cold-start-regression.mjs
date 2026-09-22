@@ -16,6 +16,7 @@ const fixtures=[
  {name:'Museum',location:'Savannah, Georgia',text:'Museum tickets and general admission to our historic museum. View details and reserve now.',must:['museum tickets'],forbid:['view details','reserve now']},
  {name:'Bus sightseeing',location:'Nashville, Tennessee',text:'Hop-on hop-off sightseeing bus tours and city tours. Learn more about each stop.',must:['sightseeing bus tours'],forbid:['learn more']},
  {name:'Rentals',location:'Key West, Florida',text:'Jet ski rentals, boat rentals and e-bike rentals. Available daily with online booking.',must:['jet ski rentals','boat rentals','e-bike rentals'],forbid:['available daily','online booking']},
+ {name:'Rental transaction beats incidental activities',location:'Virgin Islands',text:'Rent a powerboat for the day and explore at your own pace. Boat rental guests can snorkel, sail between beaches and enjoy the water. Comfort and style on your rental boat.',must:['boat rentals'],forbid:['snorkeling tours','sailing tours']},
  {name:'Walking history',location:'Boston, Massachusetts',text:'Walking tours, history tours and guided historic tours through downtown Boston.',must:['walking tours'],forbid:['through downtown']}
 ];
 

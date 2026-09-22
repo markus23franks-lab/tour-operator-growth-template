@@ -16,6 +16,16 @@ Cold-start product inference was also hardened to distinguish operator-owned pro
 
 CI run #31 passed the complete Build 055 gate after these changes, including Analyzer syntax, the 11-fixture product-family suite, Opportunity Brain evidence integrity, portfolio judgment, and zero-input handoff.
 
+## Autonomous intelligence expansion — 2026-09-21 late pass
+
+GO now carries a qualified competitive-intelligence layer through the one-URL research dossier and into the operator brief. A single search appearance is not enough to call another business a strategic competitor. Direct operators must recur across relevant commercial demand; marketplaces and destination authorities remain context rather than direct competitors. When a repeated direct operator appears where the target has multiple verified gaps, GO may surface competitor pressure and recommend a product/offer/trust/booking-path comparison. When the target is already visible, the same rival remains market context rather than a manufactured problem.
+
+The live Growth Snapshot no longer renders legacy fabricated review counts or example search rankings for prospect scans. Live scans show recovered research evidence only. Unknown signals are also kept out of the three operator priority cards unless they are the primary unresolved question; weak unknowns do not crowd out verified strengths or opportunities.
+
+Opportunity Brain now resolves simultaneous verified opportunities by commercial leverage rather than defaulting toward search. Current ordering is conversion evidence when it becomes a true opportunity, then pricing, trust, and discovery; regression coverage protects pricing-over-trust/discovery and trust-over-discovery cases.
+
+CI run #55 passed after adding the competitive-intelligence module and its five-case regression suite.
+
 ## Capability delivered
 
 Build 055 establishes the first disciplined cold-start contract for Growth Operator:

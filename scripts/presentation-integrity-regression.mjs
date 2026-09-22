@@ -12,5 +12,6 @@ if(!source.includes('presentationGate?.pass===false'))failures.push('runtime pre
 if(!source.includes('dossier?.business?.name || canonicalBusinessName'))failures.push('formal dossier is not canonical for presented identity');
 if(!source.includes('dossier?.products?.length ? dossier.products.map'))failures.push('formal dossier is not canonical for presented inventory');
 if(source.includes('mergeBrainFindings(research.brain, heuristicOpportunities)'))failures.push('legacy heuristics leak back into Brain-owned presentation');
+if(!source.includes('hasValidated')||!source.includes('hasInvestigation'))failures.push('result headline is not evidence-state aware');
 if(failures.length){console.error('FAIL presentation integrity:',failures.join(', '));process.exit(1)}
 console.log('PASS presentation integrity: live Analyzer templates avoid raw sentinel leakage and research judgment owns the result narrative');

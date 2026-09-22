@@ -3176,7 +3176,7 @@ function renderSearchEvidence(item) {
 function renderResearchRead(profile) {
   const host=document.getElementById("research-read");
   if(!host)return;
-  const r=profile.researchIntelligence||{},d=r.dossier||{},brain=r.brain||{},comp=r.competition||{},pos=r.positioningComparison||{},trust=r.trust||{},pricing=r.pricing||{},offers=r.offerComparison||{},journey=r.bookingJourney||{};
+  const r=profile.researchIntelligence||{},d=r.dossier||{},brain=r.brain||{},comp=r.competition||{},pos=r.positioningComparison||{},trust=r.trust||{},pricing=r.pricing||{},offers=r.offerComparison||{},journey=r.bookingJourney||{},architecture=r.productArchitecture||{};
   if(!brain?.candidates?.length){host.innerHTML="";host.hidden=true;return;}
   const verified=(d.products||[]).map(x=>x.name).filter(Boolean).slice(0,4);
   const lead=comp?.leader?.name||"No repeated direct rival promoted";
@@ -3191,6 +3191,7 @@ function renderResearchRead(profile) {
       <div><small>MARKET CONTEXT</small><strong>${escapeHtml(lead)}</strong><p>${escapeHtml(comp.summary||"GO has not promoted a competitor without repeat commercial evidence.")}</p></div>
       <div><small>POSITIONING</small><strong>${escapeHtml(posText)}</strong><p>${escapeHtml(pos.summary||r.positioning?.summary||"GO only calls positioning differentiated after comparison.")}</p></div>
       <div><small>BOOKING JOURNEY</small><strong>${escapeHtml((journey.state||'Still resolving').replaceAll('_',' '))}</strong><p>${escapeHtml(journey.headline||'GO has not promoted public extraction gaps into conversion defects.')}</p></div>
+      <div><small>PRODUCT STRATEGY</small><strong>${escapeHtml((architecture.state||'Still resolving').replaceAll('_',' '))}</strong><p>${escapeHtml(architecture.headline||'GO has not verified a product architecture move yet.')}</p></div>
       <div><small>REPUTATION + PRICING</small><strong>${escapeHtml([trust.state&&"Trust: "+trust.state.replaceAll("_"," "),pricing.state&&"Pricing: "+pricing.state.replaceAll("_"," ")].filter(Boolean).join(" · ")||"Still resolving")}</strong><p>${escapeHtml(offers.headline||'Pricing stays directional until comparable offers are verified.')} Reputation uses qualified direct competitors only.</p></div>
     </div>
     <div class="research-decision"><small>GO'S CURRENT JUDGMENT</small><strong>${escapeHtml(primary.finding||brain.headline||"Keep investigating")}</strong><p>${escapeHtml(primary.action||brain.summary||"GO has not found a defensible move yet.")}</p>${strength?.finding?`<em>Already working: ${escapeHtml(strength.finding)}</em>`:""}</div>`;

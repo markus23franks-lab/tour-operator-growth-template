@@ -3098,8 +3098,15 @@ function discoverUsefulLinks(markdown, baseUrl) {
 }
 
 function showResults(profile) {
-  text("result-business", profile.businessName);
-  text("result-summary", profile.summary);
+  const plan=profile.researchIntelligence?.actionPlan;
+  const trusted=profile.researchIntelligence?.presentationGate?.pass!==false;
+  const resultTitle=!trusted
+    ? 'GO held this result for more research.'
+    : plan?.state==='READY'
+      ? `${profile.businessName}: GO found a next move worth investigating.`
+      : `${profile.businessName}: GO is not forcing a growth problem.`;
+  text("result-title", resultTitle);
+  text("result-summary", plan?.state==='READY' ? (plan.headline||profile.summary) : (profile.researchIntelligence?.brain?.headline||profile.summary));
   text("confidence-score", String(profile.analysisConfidence || "Medium").toUpperCase());
   text("confidence-copy", profile.confidenceCopy || "Live public evidence");
   renderProfileStrip(profile.publicProfile || {});

@@ -34,5 +34,11 @@ if(!guardInstalled||guarded.probes.length!==0||guarded.meta!=='preserved'){
   console.error('FAIL zero-input representative demand guard:',{guardInstalled,guarded});
 }else console.log('PASS zero-input representative demand guard');
 
-if(failures){console.error(`\n${failures}/${cases.length+1} zero-input handoff checks failed`);process.exit(1);}
-console.log(`\n${cases.length+1}/${cases.length+1} zero-input handoff checks passed`);
+
+if(!source.includes("research?.presentationGate?.pass===false")||!source.includes("presentationGate:research.presentationGate||null")){
+  failures++;
+  console.error('FAIL presentation gate is not enforced across Analyzer -> Snapshot handoff');
+}else console.log('PASS presentation gate blocks untrusted Snapshot handoff');
+
+if(failures){console.error(`\nzero-input handoff checks failed`);process.exit(1);}
+console.log(`\n${cases.length+2}/${cases.length+2} zero-input handoff checks passed`);

@@ -4,7 +4,7 @@
  const host=u=>{try{return new URL(/^https?:/i.test(u)?u:`https://${u}`).hostname.replace(/^www\./,'')}catch{return norm(u).split(' ')[0]}};
  function prices(t){const a=[];let m;while((m=rx.exec(String(t||'')))){const v=+m[1];if(v>=20&&v<=5000)a.push(v)}rx.lastIndex=0;return a}
  function median(a){if(!a.length)return null;a=[...a].sort((x,y)=>x-y);const i=Math.floor(a.length/2);return a.length%2?a[i]:(a[i-1]+a[i])/2}
- function family(q,location=''){let s=String(q||'').replace(/\b(price|pricing|cost|rates?|tickets?)\b/ig,'').replace(/\s+/g,' ').trim();const city=String(location||'').split(',')[0].trim();if(city)s=s.replace(new RegExp('^'+city.replace(/[.*+?^${}()|[\]\\]/g,'\\ function family(q){return String(q||'').replace(/\b(price|pricing|cost|rates?|tickets?)\b/ig,'').replace(/\s+/g,' ').trim()}')+'\\s+','i'),'');return s.trim()}
+ function family(q,location=''){let s=String(q||'').replace(/\b(price|pricing|cost|rates?|tickets?)\b/ig,'').replace(/\s+/g,' ').trim();const city=String(location||'').split(',')[0].trim();if(city&&s.toLowerCase().startsWith(city.toLowerCase()+' '))s=s.slice(city.length+1).trim();return s}
  function plan({businessName,location,websiteQueries=[]}){
    const core=websiteQueries.slice(0,3).map(q=>family(q,location)).filter(Boolean);
    const qs=[];

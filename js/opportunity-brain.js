@@ -40,9 +40,9 @@
   return {sense:'DISCOVERY',label:'Visibility',state,finding,evidenceStrength:level(coverage),commercialImportance:importance,confidence:state==='OPPORTUNITY'?(strongLegacy?'HIGH':'MEDIUM'):level(coverage),economicImportance:state==='OPPORTUNITY'?'POTENTIAL':'UNSIZED',actionability:state==='OPPORTUNITY'?'INVESTIGATE':state==='HEALTHY'?'MONITOR':'NEEDS_VALIDATION',requiredNextEvidence:state==='UNKNOWN'?'Commercial importance and stronger repeated search evidence':'Traffic and booking attribution',action,diagnostics:{planned:rows.length,verified:verified.length,visible:visible.length,gaps:gaps.length,coverage:Number(coverage.toFixed(2)),gapRate:Number(gapRate.toFixed(2)),visibleRate:Number(visibleRate.toFixed(2)),repeatedGap,strongLegacy}}
  }
 
- function pricing(p){
+ function pricing(p,offerComparison){
   if(!p||p.state==='INSUFFICIENT_EVIDENCE')return {sense:'PRICING',label:'Pricing',state:'UNKNOWN',finding:'GO does not have enough comparable pricing yet.',evidenceStrength:'LOW',commercialImportance:'HIGH',confidence:'LOW',economicImportance:'POTENTIALLY_HIGH',actionability:'NEEDS_VALIDATION',requiredNextEvidence:'Comparable products, duration, inclusions and fees',action:'Finish comparing like-for-like products before recommending a price change.'};
-  const candidate=p.state==='PRICING_POWER_CANDIDATE';
+  const candidate=p.state==='PRICING_POWER_CANDIDATE'&&offerComparison?.state==='COMPARABLE_SET_VERIFIED';
   return {sense:'PRICING',label:'Pricing',state:candidate?'OPPORTUNITY':'HEALTHY_OR_POSITIONED',finding:candidate?'Your public prices may have room to move higher.':'Your public pricing looks competitive with the market GO observed.',evidenceStrength:p.research?.verified>=3?'HIGH':'MEDIUM',commercialImportance:'HIGH',confidence:'MEDIUM',economicImportance:candidate?'POTENTIALLY_HIGH':'UNSIZED',actionability:candidate?'INVESTIGATE':'MONITOR',requiredNextEvidence:candidate?'Like-for-like product comparison plus booking and margin data':'Booking, conversion and margin data',action:candidate?'Check whether comparable products support a profitable price increase.':'Do not change prices from public evidence alone; look for product-level pricing opportunities.',diagnostics:{operatorMedian:p.operator?.median,marketMedian:p.market?.median,deltaPct:p.deltaPct,verified:p.research?.verified}}
  }
 
@@ -57,8 +57,8 @@
   return {sense:'CONVERSION',label:'Website sales',state:'FOUNDATION_OBSERVED',finding:'GO found the main public ingredients customers need to make a booking decision.',evidenceStrength:'MEDIUM',commercialImportance:'HIGH',confidence:'MEDIUM',economicImportance:'POTENTIALLY_HIGH',actionability:'INVESTIGATE_DEEPER',requiredNextEvidence:'Visits, booking starts, abandonment, mobile behavior and completed bookings',action:'Find out whether the traffic you already have can produce more bookings.',diagnostics:{present:c.present,total:c.total,pages:c.pages}}
  }
 
- function build({market,discoveryOpportunity,pricing:price,trust:trustIntel,conversion:conv,competition,positioningComparison}){
-  const candidates=[discovery(market,discoveryOpportunity),pricing(price),trust(trustIntel),conversion(conv)],opportunities=candidates.filter(x=>x.state==='OPPORTUNITY'),unknown=candidates.filter(x=>x.state==='UNKNOWN'),d=candidates[0],p=candidates[1],t=candidates[2],c=candidates[3];
+ function build({market,discoveryOpportunity,pricing:price,offerComparison,trust:trustIntel,conversion:conv,bookingJourney,competition,positioningComparison}){
+  const candidates=[discovery(market,discoveryOpportunity),pricing(price,offerComparison),trust(trustIntel),conversion(conv)],opportunities=candidates.filter(x=>x.state==='OPPORTUNITY'),unknown=candidates.filter(x=>x.state==='UNKNOWN'),d=candidates[0],p=candidates[1],t=candidates[2],c=candidates[3];
   let primary,headline,summary,mode='INVESTIGATION';
   if(opportunities.length){
    const priority={CONVERSION:4,PRICING:3,TRUST:2,DISCOVERY:1};
@@ -87,8 +87,10 @@
   if(competition?.state==='REPEATED_COMPETITOR_PRESSURE')strategicContext.push({type:'COMPETITOR_PRESSURE',headline:competition.headline,summary:competition.summary,action:competition.action,evidenceStrength:'MEDIUM'});
   if(positioningComparison?.state==='POTENTIAL_DIFFERENTIATION')strategicContext.push({type:'POSITIONING_LEAD',headline:positioningComparison.headline,summary:positioningComparison.summary,action:positioningComparison.action,evidenceStrength:'MEDIUM'});
   if(positioningComparison?.state==='CATEGORY_PARITY')strategicContext.push({type:'POSITIONING_PARITY',headline:positioningComparison.headline,summary:positioningComparison.summary,action:positioningComparison.action,evidenceStrength:'MEDIUM'});
+  if(offerComparison?.state==='COMPARABLE_SET_VERIFIED')strategicContext.push({type:'COMPARABLE_OFFERS',headline:offerComparison.headline,summary:`GO verified ${offerComparison.matches?.length||0} like-for-like public offer matches across ${offerComparison.sources||0} independent sources.`,action:offerComparison.action,evidenceStrength:'HIGH'});
+  if(bookingJourney?.state==='BOOKING_PATH_OBSERVED')strategicContext.push({type:'BOOKING_PATH',headline:bookingJourney.headline,summary:`GO positively observed ${bookingJourney.observed?.join(', ')||'the public booking path'}. Actual funnel performance remains unknown.`,action:bookingJourney.action,evidenceStrength:'MEDIUM'});
   const roi={state:'NEEDS_CONNECTED_DATA',headline:'GO needs your real booking data to put a reliable dollar value on the next opportunity.',needs:['website traffic','booking starts and completed bookings','product-level revenue or booking value','margin or capacity where relevant']};
-  return {version:'GO-OPPORTUNITY-BRAIN-V2.4',mode,headline,summary,primary,opportunities,unresolved:unknown,candidates,strategicContext,roi,decisionPrinciple:'GO promotes a public finding into an opportunity only when the evidence shows a repeated, commercially meaningful pattern. UNKNOWN and mixed evidence stay unresolved instead of becoming work.'}
+  return {version:'GO-OPPORTUNITY-BRAIN-V2.5',mode,headline,summary,primary,opportunities,unresolved:unknown,candidates,strategicContext,roi,decisionPrinciple:'GO promotes a public finding into an opportunity only when the evidence shows a repeated, commercially meaningful pattern. UNKNOWN and mixed evidence stay unresolved instead of becoming work.'}
  }
  global.GOOpportunityBrain={build};
 })(window);

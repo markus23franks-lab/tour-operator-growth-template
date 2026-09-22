@@ -214,7 +214,10 @@ async function runAnalysis(rawUrl) {
   } catch (error) {
     if (token !== scanToken) return;
     console.error("GO public scan failed", error);
-    showUnsupported(url, "GO could not retrieve enough public website content to produce an evidence-backed read. Some sites block automated readers, load almost everything behind scripts, or temporarily reject the request.");
+    const integrityStop=String(error?.message||'').startsWith('GO stopped before market research');
+    showUnsupported(url, integrityStop
+      ? error.message+" GO did not invent downstream competitors, searches or recommendations from an unresolved business model."
+      : "GO could not retrieve enough public website content to produce an evidence-backed read. Some sites block automated readers, load almost everything behind scripts, or temporarily reject the request.");
   }
 }
 

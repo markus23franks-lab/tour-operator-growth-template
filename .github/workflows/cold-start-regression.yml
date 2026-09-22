@@ -38,6 +38,8 @@ jobs:
         run: node scripts/research-plan-regression.mjs
       - name: Run competitive-intelligence regression
         run: node scripts/competitive-intelligence-regression.mjs
+      - name: Run trust and pricing evidence-integrity regression
+        run: node scripts/research-integrity-regression.mjs
 
       - name: Run Opportunity Brain evidence-integrity regression
         run: node scripts/opportunity-brain-regression.mjs

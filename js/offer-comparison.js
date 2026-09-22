@@ -14,7 +14,7 @@ function compatible(operator,market){
 function build({dossier,pricing,competitors=[],qualifiedCompetitors=[]}={}){
  const own=(dossier?.products||[]).filter(x=>num(x.price));
  const qualified=(qualifiedCompetitors||[]).map(x=>clean(x.name||x)).filter(Boolean);
- const nameMatch=(a,b)=>{a=clean(a);b=clean(b);return a&&b&&(a===b||a.includes(b)||b.includes(a))};
+ const nameMatch=(a,b)=>{a=clean(a);b=clean(b);return a&&b&&(a===b||(Math.min(a.length,b.length)>=5&&(a.includes(b)||b.includes(a))))};
  const eligible=(competitors||[]).filter(c=>qualified.some(name=>nameMatch(name,c.name)));
  const structured=eligible.flatMap(c=>(c.products||[]).map(p=>({name:p.name||'',price:num(p.price),family:p.family||p.intent||p.name||'',transactionType:p.transactionType||'',duration:p.duration||'',format:p.format||'',source:p.sourceUrl||c.url||c.name||''}))).filter(x=>x.price);
  const directional=(pricing?.market?.sample||[]).map(x=>({name:x.name||x.query||'',price:num(x.value),family:x.family||x.query||'',transactionType:x.transactionType||'',duration:x.duration||'',format:x.format||'',source:x.link||x.name||''})).filter(x=>x.price);

@@ -8,6 +8,7 @@ const cases=[
  ['missing location blocks downstream market judgment',()=>build({...base,businessContext:{businessType:'boat rental',transactionType:'rental'}}).readyForMarketJudgment,false],
  ['missing inventory blocks downstream market judgment',()=>build({...base,offers:[]}).blockers.includes('commercial inventory'),true],
  ['confidence distinguishes inference from observed facts',()=>build(base).confidence.transactionType,'INFERRED'],
+ ['business category never masquerades as transaction type',()=>build({...base,businessContext:{location:'St. Thomas, USVI',businessType:'boat / water rentals operator'}}).business.transactionType,''],
  ['commercial truth outranks loose offer inventory',()=>build({...base,commercialTruth:{primaryProducts:[{name:'Premium Pontoon Rental',intent:'pontoon rental',score:40,evidence:['commercial detail page'],urls:['https://docksidedvi.com/pontoon']}]}}).products[0].name,'Premium Pontoon Rental'],
  ['commercial truth provenance survives dossier',()=>build({...base,commercialTruth:{primaryProducts:[{name:'Premium Pontoon Rental',intent:'pontoon rental',score:40,evidence:['commercial detail page'],urls:['https://docksidedvi.com/pontoon']}]}}).products[0].urls[0],'https://docksidedvi.com/pontoon']
 ];

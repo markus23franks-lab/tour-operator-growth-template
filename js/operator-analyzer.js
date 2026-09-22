@@ -188,7 +188,8 @@ async function runAnalysis(rawUrl) {
 
     setStage("reviews", "active", "CHECKING");
     await wait(120);
-    setStage("reviews", market.reviewSignals.length ? "done" : "partial", market.reviewSignals.length ? "PUBLIC SIGNALS" : "LIMITED");
+    const trustVerified = Boolean(research?.trust?.target?.rating || research?.trust?.target?.reviews);
+    setStage("reviews", trustVerified ? "done" : "partial", trustVerified ? "VERIFIED PROFILE" : "LIMITED");
     setProgress(72);
 
     setStage("competitors", "active", "COMPARING");
@@ -2324,7 +2325,9 @@ function extractBusinessName(markdown, url) {
   const candidates = [];
 
   const addCandidate = (value, weight, source) => {
-    const cleaned = cleanBusinessIdentity(value);
+    const rawIdentity = String(value || '');
+    if (/https?:\/\/|\]\(|\[[^\]]*\]\(/i.test(rawIdentity)) return;
+    const cleaned = cleanBusinessIdentity(rawIdentity);
     if (!cleaned || cleaned.length < 3 || cleaned.length > 90) return;
     // Broken reader fragments such as "the C" are not credible business identities.
     // Prefer stronger title/domain/entity evidence rather than letting a malformed fragment
@@ -2481,6 +2484,8 @@ function canonicalBusinessName(extractedName, target, url) {
 
 function cleanBusinessIdentity(value) {
   return cleanText(value || "")
+    .replace(/\[([^\]]+)\]\([^)]*\)/g, "$1")
+    .replace(/https?:\/\/\S+/gi, "")
     .replace(/^#+\s*/, "")
     .replace(/\s*[|–—]\s*(official site|home|book online)$/i, "")
     .replace(/^(welcome to|about)\s+/i, "")

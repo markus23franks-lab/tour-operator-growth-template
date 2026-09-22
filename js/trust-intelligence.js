@@ -3,7 +3,7 @@
  const med=a=>{a=a.filter(v=>v!=null).sort((x,y)=>x-y);if(!a.length)return null;const i=Math.floor(a.length/2);return a.length%2?a[i]:(a[i-1]+a[i])/2};
  const key=s=>String(s||'').toLowerCase().replace(/^https?:\/\/(www\.)?/,'').replace(/[^a-z0-9]/g,'');
  const host=u=>{try{return new URL(/^https?:/i.test(u)?u:`https://${u}`).hostname.replace(/^www\./,'')}catch{return ''}};
- function plan({businessName,location}){return [...new Set([`${businessName} ${location}`,`${businessName} reviews ${location}`,`best tours ${location}`])].slice(0,3)}
+ function plan({businessName,location,websiteQueries=[]}){const product=String(websiteQueries[0]||'').trim();return [...new Set([`${businessName} ${location}`,`${businessName} reviews ${location}`,product?`${product} reviews`:''])].filter(Boolean).slice(0,3)}
  function isTarget(r,businessName,website){const bn=key(businessName),rn=key(r.name||r.title),wh=host(website),rh=host(r.website||r.link);return Boolean((bn&&rn&&(rn.includes(bn)||bn.includes(rn)))||(wh&&rh&&wh===rh))}
  function identityTarget(raw,businessName,website){if(!raw?.identityVerified)return null;const rating=num(raw.rating),reviews=num(raw.reviews);if(!rating&&!reviews)return null;return {name:raw.name||businessName,rating,reviews,website:raw.website||website||'',query:'dedicated identity resolution',position:num(raw.localPosition),source:raw.source||'Google Local identity'}}
  function build({trustMarket,businessName,website}){

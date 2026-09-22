@@ -3100,13 +3100,18 @@ function discoverUsefulLinks(markdown, baseUrl) {
 function showResults(profile) {
   const plan=profile.researchIntelligence?.actionPlan;
   const trusted=profile.researchIntelligence?.presentationGate?.pass!==false;
+  const moves=plan?.moves||[];
+  const hasValidated=moves.some(x=>x.state==='VALIDATED_OPPORTUNITY');
+  const hasInvestigation=moves.some(x=>x.state==='INVESTIGATE');
   const resultTitle=!trusted
     ? 'GO held this result for more research.'
-    : plan?.state==='READY'
-      ? `${profile.businessName}: GO found a next move worth investigating.`
-      : `${profile.businessName}: GO is not forcing a growth problem.`;
+    : hasValidated
+      ? `${profile.businessName}: GO found a growth move worth proving.`
+      : hasInvestigation
+        ? `${profile.businessName}: GO found where it would investigate next.`
+        : `${profile.businessName}: GO is not forcing a growth problem.`;
   text("result-title", resultTitle);
-  text("result-summary", plan?.state==='READY' ? (plan.headline||profile.summary) : (profile.researchIntelligence?.brain?.headline||profile.summary));
+  text("result-summary", moves.length ? (plan.headline||profile.summary) : (profile.researchIntelligence?.brain?.headline||profile.summary));
   text("confidence-score", String(profile.analysisConfidence || "Medium").toUpperCase());
   text("confidence-copy", profile.confidenceCopy || "Live public evidence");
   renderProfileStrip(profile.publicProfile || {});

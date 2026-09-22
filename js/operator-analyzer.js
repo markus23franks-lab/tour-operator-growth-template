@@ -2011,6 +2011,31 @@ async function runResearchQueries(ctx, queries, lens) {
   }catch(error){console.warn('GO '+lens+' research failed',error);return null;}
 }
 
+async function enrichQualifiedCompetitorEvidence(market, competition) {
+  const qualified=(competition?.market?.sample||[]).map(x=>x.name).filter(Boolean);
+  if(!qualified.length)return market;
+  const candidates=(market?.competitors||[]).filter(x=>x.url&&qualified.some(name=>namesLikelyMatch(name,x.name))).slice(0,4);
+  await Promise.all(candidates.map(async competitor=>{
+    if((competitor.pageEvidence||[]).length&&(competitor.products||[]).length)return;
+    try{
+      const page=await readPublicPage(competitor.url);
+      if(!page?.markdown||!isMeaningfulBusinessContent(page.markdown))return;
+      const name=competitor.name||extractBusinessName(page.markdown,competitor.url);
+      const offers=extractOffers(page.markdown,name);
+      const competitorContext={url:competitor.url,businessName:name,offers,businessContext:inferBusinessContext(page.markdown,page.markdown,competitor.url),siteArchitecture:buildSiteArchitectureModel([{url:page.url||competitor.url,markdown:page.markdown}],competitor.url,name)};
+      const semantic=buildSemanticOperatorModel(page.markdown,offers,competitorContext.businessContext,name,competitorContext.siteArchitecture);
+      const truth=buildCommercialTruthModel({businessName:name,combined:page.markdown,offers,siteArchitecture:competitorContext.siteArchitecture,semanticModel:semantic,location:competitorContext.businessContext.location||''});
+      competitor.products=(window.GOOfferEvidence?.enrich?.({products:truth.primaryProducts,pages:[{url:page.url||competitor.url,markdown:page.markdown}]})||truth.primaryProducts).slice(0,6);
+      competitor.offers=offers.slice(0,6);
+      competitor.prices=extractPrices(page.markdown).slice(0,6);
+      competitor.pageEvidence=[{url:page.url||competitor.url,markdown:page.markdown,source:'public-reader'}];
+    }catch(error){
+      competitor.evidenceReadError=error?.message||String(error);
+    }
+  }));
+  return market;
+}
+
 async function runDedicatedOperatorResearch(ctx, market, acquisition) {
   const positioning=window.GOPositioningIntelligence?.build?.(acquisition)||null;
   const dossier=ctx.dossier ? {...ctx.dossier,positioning} : (window.GOBusinessDossier?.build?.({...ctx,pages:acquisition?.pages||[],positioning})||null);
@@ -2024,6 +2049,7 @@ async function runDedicatedOperatorResearch(ctx, market, acquisition) {
   const conversion=window.GOConversionIntelligence?.build?.(acquisition)||null;
   const bookingJourney=window.GOBookingJourney?.build?.({acquisition,dossier})||null;
   const competition=window.GOCompetitiveIntelligence?.build?.({market})||null;
+  await enrichQualifiedCompetitorEvidence(market,competition);
   const qualifiedNames=(competition?.market?.sample||[]).map(x=>x.name).filter(Boolean);
   const competitorPositioning=(market?.competitors||[]).filter(x=>qualifiedNames.some(name=>namesLikelyMatch(name,x.name))).map(x=>({name:x.name,positioning:window.GOPositioningIntelligence?.build?.({pages:x.pageEvidence||x.pages||[]})||null})).filter(x=>x.positioning?.signals?.length);
   const positioningComparison=window.GOPositioningComparison?.build?.({operator:positioning,competitors:competitorPositioning})||null;

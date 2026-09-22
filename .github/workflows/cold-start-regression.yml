@@ -34,6 +34,7 @@ jobs:
           node --check js/competitive-intelligence.js
           node --check js/positioning-intelligence.js
           node --check js/positioning-comparison.js
+          node --check js/business-dossier.js
       - name: Run cold-start product-family regression
         run: node scripts/cold-start-regression.mjs
       - name: Run dedicated research-plan regression
@@ -44,6 +45,8 @@ jobs:
         run: node scripts/research-integrity-regression.mjs
       - name: Run positioning-intelligence regression
         run: node scripts/positioning-regression.mjs
+      - name: Run business-dossier regression
+        run: node scripts/business-dossier-regression.mjs
 
       - name: Run Opportunity Brain evidence-integrity regression
         run: node scripts/opportunity-brain-regression.mjs

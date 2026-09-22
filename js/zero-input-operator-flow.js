@@ -57,8 +57,13 @@ function installAnalyzerBridge(){
     event.preventDefault();
     event.stopImmediatePropagation();
     const research=profile.researchIntelligence;
+    if(research?.presentationGate?.pass===false){
+      localStorage.removeItem('growthOperatorOpportunityBrain');
+      const brief=document.getElementById('research-read');if(brief)brief.scrollIntoView({behavior:'smooth',block:'start'});
+      return;
+    }
     if(research?.brain?.candidates?.length){
-      localStorage.setItem('growthOperatorOpportunityBrain',JSON.stringify({savedAt:new Date().toISOString(),source:'operator-analyzer-direct',website:profile.website||profile.url||'',businessName:profile.businessName||profile.name||'',location:profile.publicProfile?.location||profile.businessContext?.location||'',brain:research.brain,dossier:research.dossier||null,pricing:research.pricing||null,offerComparison:research.offerComparison||null,trust:research.trust||null,conversion:research.conversion||null,bookingJourney:research.bookingJourney||null,productArchitecture:research.productArchitecture||null,actionPlan:research.actionPlan||null,competition:research.competition||null,positioning:research.positioning||null,positioningComparison:research.positioningComparison||null,market:profile.marketEvidence||null,researchPlans:research.researchPlans||null}));
+      localStorage.setItem('growthOperatorOpportunityBrain',JSON.stringify({savedAt:new Date().toISOString(),source:'operator-analyzer-direct',website:profile.website||profile.url||'',businessName:profile.businessName||profile.name||'',location:profile.publicProfile?.location||profile.businessContext?.location||'',brain:research.brain,dossier:research.dossier||null,pricing:research.pricing||null,offerComparison:research.offerComparison||null,trust:research.trust||null,conversion:research.conversion||null,bookingJourney:research.bookingJourney||null,productArchitecture:research.productArchitecture||null,actionPlan:research.actionPlan||null,presentationGate:research.presentationGate||null,competition:research.competition||null,positioning:research.positioning||null,positioningComparison:research.positioningComparison||null,market:profile.marketEvidence||null,researchPlans:research.researchPlans||null}));
       location.href='growth-snapshot.html?source=operator-analyzer-direct';
       return;
     }

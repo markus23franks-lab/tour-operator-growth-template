@@ -9,5 +9,8 @@ if(!source.includes('GO\'s first priority:'))failures.push('research summary not
 if(!source.includes('researchIntelligence: research'))failures.push('research dossier missing from profile');
 if(!source.includes('plan.headline||primary.finding'))failures.push('action plan not owning visible judgment');
 if(!source.includes('presentationGate?.pass===false'))failures.push('runtime presentation gate not enforced in Analyzer');
+if(!source.includes('dossier?.business?.name || canonicalBusinessName'))failures.push('formal dossier is not canonical for presented identity');
+if(!source.includes('dossier?.products?.length ? dossier.products.map'))failures.push('formal dossier is not canonical for presented inventory');
+if(source.includes('mergeBrainFindings(research.brain, heuristicOpportunities)'))failures.push('legacy heuristics leak back into Brain-owned presentation');
 if(failures.length){console.error('FAIL presentation integrity:',failures.join(', '));process.exit(1)}
 console.log('PASS presentation integrity: live Analyzer templates avoid raw sentinel leakage and research judgment owns the result narrative');

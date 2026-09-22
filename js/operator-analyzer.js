@@ -178,6 +178,10 @@ async function runAnalysis(rawUrl) {
       String(acquisition?.bookingEvidence || "")
     ].filter(Boolean).join("\n");
     const websiteContext = buildWebsiteContext(url, [home, ...extraPages], bookingLinkEvidence);
+    if(websiteContext.dossier && !websiteContext.dossier.readyForMarketJudgment){
+      const missing=(websiteContext.dossier.blockers||[]).join(', ');
+      throw new Error('GO stopped before market research because the first-party dossier could not verify: '+missing);
+    }
     await verifyMarketFunctionRuntime();
     const market = await investigatePublicMarket(websiteContext);
     if (token !== scanToken) return;

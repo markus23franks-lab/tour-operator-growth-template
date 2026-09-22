@@ -61,7 +61,8 @@
   const candidates=[discovery(market,discoveryOpportunity),pricing(price),trust(trustIntel),conversion(conv)],opportunities=candidates.filter(x=>x.state==='OPPORTUNITY'),unknown=candidates.filter(x=>x.state==='UNKNOWN'),d=candidates[0],p=candidates[1],t=candidates[2],c=candidates[3];
   let primary,headline,summary,mode='INVESTIGATION';
   if(opportunities.length){
-   primary=opportunities.find(x=>x.sense==='PRICING')||opportunities.find(x=>x.commercialImportance==='HIGH')||opportunities[0];
+   const priority={CONVERSION:4,PRICING:3,TRUST:2,DISCOVERY:1};
+   primary=[...opportunities].sort((a,b)=>(priority[b.sense]||0)-(priority[a.sense]||0))[0];
    headline=`GO found a growth opportunity in ${primary.label.toLowerCase()}.`;
    summary=`${primary.finding} GO wants to validate the money behind it before recommending a mission.`;
   }else if(d.state==='HEALTHY'&&c.state==='FOUNDATION_OBSERVED'){

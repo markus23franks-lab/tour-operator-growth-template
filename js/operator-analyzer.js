@@ -449,7 +449,11 @@ async function investigatePublicMarket(ctx) {
       const prices = extractPrices(page.markdown);
       const trust = detectTrust(page.markdown);
       const specialization = detectMarketSpecialization(page.markdown, market.queries);
-      market.competitors.push({ ...candidate, name, offers: offers.slice(0, 4), prices: prices.slice(0, 4), trust, specialization, pageEvidence:[{url:page.url||candidate.url,markdown:page.markdown,source:'direct-html'}] });
+      const competitorContext={url:candidate.url,businessName:name,offers,businessContext:inferBusinessContext(page.markdown,page.markdown,candidate.url),siteArchitecture:buildSiteArchitectureModel([{url:page.url||candidate.url,markdown:page.markdown}],candidate.url,name)};
+      const competitorSemantic=buildSemanticOperatorModel(page.markdown,offers,competitorContext.businessContext,name,competitorContext.siteArchitecture);
+      const competitorTruth=buildCommercialTruthModel({businessName:name,combined:page.markdown,offers,siteArchitecture:competitorContext.siteArchitecture,semanticModel:competitorSemantic,location:competitorContext.businessContext.location||''});
+      const competitorProducts=(window.GOOfferEvidence?.enrich?.({products:competitorTruth.primaryProducts,pages:[{url:page.url||candidate.url,markdown:page.markdown}]})||competitorTruth.primaryProducts).slice(0,6);
+      market.competitors.push({ ...candidate, name, offers: offers.slice(0, 4), products:competitorProducts, prices: prices.slice(0, 4), trust, specialization, pageEvidence:[{url:page.url||candidate.url,markdown:page.markdown,source:'direct-html'}] });
     } catch (error) {
       market.competitors.push({
         ...candidate,

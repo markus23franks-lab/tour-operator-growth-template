@@ -82,6 +82,8 @@ const results = document.getElementById("results");
 const unsupported = document.getElementById("unsupported");
 const progress = document.getElementById("scan-progress");
 const scanState = document.getElementById("scan-state");
+const benchmarkTools = document.getElementById("benchmark-tools");
+if (benchmarkTools && new URLSearchParams(window.location.search).get("debug") === "1") benchmarkTools.hidden = false;
 let activeProfile = null;
 let scanToken = 0;
 

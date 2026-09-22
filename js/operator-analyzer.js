@@ -181,7 +181,7 @@ async function runAnalysis(rawUrl) {
     await verifyMarketFunctionRuntime();
     const market = await investigatePublicMarket(websiteContext);
     if (token !== scanToken) return;
-    const research = buildPublicResearch(websiteContext, market, acquisition);
+    const research = await runDedicatedOperatorResearch(websiteContext, market, acquisition);
     if (token !== scanToken) return;
     setStage("search", market.searchPages.length ? "done" : "partial", market.searchPages.length ? "PUBLIC WEB" : "LIMITED");
     setProgress(61);
@@ -1985,13 +1985,29 @@ function buildDiscoveryIntelligence({ businessName, market, opportunities }) {
   };
 }
 
-function buildPublicResearch(ctx, market, acquisition) {
+async function runResearchQueries(ctx, queries, lens) {
+  const clean=[...new Set((queries||[]).map(q=>String(q||'').replace(/\s+/g,' ').trim()).filter(Boolean))].slice(0,5);
+  if(!clean.length||!ctx.businessContext?.location)return null;
+  try{
+    const response=await fetch('/.netlify/functions/market-intelligence',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({businessName:ctx.businessName,website:ctx.url,location:ctx.businessContext.location,queries:clean,debugRunId:GO_ACTIVE_RUN_ID,frontendBuildId:GO_FRONTEND_BUILD_ID,researchLens:lens})});
+    const payload=await response.json().catch(()=>({}));
+    return response.ok&&payload?.ok&&payload?.market?payload.market:null;
+  }catch(error){console.warn('GO '+lens+' research failed',error);return null;}
+}
+
+async function runDedicatedOperatorResearch(ctx, market, acquisition) {
+  const discoveryQueries=(market?.queryResults||[]).map(x=>x?.query).filter(Boolean).length
+    ? (market.queryResults||[]).map(x=>x.query).filter(Boolean)
+    : (market?.queries||[]).map(x=>typeof x==='string'?x:x?.query).filter(Boolean);
+  const pricingPlan=window.GOPricingIntelligence?.plan?.({businessName:ctx.businessName,location:ctx.businessContext?.location||'',websiteQueries:discoveryQueries})||[];
+  const trustPlan=window.GOTrustIntelligence?.plan?.({businessName:ctx.businessName,location:ctx.businessContext?.location||''})||[];
+  const [pricingMarket,trustMarket]=await Promise.all([runResearchQueries(ctx,pricingPlan,'pricing'),runResearchQueries(ctx,trustPlan,'trust')]);
   const conversion=window.GOConversionIntelligence?.build?.(acquisition)||null;
-  const pricing=window.GOPricingIntelligence?.build?.({pricingMarket:null,businessName:ctx.businessName,website:ctx.url})||null;
-  const trust=window.GOTrustIntelligence?.build?.({trustMarket:{queries:[],target:market?.target||null},businessName:ctx.businessName,website:ctx.url})||null;
+  const pricing=window.GOPricingIntelligence?.build?.({pricingMarket,businessName:ctx.businessName,website:ctx.url})||null;
+  const trust=window.GOTrustIntelligence?.build?.({trustMarket:trustMarket||{queries:[],target:market?.target||null},businessName:ctx.businessName,website:ctx.url})||null;
   const discoveryOpportunity=buildMarketFindings({businessName:ctx.businessName,url:ctx.url,offers:ctx.offers||[],prices:extractPrices(ctx.combined||''),businessContext:ctx.businessContext||{},market})?.find?.(x=>x.pillar==='Visibility')||null;
   const brain=window.GOOpportunityBrain?.build?.({market,discoveryOpportunity,pricing,trust,conversion})||null;
-  return {version:'GO-PUBLIC-RESEARCH-V1',pricing,trust,conversion,brain};
+  return {version:'GO-OPERATOR-RESEARCH-V2',pricing,trust,conversion,brain,researchPlans:{discovery:discoveryQueries.slice(0,5),pricing:pricingPlan,trust:trustPlan},evidence:{pricingMarket:pricingMarket?{provider:pricingMarket.provider||'SerpApi',observedAt:pricingMarket.observedAt||'',queries:pricingMarket.queries||[]}:null,trustMarket:trustMarket?{provider:trustMarket.provider||'SerpApi',observedAt:trustMarket.observedAt||'',queries:trustMarket.queries||[],target:trustMarket.target||null}:null}};
 }
 function brainFinding(c) {
   if(!c)return null;

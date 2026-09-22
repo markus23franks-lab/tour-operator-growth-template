@@ -1,0 +1,7 @@
+import fs from 'node:fs';import vm from 'node:vm';const box={window:{}};vm.createContext(box);vm.runInContext(fs.readFileSync(new URL('../js/product-architecture-intelligence.js',import.meta.url),'utf8'),box);const build=box.window.GOProductArchitecture.build;
+const dossier={products:[{name:'Food Tour',family:'food tour'}]};
+const adjacent=build({dossier,competitors:[{name:'A',products:[{name:'Ghost Walk',family:'ghost tour'}]},{name:'B',products:[{name:'Haunted History',family:'ghost tour'}]}]});
+const single=build({dossier,competitors:[{name:'A',products:[{name:'Ghost Walk',family:'ghost tour'}]}]});
+const parity=build({dossier,competitors:[],positioningComparison:{state:'CATEGORY_PARITY'},competition:{state:'REPEATED_COMPETITOR_PRESSURE'}});
+const cases=[['repeated adjacent offer becomes investigation',adjacent.state,'ADJACENT_OFFER_PATTERN'],['single rival offer is not a gap',single.state,'NO_VERIFIED_ARCHITECTURE_GAP'],['category parity plus repeated pressure prompts differentiation investigation',parity.state,'DIFFERENTIATION_INVESTIGATION']];
+let fail=0;for(const [n,a,e] of cases){if(a!==e){fail++;console.error('FAIL '+n+': '+a+' != '+e)}else console.log('PASS '+n)}if(fail)process.exit(1);console.log('\n'+cases.length+'/'+cases.length+' product-architecture checks passed');

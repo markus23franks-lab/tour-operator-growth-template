@@ -289,3 +289,32 @@ The best evidence-backed opportunity to work on now.
 
 GO INVESTIGATION
 The most economically promising unanswered question GO should investigate next.
+
+## Intelligence Architecture Reset — September 22, 2026
+
+Founder Test #3 (Truckee River Raft Company) established that Build 055's browser-side deterministic Analyzer is no longer the architecture to extend as GO's primary intelligence engine.
+
+The durable decision is:
+
+**Models investigate and reason. Providers acquire reality. Deterministic GO systems enforce truth.**
+
+The next proof moves research orchestration to a backend Investigation Lab with:
+- model-assisted Business Understanding
+- adaptive Investigation Planning
+- provider-neutral evidence adapters
+- normalized evidence records
+- entity/identity reconciliation
+- contradiction/anomaly detection
+- rendered/visual evidence where commercially relevant
+- model-driven commercial synthesis
+- deterministic provenance, UNKNOWN, comparability, confidence and economic gates
+- Opportunity Brain and Action Plan downstream of validated evidence
+
+Existing Build 055 work remains valuable as evidence contracts and validation boundaries. It should not be preserved as primary cognition merely because it already exists.
+
+Canonical design and proof plan:
+`docs/INTELLIGENCE_ARCHITECTURE_RESET.md`
+
+Do not resume large-scale heuristic expansion in `operator-analyzer.js` unless a narrow deterministic rule is clearly the correct validation mechanism.
+
+The next founder-facing intelligence checkpoint should demonstrate a materially different ability to understand, investigate, notice, reconcile, compare and judge—not another incremental Analyzer result.

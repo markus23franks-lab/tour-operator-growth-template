@@ -372,7 +372,9 @@ function buildWebsiteContext(url, pages, bookingLinkEvidence = "") {
   }
 
   const preflight = buildOperatorPreflight(combined, offers, businessContext, siteArchitecture);
-  return { url, businessName, offers, businessContext, semanticModel, commercialTruth, preflight, siteArchitecture, combined };
+  const bookingProvider = detectBookingProvider(combined);
+  const dossier = window.GOBusinessDossier?.build?.({url,businessName,offers,businessContext,bookingProvider,pages})||null;
+  return { url, businessName, offers, businessContext, semanticModel, commercialTruth, preflight, siteArchitecture, bookingProvider, dossier, pages, combined };
 }
 
 function emptyMarket() {
@@ -1998,7 +2000,7 @@ async function runResearchQueries(ctx, queries, lens) {
 
 async function runDedicatedOperatorResearch(ctx, market, acquisition) {
   const positioning=window.GOPositioningIntelligence?.build?.(acquisition)||null;
-  const dossier=window.GOBusinessDossier?.build?.({...ctx,pages:acquisition?.pages||[],positioning})||null;
+  const dossier=ctx.dossier ? {...ctx.dossier,positioning} : (window.GOBusinessDossier?.build?.({...ctx,pages:acquisition?.pages||[],positioning})||null);
   if(dossier&&!dossier.readyForMarketJudgment)return {version:'GO-OPERATOR-RESEARCH-V6',dossier,positioning,brain:null,blocked:true,blockers:dossier.blockers||[],researchPlans:{discovery:[],pricing:[],trust:[]},evidence:{}};
   const discoveryQueries=(market?.queryResults||[]).map(x=>x?.query).filter(Boolean).length
     ? (market.queryResults||[]).map(x=>x.query).filter(Boolean)

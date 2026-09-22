@@ -2062,7 +2062,12 @@ function buildUniversalProfile(url, pages, market = emptyMarket(), bookingLinkEv
   const businessName = dossier?.business?.name || canonicalBusinessName(extractedBusinessName, market?.target, url);
   const rawOffers = extractOffers(combined, businessName);
   const offers = dossier?.products?.length ? dossier.products.map(item=>item.name).filter(Boolean) : rawOffers;
-  const dossierPrices = (dossier?.products||[]).map(item=>item.price).filter(value=>value!=null).map(value=>typeof value==='number'?'
+  const dossierPrices = (dossier?.products||[]).map(item=>item.price).filter(value=>value!=null).map(value=>typeof value==='number'?String.fromCharCode(36)+value:String(value));
+  const prices = dossierPrices.length ? dossierPrices : extractPrices(combined);
+  const inferredContext = inferBusinessContext(combined, home, url);
+  const businessContext = dossier?.business ? {...inferredContext,businessType:dossier.business.businessType||inferredContext.businessType,transactionType:dossier.business.transactionType||inferredContext.transactionType,location:dossier.business.location||inferredContext.location} : inferredContext;
+  const detectedBookingProvider = detectBookingProvider(combined);
+  const bookingProvider = dossier?.booking?.provider ? {...detectedBookingProvider,label:dossier.booking.provider,provider:dossier.booking.provider} : detectedBookingProvider;
   const marketplaces = detectMarketplacePresence(combined);
   const preflight = buildOperatorPreflight(combined, offers, businessContext);
   const trust = detectTrust(combined);

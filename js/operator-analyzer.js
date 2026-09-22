@@ -3180,6 +3180,7 @@ function renderResearchRead(profile) {
   const host=document.getElementById("research-read");
   if(!host)return;
   const r=profile.researchIntelligence||{},d=r.dossier||{},brain=r.brain||{},plan=r.actionPlan||{},comp=r.competition||{},pos=r.positioningComparison||{},trust=r.trust||{},pricing=r.pricing||{},offers=r.offerComparison||{},journey=r.bookingJourney||{},architecture=r.productArchitecture||{};
+  if(r.presentationGate?.pass===false){host.hidden=false;host.innerHTML=`<div class="research-read-head"><div><p class="eyebrow">GO'S RESEARCH BRIEF</p><h3>GO held this result instead of showing you a story it does not trust yet.</h3></div><span>RESEARCH CONTINUES</span></div><div class="research-decision"><small>WHY GO STOPPED</small><strong>${escapeHtml(r.presentationGate.issues?.[0]||'The operator model needs stronger evidence.')}</strong><p>GO will not turn malformed identity, conflicting commercial models or raw extraction artifacts into growth advice.</p></div>`;return;}
   if(!brain?.candidates?.length){host.innerHTML="";host.hidden=true;return;}
   const verified=(d.products||[]).map(x=>x.name).filter(Boolean).slice(0,4);
   const lead=comp?.leader?.name||"No repeated direct rival promoted";

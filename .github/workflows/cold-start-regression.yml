@@ -38,6 +38,7 @@ jobs:
           node --check js/business-dossier.js
           node --check js/offer-comparison.js
           node --check js/booking-journey-intelligence.js
+          node --check js/product-architecture-intelligence.js
       - name: Run cold-start product-family regression
         run: node scripts/cold-start-regression.mjs
       - name: Run dedicated research-plan regression
@@ -56,6 +57,8 @@ jobs:
         run: node scripts/offer-comparison-regression.mjs
       - name: Run booking-journey regression
         run: node scripts/booking-journey-regression.mjs
+      - name: Run product-architecture regression
+        run: node scripts/product-architecture-regression.mjs
       - name: Run dossier-first research pipeline regression
         run: node scripts/research-pipeline-regression.mjs
       - name: Run operator presentation-integrity regression

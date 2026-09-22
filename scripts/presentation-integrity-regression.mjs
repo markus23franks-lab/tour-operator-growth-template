@@ -7,5 +7,7 @@ for(const token of bad){for(const t of liveTemplates){if(t.includes('>'+token+'<
 if(!source.includes('GO\'S RESEARCH BRIEF'))failures.push('missing research brief');
 if(!source.includes('GO\'s first priority:'))failures.push('research summary not owning headline');
 if(!source.includes('researchIntelligence: research'))failures.push('research dossier missing from profile');
+if(!source.includes('plan.headline||primary.finding'))failures.push('action plan not owning visible judgment');
+if(!source.includes('presentationGate?.pass===false'))failures.push('runtime presentation gate not enforced in Analyzer');
 if(failures.length){console.error('FAIL presentation integrity:',failures.join(', '));process.exit(1)}
 console.log('PASS presentation integrity: live Analyzer templates avoid raw sentinel leakage and research judgment owns the result narrative');

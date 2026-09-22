@@ -2,11 +2,19 @@
 
 ## Status
 
-**Automated implementation gate: COMPLETE**
+**Automated implementation gate: COMPLETE — CI run #31 passed after public Analyzer integration**
 
 **Founder product acceptance: PENDING**
 
 Build 055 should not be merged or described as fully accepted until the founder runs the one-URL experience against several previously unseen operators and judges the resulting Snapshot credible, useful and commercially interesting.
+
+## Final integration checkpoint — 2026-09-21
+
+The public Analyzer now loads the Pricing, Trust, Conversion and Opportunity Brain layers directly. The Opportunity Brain can therefore arbitrate among public growth senses instead of treating search as the product. Public Pricing and Trust remain conservative when dedicated comparable evidence is unavailable; they stay UNKNOWN rather than manufacturing a recommendation.
+
+Cold-start product inference was also hardened to distinguish operator-owned product evidence from incidental destination language. Regression coverage now includes a food-tour operator mentioning unrelated local boat charters and a rental operator mentioning activities guests can do with the rental. Both cases must preserve the operator's actual transaction model rather than create false commercial searches.
+
+CI run #31 passed the complete Build 055 gate after these changes, including Analyzer syntax, the 11-fixture product-family suite, Opportunity Brain evidence integrity, portfolio judgment, and zero-input handoff.
 
 ## Capability delivered
 

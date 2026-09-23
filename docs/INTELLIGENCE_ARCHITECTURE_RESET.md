@@ -537,3 +537,46 @@ If it can, wrap the existing deterministic evidence contracts around it and make
 The goal is not to protect Build 055.
 
 The goal is to preserve what Build 055 taught us and finally give Growth Operator the kind of brain the product vision requires.
+
+
+---
+
+## Implementation checkpoint — Investigation Lab V0.10
+
+The architecture proof has now moved beyond documentation.
+
+Implemented on the Build 055 branch:
+
+- backend `investigation-lab` function
+- normalized evidence truth contract
+- model-backed Business Dossier
+- model-backed adaptive Investigation Planner
+- model-backed Commercial Synthesis with evidence-ID validation
+- independent organic + Google Local collection through the existing SerpApi account
+- cross-surface presence reconciliation
+- possible entity-fragmentation anomaly detection
+- explicit cross-surface contradiction detection
+- contradictions/anomalies create follow-up research questions rather than automatic defects
+- adaptive follow-up query execution
+- rendered first-party acquisition path with optional Firecrawl and direct-fetch fallback
+- evidence-backed competitor candidate discovery
+- competitor-site acquisition selected from observed market evidence
+- research-coverage gate that refuses final commercial judgment when research is too shallow
+
+Truckee-class behavior is now encoded structurally:
+
+1. observed local or organic presence resolves presence even if another source is weak;
+2. multiple provider entity IDs that share operator identity signals create `POSSIBLE_ENTITY_FRAGMENTATION`, not an automatic duplicate-listing recommendation;
+3. contradictory presence/absence evidence creates a follow-up investigation;
+4. a one-query result cannot pass the research-coverage gate;
+5. competitor research is chosen from market evidence instead of a hardcoded competitor list.
+
+CI run #252 is green with the new Investigation Lab regressions included.
+
+### Remaining proof dependency
+
+The code path can run a live end-to-end investigation when `OPENAI_API_KEY` and `SERPAPI_KEY` are available to the Netlify function environment. The existing product already uses SerpApi elsewhere, but the new proof intentionally requires the backend environment rather than borrowing browser-side intelligence.
+
+Optional `FIRECRAWL_API_KEY` improves rendered acquisition but is not required because direct first-party fetching remains a fallback.
+
+Do not wire Investigation Lab into the customer-facing Analyzer until live proof output across the regression corpus demonstrates a material intelligence gain.

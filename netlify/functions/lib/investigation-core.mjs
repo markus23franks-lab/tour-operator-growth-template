@@ -105,6 +105,17 @@ export function buildCompetitorCandidates(records=[],operator={}){
 }
 
 
+export function buildEntityIntegrityPlan({records=[],operator={}}){
+ const reconciled=reconcileBusinessEntities(records,operator),steps=[];
+ for(const anomaly of reconciled.anomalies){
+   const rows=(anomaly.evidenceIds||[]).map(id=>records.find(x=>x.id===id)).filter(Boolean);
+   const ids=[...new Set(rows.map(x=>x.observation?.placeId||x.source?.providerRef).filter(Boolean))];
+   const domains=rows.map(x=>host(x.observation?.website)).filter(Boolean),phones=rows.map(x=>digits(x.observation?.phone)).filter(x=>x.length>=7),addresses=[...new Set(rows.map(x=>norm(x.observation?.address)).filter(Boolean))];
+   steps.push({anomalyId:anomaly.id,type:anomaly.type,entityIds:ids,evidenceIds:anomaly.evidenceIds,observedSignals:{sharedDomain:domains.length>1&&new Set(domains).size===1,sharedPhone:phones.length>1&&new Set(phones).size===1,sameAddress:addresses.length===1&&addresses.length>0,addressCount:addresses.length},state:"INVESTIGATE",nextChecks:["Fetch each business entity by provider ID when supported.","Compare canonical website, phone, street address and coordinates.","Compare review count/rating and recent review stream.","Verify whether the operator intentionally maintains multiple locations or brands."],decisionBoundary:"Do not recommend merge/consolidation until ownership, location intent and provider-specific entity details are verified."});
+ }
+ return {state:steps.length?"FOLLOW_UP_REQUIRED":"NO_ENTITY_ANOMALY",steps};
+}
+
 export function buildResearchCoverage({records=[],signals={}}){
  const observed=records.filter(x=>x.status==="OBSERVED"),surfaces=[...new Set(observed.map(x=>x.surface))];
  const queries=[...new Set(observed.map(x=>x.source?.query).filter(Boolean))];

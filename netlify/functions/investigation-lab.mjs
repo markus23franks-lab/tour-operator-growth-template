@@ -1,8 +1,9 @@
 import {normalizeSerpEvidence,buildInvestigationSignals} from "./lib/investigation-core.mjs";
 import {collectSearchSurfaces} from "./lib/serpapi-investigation-adapter.mjs";
 import {collectFirstPartyEvidence} from "./lib/first-party-investigation-adapter.mjs";
+import {executeFollowUpPlan} from "./lib/follow-up-executor.mjs";
 import {buildBusinessDossierWithModel,buildInvestigationPlanWithModel,synthesizeCommercialJudgmentWithModel} from "./lib/research-model-adapter.mjs";
-const LAB_BUILD_ID = "GO-INVESTIGATION-LAB-V0.7";
+const LAB_BUILD_ID = "GO-INVESTIGATION-LAB-V0.8";
 const ALLOWED_SURFACES = new Set([
   "FIRST_PARTY_RENDERED","ORGANIC_SERP","LOCAL_MAPS","BUSINESS_ENTITY",
   "REVIEW_REPUTATION","COMPETITOR_SITE","BOOKING_FLOW","VISUAL_SCREENSHOT","OTA_MARKETPLACE"
@@ -35,9 +36,12 @@ export default async (request) => {
       const allRecords=[...firstParty.records,...marketRecords];
       const signals=buildInvestigationSignals({records:allRecords,operator});
       const followUpModel=await buildInvestigationPlanWithModel({dossier:dossierModel.dossier,evidence:allRecords,signals,apiKey:process.env.OPENAI_API_KEY});
-      const synthesisModel=await synthesizeCommercialJudgmentWithModel({dossier:dossierModel.dossier,evidence:allRecords,signals,plan:followUpModel.plan,apiKey:process.env.OPENAI_API_KEY});
-      const validation=validateEvidenceRecords(allRecords);
-      return json(validation.ok?200:422,{ok:validation.ok,buildId:LAB_BUILD_ID,state:validation.ok?"PROOF_JUDGED":"EVIDENCE_REJECTED",dossier:dossierModel.dossier,initialPlan:initialPlanModel.plan,queriesResearched:plannedQueries,surfaceStatus:marketBatches.map(x=>({query:x.query,status:x.collected?.surfaceStatus||null,errors:x.collected?.errors||[x.error].filter(Boolean)})),signals,followUpPlan:followUpModel.plan,judgment:synthesisModel.synthesis,evidence:allRecords,telemetry:{firstPartyPages:firstParty.pagesRead,evidenceRecords:allRecords.length,model:[dossierModel,initialPlanModel,followUpModel,synthesisModel].map(x=>({name:x.model,usage:x.usage||null}))},validation});
+      const followUp=await executeFollowUpPlan({plan:followUpModel.plan,operator,location:dossierModel.dossier.operatingMarket||"",existingRecords:allRecords,apiKey:process.env.SERPAPI_KEY,maxQueries:3});
+      const finalRecords=[...allRecords,...followUp.records];
+      const finalSignals=followUp.signals;
+      const synthesisModel=await synthesizeCommercialJudgmentWithModel({dossier:dossierModel.dossier,evidence:finalRecords,signals:finalSignals,plan:followUpModel.plan,apiKey:process.env.OPENAI_API_KEY});
+      const validation=validateEvidenceRecords(finalRecords);
+      return json(validation.ok?200:422,{ok:validation.ok,buildId:LAB_BUILD_ID,state:validation.ok?"PROOF_JUDGED":"EVIDENCE_REJECTED",dossier:dossierModel.dossier,initialPlan:initialPlanModel.plan,queriesResearched:plannedQueries,followUpQueries:followUp.attempted,surfaceStatus:[...marketBatches,...followUp.batches].map(x=>({query:x.query,status:x.collected?.surfaceStatus||null,errors:x.collected?.errors||[x.error].filter(Boolean)})),signals:finalSignals,followUpPlan:followUpModel.plan,judgment:synthesisModel.synthesis,evidence:finalRecords,telemetry:{firstPartyPages:firstParty.pagesRead,evidenceRecords:finalRecords.length,initialQueries:plannedQueries.length,followUpQueries:followUp.attempted.length,model:[dossierModel,initialPlanModel,followUpModel,synthesisModel].map(x=>({name:x.model,usage:x.usage||null}))},validation});
     }catch(error){return json(502,{ok:false,buildId:LAB_BUILD_ID,error:error instanceof Error?error.message:String(error)})}
   }
   if(body.action==="plan-investigation"){

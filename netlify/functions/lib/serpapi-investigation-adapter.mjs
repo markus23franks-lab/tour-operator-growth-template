@@ -34,5 +34,19 @@ async function search(params,timeoutMs){
   }finally{clearTimeout(timer)}
 }
 function extractLocal(payload){const x=payload?.local_results;if(Array.isArray(x))return x;if(Array.isArray(x?.places))return x.places;return[]}
-function dedupeLocal(rows){const seen=new Set();return rows.filter(row=>{const key=String(row.place_id||row.data_id||"").trim()||[row.title||row.name,row.address,row.phone].map(x=>String(x||"").toLowerCase().trim()).join("|");if(!key||seen.has(key))return false;seen.add(key);return true})}
+function dedupeLocal(rows){
+  const byKey=new Map();
+  for(const row of rows){
+    const key=String(row.place_id||row.data_id||"").trim()||[row.title||row.name,row.address,row.phone].map(x=>String(x||"").toLowerCase().trim()).join("|");
+    if(!key)continue;
+    const prior=byKey.get(key);
+    if(!prior){byKey.set(key,row);continue}
+    const merged={...prior};
+    for(const [field,value] of Object.entries(row)){
+      if((merged[field]===undefined||merged[field]===null||merged[field]==="")&&value!==undefined&&value!==null&&value!=="")merged[field]=value;
+    }
+    byKey.set(key,merged);
+  }
+  return [...byKey.values()];
+}
 function message(error){return error instanceof Error?error.message:String(error||"provider error")}

@@ -1,6 +1,12 @@
 # Investigation Lab Status
 **2026-09-22 — architecture reset implementation**
 
+## Builder 3 verified checkpoint — September 23, 2026
+
+The SerpApi adapter was inspected and exercised locally after the handoff. Duplicate local rows now retain complementary details from the dedicated local response while preserving the embedded result position. An end-to-end regression checks that the enriched phone survives normalization, distinct provider IDs remain an entity investigation, and observed organic presence remains visible even when the local request fails. All 25 local regression scripts passed at this checkpoint. This is fixture evidence, not a live-provider finding.
+
+The next consequential proof is a live multi-operator corpus run of the backend Investigation Lab, with captured evidence, provider status, model usage and human review of whether the findings changed the commercial investigation. The local environment has no `OPENAI_API_KEY` or `SERPAPI_KEY`, so it cannot establish provider recall, entity-detail accuracy, model judgment quality, latency or cost on live operators. The frontend should not be migrated to this proof engine on fixture results alone.
+
 ## Current proof pipeline
 
 The backend proof now executes this architecture:

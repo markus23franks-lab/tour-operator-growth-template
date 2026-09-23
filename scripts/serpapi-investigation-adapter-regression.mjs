@@ -1,4 +1,5 @@
 import {collectSearchSurfaces} from '../netlify/functions/lib/serpapi-investigation-adapter.mjs';
+import {normalizeSerpEvidence,buildInvestigationSignals} from '../netlify/functions/lib/investigation-core.mjs';
 let calls=[];global.fetch=async url=>{calls.push(String(url));const u=new URL(url);const engine=u.searchParams.get('engine');return {ok:true,status:200,json:async()=>engine==='google'?{organic_results:[{position:1,title:'Operator',link:'https://operator.example'}],local_results:{places:[{position:2,title:'Operator',place_id:'a'}]}}:{local_results:[{position:1,title:'Operator',place_id:'a',phone:'555-0100',website:'https://operator.example',reviews:42},{position:3,title:'Operator',place_id:'b'}]}}};
 const result=await collectSearchSurfaces({query:'sample tours',location:'Sample, UT',apiKey:'test'});
 let fail=0;const check=(n,a,e)=>{if(JSON.stringify(a)!==JSON.stringify(e)){fail++;console.error('FAIL',n,{a,e})}else console.log('PASS',n)};
@@ -8,4 +9,13 @@ check('merges and dedupes local entities',result.payload.local_results.places.ma
 check('retains richer data from dedicated local surface',result.payload.local_results.places[0].phone,'555-0100');
 check('retains embedded rank alongside richer local evidence',result.payload.local_results.places[0].position,2);
 check('both surfaces observed',result.surfaceStatus,{organic:'OBSERVED',local:'OBSERVED'});
+const records=normalizeSerpEvidence({query:'sample tours',payload:result.payload,operator:{name:'Operator',website:'https://operator.example'}});
+const signals=buildInvestigationSignals({records,operator:{name:'Operator',website:'https://operator.example'}});
+check('enriched local evidence survives normalization',records.find(x=>x.observation?.placeId==='a')?.observation?.phone,'555-0100');
+check('separate local provider IDs remain an investigation',signals.entities.anomalies[0]?.type,'POSSIBLE_ENTITY_FRAGMENTATION');
+check('organic presence survives local entity reconciliation',signals.presence[0]?.state,'OBSERVED_PRESENT');
+global.fetch=async url=>{const engine=new URL(url).searchParams.get('engine');if(engine==='google_local')throw new Error('local unavailable');return {ok:true,status:200,json:async()=>({organic_results:[{title:'Operator',link:'https://operator.example'}]})}};
+const partial=await collectSearchSurfaces({query:'sample tours',apiKey:'test'});
+check('local provider failure stays unknown',partial.surfaceStatus,{organic:'OBSERVED',local:'UNKNOWN'});
+check('organic evidence survives local provider failure',partial.payload.organic_results.length,1);
 if(fail)process.exit(1);console.log('\nSerpApi Investigation adapter regression passed');

@@ -91,10 +91,24 @@ export function detectEvidenceContradictions(records=[],operator={}){
   return contradictions;
 }
 
+
+export function buildCompetitorCandidates(records=[],operator={}){
+  const ownHost=host(operator.website),rows=records.filter(x=>x.status==="OBSERVED"&&(x.surface===SURFACES.ORGANIC||x.surface===SURFACES.LOCAL)&&!x.operatorMatch?.likely);
+  const byHost=new Map();
+  for(const row of rows){
+    const url=row.observation?.website||row.source?.url||"",domain=host(url);
+    if(!domain||domain===ownHost||/(tripadvisor|viator|getyourguide|yelp|facebook|instagram|youtube|wikipedia|reddit)\./i.test(domain))continue;
+    if(!byHost.has(domain))byHost.set(domain,{domain,name:row.subject?.label||domain,evidenceIds:[],queries:new Set(),surfaces:new Set(),bestPosition:999});
+    const item=byHost.get(domain);item.evidenceIds.push(row.id);if(row.source?.query)item.queries.add(row.source.query);item.surfaces.add(row.surface);item.bestPosition=Math.min(item.bestPosition,Number(row.observation?.position)||999);
+  }
+  return [...byHost.values()].map(x=>({...x,queries:[...x.queries],surfaces:[...x.surfaces],evidenceIds:[...new Set(x.evidenceIds)],score:x.queries.size*3+x.surfaces.size*2+(x.bestPosition<=5?2:0)})).sort((a,b)=>b.score-a.score||a.bestPosition-b.bestPosition).slice(0,8);
+}
+
 export function buildInvestigationSignals({records=[],operator={}}){
   const entities=reconcileBusinessEntities(records,operator);
   const presence=reconcileSearchPresence(records,operator);
   const contradictions=detectEvidenceContradictions(records,operator);
+  const competitorCandidates=buildCompetitorCandidates(records,operator);
   const strengths=presence.filter(x=>x.state==="OBSERVED_PRESENT").map(x=>({type:"DISCOVERY_STRENGTH",state:"LEVERAGE",headline:`Public presence is already observed for “${x.query}”.`,evidenceIds:x.evidenceIds,reason:x.note}));
-  const anomalyQuestions=entities.anomalies.flatMap(x=>(x.questions||[]).map(question=>({triggerId:x.id,question,reason:x.reason})));const contradictionQuestions=contradictions.map(x=>({triggerId:x.id,question:'Which observed surface has the correct scope and identity match for this query?',reason:x.reason}));return {entities,presence,anomalies:[...entities.anomalies,...contradictions],contradictions,strengths,followUpQuestions:[...anomalyQuestions,...contradictionQuestions]};
+  const anomalyQuestions=entities.anomalies.flatMap(x=>(x.questions||[]).map(question=>({triggerId:x.id,question,reason:x.reason})));const contradictionQuestions=contradictions.map(x=>({triggerId:x.id,question:'Which observed surface has the correct scope and identity match for this query?',reason:x.reason}));return {entities,presence,competitorCandidates,anomalies:[...entities.anomalies,...contradictions],contradictions,strengths,followUpQuestions:[...anomalyQuestions,...contradictionQuestions]};
 }

@@ -1,4 +1,4 @@
-import {normalizeSerpEvidence,reconcileBusinessEntities,reconcileSearchPresence,buildInvestigationSignals} from '../netlify/functions/lib/investigation-core.mjs';
+import {normalizeSerpEvidence,reconcileBusinessEntities,reconcileSearchPresence,detectEvidenceContradictions,buildInvestigationSignals} from '../netlify/functions/lib/investigation-core.mjs';
 let fail=0;const check=(n,a,e)=>{if(JSON.stringify(a)!==JSON.stringify(e)){fail++;console.error('FAIL',n,{actual:a,expected:e})}else console.log('PASS',n)};
 const operator={name:'Truckee River Raft Company',website:'https://truckeeriverraft.com/'};
 const payload={organic_results:[{position:2,title:'Truckee River Raft Company - Tahoe City',link:'https://truckeeriverraft.com/'}],local_results:{places:[
@@ -14,6 +14,9 @@ check('presence reconciles both surfaces',presence.surfaces.sort(),['LOCAL_MAPS'
 const entities=reconcileBusinessEntities(records,operator);
 check('distinct provider ids trigger entity investigation',entities.anomalies[0]?.type,'POSSIBLE_ENTITY_FRAGMENTATION');
 check('competitor excluded from target entities',entities.targetEntities.length,2);
+const absence={id:'ev_absence',surface:'ORGANIC_SERP',claimType:'TARGET_ABSENCE_OBSERVED',subject:{entityId:null,label:'Truckee River Raft Company'},observation:{checkedResults:10},source:{provider:'Other Search Provider',query:'Tahoe City rafting tours',providerRef:'proof:absence'},observedAt:'2026-09-22T00:00:00Z',confidence:'HIGH',status:'OBSERVED',operatorMatch:{likely:false}};
+const contradictions=detectEvidenceContradictions([...records,absence],operator);
+check('observed presence contradicts a scoped absence claim',contradictions[0]?.type,'CROSS_SURFACE_PRESENCE_CONTRADICTION');
 const signals=buildInvestigationSignals({records,operator});
 check('anomaly creates follow-up questions',signals.followUpQuestions.length>0,true);
 check('observed presence becomes strength, not gap',signals.strengths[0]?.state,'LEVERAGE');

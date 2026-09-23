@@ -26,3 +26,8 @@ for(const website of websites){
   // Save every completed run so a later provider failure does not erase earlier evidence.
   await writeFile(outputPath,JSON.stringify({startedAt,endpoint:local?'local':url.origin+url.pathname,results},null,2)+'\n',{mode:0o600});
 }
+const failed=results.filter(({summary,response})=>summary.httpStatus<200||summary.httpStatus>=300||response.ok!==true);
+if(failed.length){
+  console.error(`${failed.length}/${results.length} investigations failed; inspect the saved artifact for details.`);
+  process.exitCode=1;
+}

@@ -148,6 +148,30 @@ Founder HQ owns documentation governance: completeness, coherence, cross-documen
 
 Do not mechanically update every document. Documentation that becomes repetitive, stale, or contradictory is worse than concise canonical truth.
 
+## High-Velocity Builder Turnover
+
+Autonomous Work mode may consume a Builder chat in days rather than weeks. Treat Builder turnover as a normal operating condition, not an emergency closeout event.
+
+Do not rely on Markus noticing that a context window is nearly full or sitting down for a long documentation/commit session.
+
+During active work:
+
+- commit stable checkpoints while context is fresh;
+- document durable architectural/product learning at meaningful milestones rather than waiting for the end;
+- keep regressions and acceptance state current;
+- label experimental/unvalidated work explicitly;
+- preserve the exact next unfinished step when a Work run ends.
+
+The canonical entry point for a fresh Builder is `BUILDER_BOOTSTRAP.md`.
+
+The target transition is:
+
+**new Builder → read bootstrap/canonical docs → verify branch + HEAD + CI → identify any unvalidated edge → continue.**
+
+A handoff should contain only volatile state that the repository cannot safely communicate yet. It should not have to reconstruct the company.
+
+Builder N should assume Builder N+1 may arrive next week.
+
 ## Git / Saving
 
 Commit meaningful stable checkpoints frequently enough that autonomous work is durable.

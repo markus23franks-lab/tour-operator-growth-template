@@ -30,7 +30,7 @@ async function lookupLocation(requested,timeoutMs){
   finally{clearTimeout(timer)}
 }
 
-export async function collectSearchSurfaces({query,location="",apiKey,timeoutMs=9000}){
+export async function collectSearchSurfaces({query,location="",apiKey,timeoutMs=20000}){
   if(!apiKey)throw new Error("SERPAPI_KEY is not configured");
   if(!query)throw new Error("query is required");
   const canonicalLocation=await resolveLocation(location,timeoutMs);

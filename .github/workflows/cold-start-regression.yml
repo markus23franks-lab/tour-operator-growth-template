@@ -77,6 +77,8 @@ jobs:
         run: node scripts/investigation-lab-regression.mjs
       - name: Run cross-surface reconciliation regression
         run: node scripts/investigation-reconciliation-regression.mjs
+      - name: Run Investigation Lab research-coverage regression
+        run: node scripts/investigation-coverage-regression.mjs
       - name: Run Investigation Lab provider-adapter regression
         run: node scripts/serpapi-investigation-adapter-regression.mjs
       - name: Run research-model evidence-binding regression

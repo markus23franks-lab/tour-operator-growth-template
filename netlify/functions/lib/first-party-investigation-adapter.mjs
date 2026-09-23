@@ -2,8 +2,9 @@ const MAX_PAGES=6;
 const clean=v=>String(v??"").replace(/\s+/g," ").trim();
 const hash=s=>{let h=2166136261;for(let i=0;i<s.length;i++){h^=s.charCodeAt(i);h=Math.imul(h,16777619)}return (h>>>0).toString(36)};
 
-export async function collectFirstPartyEvidence({website,timeoutMs=8000}){
-  const root=new URL(website);const home=await fetchHtml(root.href,timeoutMs);
+export async function collectFirstPartyEvidence({website,timeoutMs=8000,firecrawlApiKey=process.env.FIRECRAWL_API_KEY}){
+  const root=new URL(website);if(firecrawlApiKey){try{return await collectWithFirecrawl(root.href,firecrawlApiKey,timeoutMs)}catch{}}
+  const home=await fetchHtml(root.href,timeoutMs);
   const links=rankInternalLinks(home,root).slice(0,MAX_PAGES-1);
   const pages=[{url:root.href,html:home},...(await Promise.all(links.map(async url=>{try{return {url,html:await fetchHtml(url,timeoutMs)}}catch{return null}}))).filter(Boolean)];
   const observedAt=new Date().toISOString();
@@ -12,6 +13,19 @@ export async function collectFirstPartyEvidence({website,timeoutMs=8000}){
     return {id:"ev_fp_"+hash(page.url+"|"+observation.title+"|"+index),surface:"FIRST_PARTY_RENDERED",claimType:index===0?"FIRST_PARTY_HOME":"FIRST_PARTY_PAGE",subject:{entityId:null,label:observation.title||root.hostname},observation,source:{provider:"GO Direct Fetch",url:page.url,providerRef:""},observedAt,confidence:"HIGH",status:"OBSERVED"};
   });
   return {website:root.href,records,pagesRead:pages.length};
+}
+
+
+async function collectWithFirecrawl(website,apiKey,timeoutMs){
+ const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),Math.max(timeoutMs,15000));
+ try{
+  const res=await fetch("https://api.firecrawl.dev/v2/scrape",{method:"POST",headers:{"Content-Type":"application/json",Authorization:"Bearer "+apiKey},body:JSON.stringify({url:website,formats:["markdown","links","screenshot"],onlyMainContent:false,waitFor:1000}),signal:controller.signal});
+  const payload=await res.json().catch(()=>({}));if(!res.ok||payload.success===false)throw new Error(payload.error||"Firecrawl returned "+res.status);
+  const data=payload.data||payload;const markdown=String(data.markdown||"");if(markdown.length<150)throw new Error("Firecrawl returned too little content");
+  const observedAt=new Date().toISOString(),title=clean(data.metadata?.title||new URL(website).hostname);
+  const record={id:"ev_fp_"+hash(website+"|firecrawl|"+title),surface:"FIRST_PARTY_RENDERED",claimType:"FIRST_PARTY_HOME",subject:{entityId:null,label:title},observation:{url:website,title,headings:markdown.split("\n").filter(x=>/^#{1,3}\s/.test(x)).map(x=>clean(x.replace(/^#{1,3}\s+/,""))).slice(0,30),bookingLinks:(data.links||[]).filter(x=>/book|reserve|availability|ticket|rent|peek|fareharbor|bokun|rezdy|xola/i.test(String(x))).slice(0,20).map(url=>({label:"booking link",url})),prices:[...new Set(markdown.match(/\$\s?\d{1,5}(?:\.\d{2})?/g)||[])].slice(0,30),text:clean(markdown).slice(0,30000),screenshot:data.screenshot||""},source:{provider:"Firecrawl",url:website,providerRef:data.metadata?.sourceURL||""},observedAt,confidence:"HIGH",status:"OBSERVED"};
+  return {website,records:[record],pagesRead:1,rendered:true,provider:"Firecrawl"};
+ }finally{clearTimeout(timer)}
 }
 
 async function fetchHtml(url,timeoutMs){const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),timeoutMs);try{const res=await fetch(url,{redirect:"follow",headers:{Accept:"text/html,application/xhtml+xml","User-Agent":"Mozilla/5.0 (compatible; GrowthOperatorResearch/1.0)"},signal:controller.signal});if(!res.ok)throw new Error("Website returned "+res.status);const html=await res.text();if(html.length<200)throw new Error("Website returned too little content");return html}finally{clearTimeout(timer)}}

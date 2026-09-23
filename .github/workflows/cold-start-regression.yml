@@ -48,6 +48,7 @@ jobs:
           node --check netlify/functions/lib/research-model-adapter.mjs
           node --check netlify/functions/lib/commercial-synthesis.mjs
           node --check netlify/functions/lib/follow-up-executor.mjs
+          node --check netlify/functions/lib/competitor-investigation-adapter.mjs
       - name: Run cold-start product-family regression
         run: node scripts/cold-start-regression.mjs
       - name: Run dedicated research-plan regression

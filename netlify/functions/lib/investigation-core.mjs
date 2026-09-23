@@ -16,7 +16,7 @@ export function normalizeSerpEvidence({query,payload,operator={},observedAt=new 
   const localRows=payload?.local_results?.places||payload?.local_results||[];
   (Array.isArray(localRows)?localRows:[]).forEach((row,index)=>{
     const label=clean(row.title||row.name);
-    out.push({id:id("ev",provider,"local",query,row.place_id||label,index),surface:SURFACES.LOCAL,claimType:"BUSINESS_ENTITY_OBSERVED",subject:{entityId:row.place_id||null,label},observation:{position:row.position??index+1,placeId:row.place_id||"",address:clean(row.address),phone:clean(row.phone),website:row.website||row.links?.website||"",rating:row.rating??null,reviews:row.reviews??row.reviews_count??null,type:clean(row.type)},source:{provider,query,url:row.website||row.links?.website||"",providerRef:row.place_id||""},observedAt,confidence:"HIGH",status:"OBSERVED"});
+    out.push({id:id("ev",provider,"local",query,row.place_id||label,index),surface:SURFACES.LOCAL,claimType:"BUSINESS_ENTITY_OBSERVED",subject:{entityId:row.place_id||null,label},observation:{position:row.position??index+1,placeId:row.place_id||row.data_id||"",address:clean(row.address),phone:clean(row.phone),website:row.website||row.links?.website||"",rating:row.rating??null,reviews:row.reviews??row.reviews_count??null,type:clean(row.type)},source:{provider,query,url:row.website||row.links?.website||"",providerRef:row.place_id||row.data_id||""},observedAt,confidence:"HIGH",status:"OBSERVED"});
   });
   return out.map(x=>({...x,operatorMatch:scoreOperatorMatch(x,operator)}));
 }

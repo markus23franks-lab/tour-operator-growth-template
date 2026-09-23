@@ -11,4 +11,10 @@ const signals={strengths:[{headline:'Presence observed',evidenceIds:['ev1']}],an
 const deterministic=deterministicSignalFindings(signals);
 check('observed presence preserved as strength',deterministic.strengths[0].type,'LEVERAGE');
 check('entity anomaly remains investigation',deterministic.investigations[0].type,'INVESTIGATE');
+
+const tooMany={...base,strengths:Array.from({length:5},(_,i)=>({type:'LEVERAGE',headline:'Strength '+i,whyItMatters:'x',evidenceIds:['ev1'],contradictionIds:[],confidence:'HIGH',actionBoundary:'preserve',economicBoundary:'unknown'}))};
+check('synthesis cannot flood operator with findings',validateCommercialSynthesis(tooMany,[observed]).ok,false);
+const duplicate={...base,strengths:[{type:'LEVERAGE',headline:'Same thing',whyItMatters:'x',evidenceIds:['ev1'],contradictionIds:[],confidence:'HIGH',actionBoundary:'preserve',economicBoundary:'unknown'}],investigations:[{type:'INVESTIGATE',headline:'Same thing',whyItMatters:'x',evidenceIds:['ev1'],contradictionIds:[],confidence:'MEDIUM',actionBoundary:'verify',economicBoundary:'unknown'}]};
+check('duplicate commercial findings rejected',validateCommercialSynthesis(duplicate,[observed]).ok,false);
+
 if(fail)process.exit(1);console.log('\nCommercial synthesis truth regression passed');

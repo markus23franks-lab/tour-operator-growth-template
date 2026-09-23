@@ -84,6 +84,8 @@ jobs:
         run: node scripts/commercial-synthesis-regression.mjs
       - name: Run adaptive follow-up research regression
         run: node scripts/follow-up-executor-regression.mjs
+      - name: Run rendered first-party acquisition regression
+        run: node scripts/first-party-investigation-regression.mjs
       - name: Run dossier-first research pipeline regression
         run: node scripts/research-pipeline-regression.mjs
       - name: Run operator presentation-integrity regression

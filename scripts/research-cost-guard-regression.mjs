@@ -9,6 +9,7 @@ try{
     const body=JSON.parse(options.body);
     assert.equal(body.model,'gpt-5');
     assert.equal(body.max_output_tokens,6000);
+    assert.equal(body.reasoning.effort,'low');
     assert.equal(body.store,false);
     assert.ok(body.input[0].content[0].text.length<=100000);
     return new Response(JSON.stringify({id:'resp_fixture',model:'gpt-5',usage:{input_tokens:1200,output_tokens:200},output:[{content:[{type:'output_text',text:'not JSON'}]}]}),{status:200});

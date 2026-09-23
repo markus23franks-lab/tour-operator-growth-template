@@ -11,6 +11,8 @@ The next consequential proof is a live multi-operator corpus run of the backend 
 
 The current proof is synchronous. Credential-consuming actions require a server-side `GO_LAB_TOKEN`, and the corpus runner supplies that token through its own environment. Do not connect this proof to the customer-facing Analyzer until budget controls, durable jobs, appropriate operator authorization and runtime limits are addressed. The current shared lab token is for internal evaluation, not customer authentication.
 
+Runtime correction: `scripts/investigation-corpus.mjs local` now invokes this same handler directly with an ephemeral per-run token. This supports a private GitHub Actions evaluation workspace without a deployed Netlify site or a persistent Lab token. See `RESEARCH_EVALUATION_RUNTIME.md` for the rationale, security boundary and unfinished setup. The HTTP runner path remains available for a later configured service.
+
 ## Current proof pipeline
 
 The backend proof now executes this architecture:

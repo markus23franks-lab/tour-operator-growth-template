@@ -1,0 +1,60 @@
+# Install this file as .github/workflows/research-eval.yml in the private evaluation repository.
+name: GO private research evaluation
+on:
+  workflow_dispatch:
+  issues:
+    types: [opened]
+permissions:
+  contents: read
+concurrency:
+  group: go-research-eval
+  cancel-in-progress: false
+jobs:
+  investigate:
+    if: github.actor == 'markus23franks-lab' && (github.event_name == 'workflow_dispatch' || startsWith(github.event.issue.title, '[GO research]'))
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Check out private evaluation configuration
+        uses: actions/checkout@v4
+      - name: Verify fixed GO commit
+        id: target
+        shell: bash
+        run: |
+          ref="$(cat go-ref.txt)"
+          if [[ ! "$ref" =~ ^[a-f0-9]{40}$ ]]; then
+            echo 'go-ref.txt must contain a full verified GO commit SHA' >&2
+            exit 1
+          fi
+          echo "sha=$ref" >> "$GITHUB_OUTPUT"
+      - name: Check out public GO source at verified commit
+        uses: actions/checkout@v4
+        with:
+          repository: markus23franks-lab/tour-operator-growth-template
+          ref: ${{ steps.target.outputs.sha }}
+          path: go
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify provider configuration
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          SERPAPI_KEY: ${{ secrets.SERPAPI_KEY }}
+        run: |
+          test -n "$OPENAI_API_KEY" || { echo 'OPENAI_API_KEY missing'; exit 1; }
+          test -n "$SERPAPI_KEY" || { echo 'SERPAPI_KEY missing'; exit 1; }
+      - name: Investigate bounded public corpus
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          SERPAPI_KEY: ${{ secrets.SERPAPI_KEY }}
+          FIRECRAWL_API_KEY: ${{ secrets.FIRECRAWL_API_KEY }}
+        run: node go/scripts/investigation-corpus.mjs local corpus.json "$RUNNER_TEMP/go-research.json"
+      - name: Preserve private evidence for Builder review
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: go-research-${{ github.run_id }}
+          path: ${{ runner.temp }}/go-research.json
+          if-no-files-found: ignore
+          retention-days: 7

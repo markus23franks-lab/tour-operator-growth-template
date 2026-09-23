@@ -225,6 +225,8 @@ GO should eventually run GO itself:
 9. `ROADMAP.md` — sequence and deferred work
 10. `BUILD_LOG.md` only when historical implementation context is needed
 
+For live Investigation Lab evaluation, read `RESEARCH_EVALUATION_RUNTIME.md` before requesting credentials or creating a Netlify site. The private evaluation workspace is an architecture decision under implementation, not a completed live proof.
+
 Then verify branch, HEAD, CI, tests and uncommitted/unvalidated work before coding.
 
 ## 15. Final Rule

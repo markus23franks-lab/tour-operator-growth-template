@@ -1,4 +1,4 @@
-import {normalizeSerpEvidence,reconcileBusinessEntities,reconcileSearchPresence,detectEvidenceContradictions,buildCompetitorCandidates,buildInvestigationSignals} from '../netlify/functions/lib/investigation-core.mjs';
+import {normalizeSerpEvidence,reconcileBusinessEntities,reconcileSearchPresence,detectEvidenceContradictions,buildCompetitorCandidates,buildInvestigationSignals,buildEntityIntegrityPlan} from '../netlify/functions/lib/investigation-core.mjs';
 let fail=0;const check=(n,a,e)=>{if(JSON.stringify(a)!==JSON.stringify(e)){fail++;console.error('FAIL',n,{actual:a,expected:e})}else console.log('PASS',n)};
 const operator={name:'Truckee River Raft Company',website:'https://truckeeriverraft.com/'};
 const payload={organic_results:[{position:2,title:'Truckee River Raft Company - Tahoe City',link:'https://truckeeriverraft.com/'}],local_results:{places:[
@@ -22,6 +22,13 @@ check('observed presence contradicts a scoped absence claim',contradictions[0]?.
 const signals=buildInvestigationSignals({records,operator});
 check('anomaly creates follow-up questions',signals.followUpQuestions.length>0,true);
 check('observed presence becomes strength, not gap',signals.strengths[0]?.state,'LEVERAGE');
+
+const entityPlan=buildEntityIntegrityPlan({records,operator});
+check('possible fragmentation creates verification plan',entityPlan.state,'FOLLOW_UP_REQUIRED');
+check('verification plan sees shared operator domain',entityPlan.steps[0]?.observedSignals.sharedDomain,true);
+check('verification plan sees shared phone',entityPlan.steps[0]?.observedSignals.sharedPhone,true);
+check('verification plan blocks premature consolidation',entityPlan.steps[0]?.decisionBoundary.includes('Do not recommend merge'),true);
+
 const unknownOnly=[{...records[0],id:'unknown',status:'UNKNOWN',operatorMatch:{likely:false}}];
 check('unresolved evidence never becomes absence',reconcileSearchPresence(unknownOnly,operator)[0].state,'UNRESOLVED');
 if(fail){console.error('\n'+fail+' reconciliation checks failed');process.exit(1)}console.log('\nCross-surface reconciliation regression passed');

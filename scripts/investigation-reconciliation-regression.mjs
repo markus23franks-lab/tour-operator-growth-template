@@ -1,4 +1,4 @@
-import {normalizeSerpEvidence,reconcileBusinessEntities,reconcileSearchPresence,detectEvidenceContradictions,buildInvestigationSignals} from '../netlify/functions/lib/investigation-core.mjs';
+import {normalizeSerpEvidence,reconcileBusinessEntities,reconcileSearchPresence,detectEvidenceContradictions,buildCompetitorCandidates,buildInvestigationSignals} from '../netlify/functions/lib/investigation-core.mjs';
 let fail=0;const check=(n,a,e)=>{if(JSON.stringify(a)!==JSON.stringify(e)){fail++;console.error('FAIL',n,{actual:a,expected:e})}else console.log('PASS',n)};
 const operator={name:'Truckee River Raft Company',website:'https://truckeeriverraft.com/'};
 const payload={organic_results:[{position:2,title:'Truckee River Raft Company - Tahoe City',link:'https://truckeeriverraft.com/'}],local_results:{places:[
@@ -11,6 +11,8 @@ check('normalizes organic + local surfaces',records.length,4);
 const presence=reconcileSearchPresence(records,operator)[0];
 check('local or organic observation resolves presence',presence.state,'OBSERVED_PRESENT');
 check('presence reconciles both surfaces',presence.surfaces.sort(),['LOCAL_MAPS','ORGANIC_SERP']);
+const competitors=buildCompetitorCandidates(records,operator);
+check('direct competitor candidate is evidence-backed',competitors[0]?.domain,'different.example');
 const entities=reconcileBusinessEntities(records,operator);
 check('distinct provider ids trigger entity investigation',entities.anomalies[0]?.type,'POSSIBLE_ENTITY_FRAGMENTATION');
 check('competitor excluded from target entities',entities.targetEntities.length,2);

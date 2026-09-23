@@ -16,6 +16,10 @@ export default async (request) => {
   if (request.method !== "POST") return json(405,{ok:false,error:"Method not allowed"});
   let body={}; try{body=await request.json()}catch{return json(400,{ok:false,error:"Invalid JSON body"})}
   if(body.action==="runtime") return json(200,{ok:true,buildId:LAB_BUILD_ID,architecture:"BACKEND_INVESTIGATION_LAB",observedAt:new Date().toISOString()});
+  if(["run-proof","plan-investigation","understand-business","research-search"].includes(body.action)){
+    if(!process.env.GO_LAB_TOKEN)return json(503,{ok:false,buildId:LAB_BUILD_ID,state:"LAB_ACCESS_NOT_CONFIGURED"});
+    if(request.headers.get("Authorization")!=="Bearer "+process.env.GO_LAB_TOKEN)return json(401,{ok:false,buildId:LAB_BUILD_ID,state:"UNAUTHORIZED"});
+  }
   if(body.action==="run-proof"){
     const website=String(body.website||"").trim();
     if(!website)return json(400,{ok:false,error:"website is required"});

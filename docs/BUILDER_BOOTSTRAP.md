@@ -180,9 +180,7 @@ Never infer that the newest commit is trusted merely because it exists.
 
 ## 11. Current Handoff Warning
 
-Builder 2 ended while work on `serpapi-investigation-adapter.mjs` was still unvalidated. The intended regression had not yet been completed when that chat hit its context limit.
-
-Builder 3 reported recovering the Build 055 branch and adding two local commits, `6eb3fa6` and `b5d1531`, with all 25 local regression scripts passing. At the time this bootstrap was written, publishing those commits required explicit founder authorization and live testing still required access to the configured OpenAI/SerpApi runtime.
+Builder 2 ended while work on `serpapi-investigation-adapter.mjs` was still unvalidated. Builder 3 inspected it, completed the end-to-end adapter regression, and passed all 25 local regression scripts. The adapter and regression were published on the Build 055 branch as `3957db4` and `3a578a0`; the final file trees match the original local commits. The next architectural proof requires a configured runtime with OpenAI and SerpApi credentials. No live operator corpus has yet validated provider recall or commercial judgment.
 
 **Always verify current repository/CI state rather than treating this paragraph as permanently current.** Once the state changes, update this section.
 

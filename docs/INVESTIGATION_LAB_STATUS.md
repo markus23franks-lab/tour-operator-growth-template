@@ -7,6 +7,10 @@ The SerpApi adapter was inspected and exercised locally after the handoff. Dupli
 
 The next consequential proof is a live multi-operator corpus run of the backend Investigation Lab, with captured evidence, provider status, model usage and human review of whether the findings changed the commercial investigation. The local environment has no `OPENAI_API_KEY` or `SERPAPI_KEY`, so it cannot establish provider recall, entity-detail accuracy, model judgment quality, latency or cost on live operators. The frontend should not be migrated to this proof engine on fixture results alone.
 
+`scripts/investigation-corpus.mjs` runs 1–10 unfamiliar operator URLs against a configured Lab endpoint, records per-operator state/latency/coverage/provider failures and saves the complete returned evidence and judgment after each run. This makes the live evaluation reproducible without asking the founder to run the same analysis manually. The runner does not confer product acceptance: Builder must inspect the captured evidence and findings, diagnose failures, and only then present a materially better operator experience for founder judgment. The Lab response currently exposes model usage but does not yet report provider dollar cost. The corpus runner cannot exercise live research until a configured runtime is accessible.
+
+The current proof is synchronous. Credential-consuming actions require a server-side `GO_LAB_TOKEN`, and the corpus runner supplies that token through its own environment. Do not connect this proof to the customer-facing Analyzer until budget controls, durable jobs, appropriate operator authorization and runtime limits are addressed. The current shared lab token is for internal evaluation, not customer authentication.
+
 ## Current proof pipeline
 
 The backend proof now executes this architecture:
@@ -46,6 +50,7 @@ The customer-facing Analyzer has intentionally not been rewired yet.
 
 - `OPENAI_API_KEY`
 - `SERPAPI_KEY`
+- `GO_LAB_TOKEN` (internal proof access)
 - optional `FIRECRAWL_API_KEY`
 - optional `GO_RESEARCH_MODEL`
 - optional `GO_SYNTHESIS_MODEL`

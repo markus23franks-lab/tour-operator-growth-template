@@ -1,4 +1,4 @@
-import {validateEvidenceRecord,validateEvidenceRecords,validateFinding} from '../netlify/functions/investigation-lab.mjs';
+import handler,{validateEvidenceRecord,validateEvidenceRecords,validateFinding} from '../netlify/functions/investigation-lab.mjs';
 let fail=0;const check=(name,actual,expected)=>{if(actual!==expected){fail++;console.error('FAIL',name,{actual,expected})}else console.log('PASS',name)};
 const observed={id:'ev_local_1',surface:'LOCAL_MAPS',claimType:'BUSINESS_ENTITY_OBSERVED',subject:{entityId:'e1',label:'Example Raft Co'},observation:{position:3},source:{provider:'DataForSEO',query:'example rafting tours'},observedAt:'2026-09-22T00:00:00Z',confidence:'HIGH',status:'OBSERVED'};
 const unknown={id:'ev_search_2',surface:'ORGANIC_SERP',claimType:'TARGET_PRESENCE',subject:{entityId:'e1',label:'Example Raft Co'},observation:{providerError:'timeout'},source:{provider:'Provider B',query:'example rafting tours'},observedAt:'2026-09-22T00:00:00Z',confidence:'LOW',status:'UNKNOWN'};
@@ -10,4 +10,12 @@ check('investigation can cite mixed/unknown evidence',validateFinding({type:'INV
 check('validated opportunity cannot rest on UNKNOWN',validateFinding({type:'VALIDATED_OPPORTUNITY',headline:'Fix visibility',evidenceIds:['ev_search_2']},[unknown]).ok,false);
 check('model cannot cite nonexistent evidence',validateFinding({type:'INVESTIGATE',headline:'Investigate something',evidenceIds:['ev_fake']},[observed]).ok,false);
 check('economic claim requires boundary',validateFinding({type:'INVESTIGATE',headline:'Potential upside',evidenceIds:['ev_local_1'],economicClaim:'Could add revenue'},[observed]).ok,false);
+const savedToken=process.env.GO_LAB_TOKEN;
+const proofRequest=authorization=>new Request('http://localhost/.netlify/functions/investigation-lab',{method:'POST',headers:{'Content-Type':'application/json',...(authorization?{Authorization:authorization}:{})},body:JSON.stringify({action:'run-proof',website:'https://example.org'})});
+delete process.env.GO_LAB_TOKEN;
+check('costly proof is disabled without server token', (await handler(proofRequest())).status,503);
+process.env.GO_LAB_TOKEN='fixture-secret';
+check('costly proof rejects unauthenticated callers',(await handler(proofRequest())).status,401);
+check('authorized proof reaches provider configuration check',(await handler(proofRequest('Bearer fixture-secret'))).status,409);
+if(savedToken===undefined)delete process.env.GO_LAB_TOKEN;else process.env.GO_LAB_TOKEN=savedToken;
 if(fail){console.error('\n'+fail+' Investigation Lab checks failed');process.exit(1)}console.log('\nInvestigation Lab truth contract passed');

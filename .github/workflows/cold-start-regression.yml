@@ -46,6 +46,7 @@ jobs:
           node --check netlify/functions/lib/serpapi-investigation-adapter.mjs
           node --check netlify/functions/lib/first-party-investigation-adapter.mjs
           node --check netlify/functions/lib/research-model-adapter.mjs
+          node --check netlify/functions/lib/commercial-synthesis.mjs
       - name: Run cold-start product-family regression
         run: node scripts/cold-start-regression.mjs
       - name: Run dedicated research-plan regression
@@ -78,6 +79,8 @@ jobs:
         run: node scripts/serpapi-investigation-adapter-regression.mjs
       - name: Run research-model evidence-binding regression
         run: node scripts/research-model-adapter-regression.mjs
+      - name: Run commercial-synthesis truth regression
+        run: node scripts/commercial-synthesis-regression.mjs
       - name: Run dossier-first research pipeline regression
         run: node scripts/research-pipeline-regression.mjs
       - name: Run operator presentation-integrity regression

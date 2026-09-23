@@ -1,0 +1,10 @@
+import {collectFirstPartyEvidence} from '../netlify/functions/lib/first-party-investigation-adapter.mjs';
+let calls=[];global.fetch=async (url,opts={})=>{calls.push({url:String(url),opts});if(String(url).includes('firecrawl'))return {ok:true,status:200,json:async()=>({success:true,data:{markdown:'# Raft Co\nBook our self-guided rafting rental from $99.\n[Book now](https://book.example)',links:['https://book.example'],screenshot:'https://shot.example/a.png',metadata:{title:'Raft Co',sourceURL:'https://raft.example'}}})};return {ok:true,status:200,text:async()=>'<html><title>Fallback</title><h1>Tour</h1><p>Book $50</p></html>'}};
+let fail=0;const check=(n,a,e)=>{if(JSON.stringify(a)!==JSON.stringify(e)){fail++;console.error('FAIL',n,{a,e})}else console.log('PASS',n)};
+const rendered=await collectFirstPartyEvidence({website:'https://raft.example',firecrawlApiKey:'test'});
+check('prefers rendered provider when configured',rendered.provider,'Firecrawl');
+check('preserves screenshot as evidence observation',rendered.records[0].observation.screenshot,'https://shot.example/a.png');
+check('rendered page remains normalized evidence',rendered.records[0].surface,'FIRST_PARTY_RENDERED');
+const fallback=await collectFirstPartyEvidence({website:'https://fallback.example',firecrawlApiKey:''});
+check('direct fetch remains fallback',fallback.records[0].source.provider,'GO Direct Fetch');
+if(fail)process.exit(1);console.log('\nFirst-party rendered acquisition regression passed');

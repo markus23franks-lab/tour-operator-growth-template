@@ -24,6 +24,12 @@ Do not store provider keys or raw internal research artifacts in the public GO r
 
 The runner's `local` mode was smoke-tested without provider keys: it reached the handler's `MODEL_NOT_CONFIGURED` state through an internally generated access token. That establishes invocation only. No live investigation has been completed on this runtime.
 
+### First live attempt — September 23, 2026
+
+The private repository `markus23franks-lab/growth-operator-research-lab` is configured with `OPENAI_API_KEY` and `SERPAPI_KEY`. Its issue-triggered run [35909341415](https://github.com/markus23franks-lab/growth-operator-research-lab/actions/runs/35909341415) checked out GO commit `09e678f17ceb90a6646ab0618c5f635ecd0f74a9` and invoked the three-site unfamiliar-operator corpus. Every request returned HTTP 502 and the OpenAI provider message `You have no credits remaining`. There are zero evidence records and no product judgments to evaluate. The original corpus runner returned exit code zero despite these failures; it now returns nonzero after saving all results, so the private workflow reports a failed evaluation while retaining its artifact.
+
+API Platform billing is separate from ChatGPT billing. The founder must configure API credits in the OpenAI Platform account backing this service key before a live corpus can complete. No key values should be shared in chat or committed. After credits are active, update private `go-ref.txt` to this corrected GO commit and trigger a new `[GO research]` issue. Retrieve the artifact from the new run, inspect actual evidence and judgments, and iterate. Do not count this first attempt as an intelligence regression.
+
 ## Later product runtime
 
 Once the intelligence earns customer-facing use, build a durable investigation service with job state, budgets, authorization, retries, stored evidence and a thin operator UI. Netlify may still host that UI and API entry point, but the current synchronous proof is not the production job architecture. The dedicated intelligence phase still ends at credible unfamiliar-operator judgment; then advance Growth Score, Mission, execution and measurement.

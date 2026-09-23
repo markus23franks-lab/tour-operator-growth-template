@@ -232,3 +232,13 @@ FIX
 The long-term product should not become unnecessary after obvious website/SEO/review problems are solved.
 
 As the business improves, GO's judgment should become more sophisticated.
+
+## Research Intelligence Product Standard — Founder HQ, September 2026
+
+The URL-first Analyzer is GO's first demonstration of intelligence, not the company. The product loop is: understand the business, investigate, choose credible work, act with approval where appropriate, measure, learn, and choose again. Research only earns its place when it improves the truth of the Snapshot, priority, mission, execution and measured outcome.
+
+GO must also evaluate the operator as a traveler deciding what to book. Ranking well does not settle whether the offer is understandable, attractive, trustworthy, fairly presented, differentiated, or easy to book. Compare the actual consumer experience with qualified alternatives before concluding where commercial value may be lost. The answer may be a quick, low-risk improvement, a deeper investigation, an advantage to defend, or no action.
+
+Curiosity is part of the capability: an observation can create a new question. Two local business entities, for example, require verification of location and ownership intent before any consolidation advice. A bare price requires an offer and transaction context. A competitor's review count requires relevance and consumer context. Every meaningful finding should connect what was observed, why it may matter, confidence, and the next action or check.
+
+Stop treating cold-start research as a dedicated phase once unfamiliar operators consistently receive business understanding, useful investigation, credible comparisons, defensible judgment and work GO can explain and pursue. Then advance the full operating loop while improving research from real outcomes. Green tests establish mechanics; operators' desire to put GO to work establishes product quality.

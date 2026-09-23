@@ -1,9 +1,10 @@
 import {collectSearchSurfaces} from '../netlify/functions/lib/serpapi-investigation-adapter.mjs';
 import {normalizeSerpEvidence,buildInvestigationSignals} from '../netlify/functions/lib/investigation-core.mjs';
-let calls=[];global.fetch=async url=>{calls.push(String(url));const u=new URL(url);const engine=u.searchParams.get('engine');return {ok:true,status:200,json:async()=>engine==='google'?{organic_results:[{position:1,title:'Operator',link:'https://operator.example'}],local_results:{places:[{position:2,title:'Operator',place_id:'a'}]}}:{local_results:[{position:1,title:'Operator',place_id:'a',phone:'555-0100',website:'https://operator.example',reviews:42},{position:3,title:'Operator',place_id:'b'}]}}};
+let calls=[];global.fetch=async url=>{calls.push(String(url));const u=new URL(url);if(u.pathname==='/locations.json')return {ok:true,status:200,json:async()=>[{name:'Sample',canonical_name:'Sample,Utah,United States',target_type:'City'},{name:'Sample',canonical_name:'Sample, UT,Utah,United States',target_type:'City'}]};const engine=u.searchParams.get('engine');return {ok:true,status:200,json:async()=>engine==='google'?{organic_results:[{position:1,title:'Operator',link:'https://operator.example'}],local_results:{places:[{position:2,title:'Operator',place_id:'a'}]}}:{local_results:[{position:1,title:'Operator',place_id:'a',phone:'555-0100',website:'https://operator.example',reviews:42},{position:3,title:'Operator',place_id:'b'}]}}};
 const result=await collectSearchSurfaces({query:'sample tours',location:'Sample, UT',apiKey:'test'});
 let fail=0;const check=(n,a,e)=>{if(JSON.stringify(a)!==JSON.stringify(e)){fail++;console.error('FAIL',n,{a,e})}else console.log('PASS',n)};
-check('queries organic and local independently',calls.length,2);
+check('resolves location once and queries organic and local independently',calls.length,3);
+check('searches with provider-supported canonical location',new URL(calls[1]).searchParams.get('location'),'Sample,Utah,United States');
 check('preserves organic evidence',result.payload.organic_results.length,1);
 check('merges and dedupes local entities',result.payload.local_results.places.map(x=>x.place_id),['a','b']);
 check('retains richer data from dedicated local surface',result.payload.local_results.places[0].phone,'555-0100');
@@ -14,6 +15,9 @@ const signals=buildInvestigationSignals({records,operator:{name:'Operator',websi
 check('enriched local evidence survives normalization',records.find(x=>x.observation?.placeId==='a')?.observation?.phone,'555-0100');
 check('separate local provider IDs remain an investigation',signals.entities.anomalies[0]?.type,'POSSIBLE_ENTITY_FRAGMENTATION');
 check('organic presence survives local entity reconciliation',signals.presence[0]?.state,'OBSERVED_PRESENT');
+global.fetch=async url=>{const u=new URL(url);if(u.pathname==='/locations.json')return {ok:true,status:200,json:async()=>[{name:'Chicago',canonical_name:'Chicago,Florida,United States',target_type:'City'},{name:'Chicago',canonical_name:'Chicago,Illinois,United States',target_type:'City'}]};return {ok:true,status:200,json:async()=>({organic_results:[],local_results:[]})}};
+const chicago=await collectSearchSurfaces({query:'architecture tours',location:'Chicago, IL, USA',apiKey:'test'});
+check('resolves state abbreviation against supported city',chicago.location,'Chicago,Illinois,United States');
 global.fetch=async url=>{const engine=new URL(url).searchParams.get('engine');if(engine==='google_local')throw new Error('local unavailable');return {ok:true,status:200,json:async()=>({organic_results:[{title:'Operator',link:'https://operator.example'}]})}};
 const partial=await collectSearchSurfaces({query:'sample tours',apiKey:'test'});
 check('local provider failure stays unknown',partial.surfaceStatus,{organic:'OBSERVED',local:'UNKNOWN'});

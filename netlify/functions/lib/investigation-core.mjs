@@ -104,6 +104,22 @@ export function buildCompetitorCandidates(records=[],operator={}){
   return [...byHost.values()].map(x=>({...x,queries:[...x.queries],surfaces:[...x.surfaces],evidenceIds:[...new Set(x.evidenceIds)],score:x.queries.size*3+x.surfaces.size*2+(x.bestPosition<=5?2:0)})).sort((a,b)=>b.score-a.score||a.bestPosition-b.bestPosition).slice(0,8);
 }
 
+
+export function buildResearchCoverage({records=[],signals={}}){
+ const observed=records.filter(x=>x.status==="OBSERVED"),surfaces=[...new Set(observed.map(x=>x.surface))];
+ const queries=[...new Set(observed.map(x=>x.source?.query).filter(Boolean))];
+ const firstParty=observed.filter(x=>x.surface===SURFACES.FIRST_PARTY).length;
+ const competitors=observed.filter(x=>x.surface==="COMPETITOR_SITE").length;
+ const unresolved=(signals.presence||[]).filter(x=>x.state==="UNRESOLVED").length;
+ const blockers=[];
+ if(firstParty<1)blockers.push("NO_FIRST_PARTY_EVIDENCE");
+ if(queries.length<3)blockers.push("TOO_FEW_MARKET_QUERIES");
+ if(!surfaces.includes(SURFACES.LOCAL))blockers.push("NO_LOCAL_SURFACE");
+ if(!surfaces.includes(SURFACES.ORGANIC))blockers.push("NO_ORGANIC_SURFACE");
+ if(competitors<1)blockers.push("NO_COMPETITOR_SITE_EVIDENCE");
+ return {state:blockers.length?"INCOMPLETE":"READY_FOR_JUDGMENT",surfaces,queries:firstParty?queries:[],firstPartyRecords:firstParty,competitorRecords:competitors,unresolvedQueries:unresolved,blockers};
+}
+
 export function buildInvestigationSignals({records=[],operator={}}){
   const entities=reconcileBusinessEntities(records,operator);
   const presence=reconcileSearchPresence(records,operator);

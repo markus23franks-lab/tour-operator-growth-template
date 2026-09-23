@@ -15,6 +15,8 @@ Runtime correction: `scripts/investigation-corpus.mjs local` now invokes this sa
 
 First private live run 35909341415 reached the OpenAI API but all three operators returned `You have no credits remaining`; it produced no intelligence evidence. The corpus runner now fails the workflow when any investigation fails, while preserving its artifact. OpenAI API credits are the current access blocker; see `RESEARCH_EVALUATION_RUNTIME.md` for exact run and rerun steps.
 
+Pre-funding economics checkpoint: `gpt-5` is the current default, at three model stages plus a fourth synthesis when coverage is ready. The research adapter now bounds serialized input/output, and the corpus artifact records per-stage token usage and estimated GPT-5 charges even when later validation fails. No successful live run exists, so per-operator cost and judgment quality remain unmeasured. Normal Builder development does not run the paid corpus; the first funded validation must use an explicitly enforced project spend limit and a deliberately triggered small corpus.
+
 ## Current proof pipeline
 
 The backend proof now executes this architecture:

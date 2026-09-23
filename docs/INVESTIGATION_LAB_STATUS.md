@@ -13,6 +13,8 @@ The current proof is synchronous. Credential-consuming actions require a server-
 
 Runtime correction: `scripts/investigation-corpus.mjs local` now invokes this same handler directly with an ephemeral per-run token. This supports a private GitHub Actions evaluation workspace without a deployed Netlify site or a persistent Lab token. See `RESEARCH_EVALUATION_RUNTIME.md` for the rationale, security boundary and unfinished setup. The HTTP runner path remains available for a later configured service.
 
+First private live run 35909341415 reached the OpenAI API but all three operators returned `You have no credits remaining`; it produced no intelligence evidence. The corpus runner now fails the workflow when any investigation fails, while preserving its artifact. OpenAI API credits are the current access blocker; see `RESEARCH_EVALUATION_RUNTIME.md` for exact run and rerun steps.
+
 ## Current proof pipeline
 
 The backend proof now executes this architecture:

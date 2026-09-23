@@ -1,6 +1,18 @@
 import {COMMERCIAL_SYNTHESIS_SCHEMA,validateCommercialSynthesis} from "./commercial-synthesis.mjs";
 const ENDPOINT="https://api.openai.com/v1/responses";
-const compactObservation=observation=>({...observation,text:typeof observation?.text==='string'?observation.text.slice(0,8000):observation?.text});
+const compactObservation=observation=>{
+ const o=observation||{};
+ return {
+  url:o.url,title:o.title,headings:Array.isArray(o.headings)?o.headings.slice(0,30):undefined,
+  text:typeof o.text==='string'?o.text.slice(0,8000):o.text,
+  bookingLinks:Array.isArray(o.bookingLinks)?o.bookingLinks.slice(0,12):undefined,
+  prices:Array.isArray(o.prices)?o.prices.slice(0,12):undefined,
+  address:o.address,phone:o.phone,website:o.website,placeId:o.placeId,
+  position:o.position,snippet:o.snippet,domain:o.domain,link:o.link,
+  rating:o.rating,reviews:o.reviews,category:o.category,openState:o.openState,
+  hours:o.hours
+ };
+};
 
 export const BUSINESS_DOSSIER_SCHEMA={type:"object",additionalProperties:false,properties:{
  businessName:{type:"string"},operatingMarket:{type:"string"},summary:{type:"string"},businessModel:{type:"string",enum:["tour","rental","charter","admission","class","transportation","mixed","unknown"]},

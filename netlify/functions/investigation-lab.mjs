@@ -1,10 +1,10 @@
-import {normalizeSerpEvidence,buildInvestigationSignals} from "./lib/investigation-core.mjs";
+import {normalizeSerpEvidence,buildInvestigationSignals,buildResearchCoverage} from "./lib/investigation-core.mjs";
 import {collectSearchSurfaces} from "./lib/serpapi-investigation-adapter.mjs";
 import {collectFirstPartyEvidence} from "./lib/first-party-investigation-adapter.mjs";
 import {executeFollowUpPlan} from "./lib/follow-up-executor.mjs";
 import {collectCompetitorEvidence} from "./lib/competitor-investigation-adapter.mjs";
 import {buildBusinessDossierWithModel,buildInvestigationPlanWithModel,synthesizeCommercialJudgmentWithModel} from "./lib/research-model-adapter.mjs";
-const LAB_BUILD_ID = "GO-INVESTIGATION-LAB-V0.9";
+const LAB_BUILD_ID = "GO-INVESTIGATION-LAB-V0.10";
 const ALLOWED_SURFACES = new Set([
   "FIRST_PARTY_RENDERED","ORGANIC_SERP","LOCAL_MAPS","BUSINESS_ENTITY",
   "REVIEW_REPUTATION","COMPETITOR_SITE","BOOKING_FLOW","VISUAL_SCREENSHOT","OTA_MARKETPLACE"
@@ -43,9 +43,12 @@ export default async (request) => {
       const competitorEvidence=await collectCompetitorEvidence({candidates:preCompetitorSignals.competitorCandidates,maxCompetitors:3});
       const finalRecords=[...preCompetitorRecords,...competitorEvidence.records];
       const finalSignals=buildInvestigationSignals({records:finalRecords,operator});
-      const synthesisModel=await synthesizeCommercialJudgmentWithModel({dossier:dossierModel.dossier,evidence:finalRecords,signals:finalSignals,plan:followUpModel.plan,apiKey:process.env.OPENAI_API_KEY});
+      const coverage=buildResearchCoverage({records:finalRecords,signals:finalSignals});
       const validation=validateEvidenceRecords(finalRecords);
-      return json(validation.ok?200:422,{ok:validation.ok,buildId:LAB_BUILD_ID,state:validation.ok?"PROOF_JUDGED":"EVIDENCE_REJECTED",dossier:dossierModel.dossier,initialPlan:initialPlanModel.plan,queriesResearched:plannedQueries,followUpQueries:followUp.attempted,surfaceStatus:[...marketBatches,...followUp.batches].map(x=>({query:x.query,status:x.collected?.surfaceStatus||null,errors:x.collected?.errors||[x.error].filter(Boolean)})),signals:finalSignals,followUpPlan:followUpModel.plan,judgment:synthesisModel.synthesis,evidence:finalRecords,telemetry:{firstPartyPages:firstParty.pagesRead,competitorsRead:competitorEvidence.competitorsRead,evidenceRecords:finalRecords.length,initialQueries:plannedQueries.length,followUpQueries:followUp.attempted.length,model:[dossierModel,initialPlanModel,followUpModel,synthesisModel].map(x=>({name:x.model,usage:x.usage||null}))},validation});
+      if(!validation.ok)return json(422,{ok:false,buildId:LAB_BUILD_ID,state:"EVIDENCE_REJECTED",dossier:dossierModel.dossier,signals:finalSignals,evidence:finalRecords,validation});
+      if(coverage.state!=="READY_FOR_JUDGMENT")return json(200,{ok:true,buildId:LAB_BUILD_ID,state:"NEEDS_MORE_EVIDENCE",dossier:dossierModel.dossier,initialPlan:initialPlanModel.plan,followUpPlan:followUpModel.plan,signals:finalSignals,coverage,evidence:finalRecords,validation});
+      const synthesisModel=await synthesizeCommercialJudgmentWithModel({dossier:dossierModel.dossier,evidence:finalRecords,signals:finalSignals,plan:followUpModel.plan,apiKey:process.env.OPENAI_API_KEY});
+      return json(200,{ok:true,buildId:LAB_BUILD_ID,state:"PROOF_JUDGED",dossier:dossierModel.dossier,initialPlan:initialPlanModel.plan,queriesResearched:plannedQueries,followUpQueries:followUp.attempted,surfaceStatus:[...marketBatches,...followUp.batches].map(x=>({query:x.query,status:x.collected?.surfaceStatus||null,errors:x.collected?.errors||[x.error].filter(Boolean)})),signals:finalSignals,coverage,followUpPlan:followUpModel.plan,judgment:synthesisModel.synthesis,evidence:finalRecords,telemetry:{firstPartyPages:firstParty.pagesRead,competitorsRead:competitorEvidence.competitorsRead,evidenceRecords:finalRecords.length,initialQueries:plannedQueries.length,followUpQueries:followUp.attempted.length,model:[dossierModel,initialPlanModel,followUpModel,synthesisModel].map(x=>({name:x.model,usage:x.usage||null}))},validation});
     }catch(error){return json(502,{ok:false,buildId:LAB_BUILD_ID,error:error instanceof Error?error.message:String(error)})}
   }
   if(body.action==="plan-investigation"){

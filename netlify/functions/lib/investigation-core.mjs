@@ -96,5 +96,5 @@ export function buildInvestigationSignals({records=[],operator={}}){
   const presence=reconcileSearchPresence(records,operator);
   const contradictions=detectEvidenceContradictions(records,operator);
   const strengths=presence.filter(x=>x.state==="OBSERVED_PRESENT").map(x=>({type:"DISCOVERY_STRENGTH",state:"LEVERAGE",headline:`Public presence is already observed for “${x.query}”.`,evidenceIds:x.evidenceIds,reason:x.note}));
-  return {entities,presence,anomalies:[...entities.anomalies,...contradictions],contradictions,strengths,followUpQuestions:entities.anomalies.flatMap(x=>x.questions.map(question=>({triggerId:x.id,question,reason:x.reason})))};
+  const anomalyQuestions=entities.anomalies.flatMap(x=>(x.questions||[]).map(question=>({triggerId:x.id,question,reason:x.reason})));const contradictionQuestions=contradictions.map(x=>({triggerId:x.id,question:'Which observed surface has the correct scope and identity match for this query?',reason:x.reason}));return {entities,presence,anomalies:[...entities.anomalies,...contradictions],contradictions,strengths,followUpQuestions:[...anomalyQuestions,...contradictionQuestions]};
 }

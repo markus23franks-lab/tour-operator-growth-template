@@ -72,9 +72,29 @@ export function reconcileSearchPresence(records=[],operator={}){
   });
 }
 
+
+export function detectEvidenceContradictions(records=[],operator={}){
+  const byQuery=new Map();
+  for(const row of records){
+    const query=clean(row.source?.query);if(!query)continue;
+    if(!byQuery.has(query))byQuery.set(query,[]);
+    byQuery.get(query).push(row);
+  }
+  const contradictions=[];
+  for(const [query,rows] of byQuery){
+    const present=rows.filter(x=>x.status==="OBSERVED"&&x.operatorMatch?.likely);
+    const absence=rows.filter(x=>x.status==="OBSERVED"&&x.claimType==="TARGET_ABSENCE_OBSERVED");
+    if(present.length&&absence.length){
+      contradictions.push({id:id("cx","presence",query),type:"CROSS_SURFACE_PRESENCE_CONTRADICTION",state:"INVESTIGATE",headline:`Public sources disagree about operator presence for “${query}”.`,evidenceIds:[...present,...absence].map(x=>x.id),reason:"An observed presence on one surface conflicts with an observed absence claim on another. Resolve source scope before making a visibility judgment."});
+    }
+  }
+  return contradictions;
+}
+
 export function buildInvestigationSignals({records=[],operator={}}){
   const entities=reconcileBusinessEntities(records,operator);
   const presence=reconcileSearchPresence(records,operator);
+  const contradictions=detectEvidenceContradictions(records,operator);
   const strengths=presence.filter(x=>x.state==="OBSERVED_PRESENT").map(x=>({type:"DISCOVERY_STRENGTH",state:"LEVERAGE",headline:`Public presence is already observed for “${x.query}”.`,evidenceIds:x.evidenceIds,reason:x.note}));
-  return {entities,presence,anomalies:entities.anomalies,strengths,followUpQuestions:entities.anomalies.flatMap(x=>x.questions.map(question=>({triggerId:x.id,question,reason:x.reason})))};
+  return {entities,presence,anomalies:[...entities.anomalies,...contradictions],contradictions,strengths,followUpQuestions:entities.anomalies.flatMap(x=>x.questions.map(question=>({triggerId:x.id,question,reason:x.reason})))};
 }

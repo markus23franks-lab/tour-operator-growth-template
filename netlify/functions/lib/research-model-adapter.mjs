@@ -1,3 +1,4 @@
+import {COMMERCIAL_SYNTHESIS_SCHEMA,validateCommercialSynthesis} from "./commercial-synthesis.mjs";
 const ENDPOINT="https://api.openai.com/v1/responses";
 
 export const BUSINESS_DOSSIER_SCHEMA={type:"object",additionalProperties:false,properties:{
@@ -29,6 +30,15 @@ export async function buildInvestigationPlanWithModel({dossier,evidence=[],signa
  const payload=await callStructured({model,apiKey,name:"go_investigation_plan",schema:INVESTIGATION_PLAN_SCHEMA,instructions,input:{dossier,evidence:compact,signals}});
  const validation=validatePlanCitations(payload.value,new Set(evidence.map(x=>x.id)));if(!validation.ok)throw new Error("Investigation planner cited invalid evidence IDs: "+validation.invalidIds.join(", "));
  return {plan:payload.value,model:payload.model,responseId:payload.responseId,usage:payload.usage};
+}
+
+export async function synthesizeCommercialJudgmentWithModel({dossier,evidence=[],signals={},plan={},apiKey,model=process.env.GO_SYNTHESIS_MODEL||process.env.GO_RESEARCH_MODEL||"gpt-5"}){
+ if(!apiKey)throw new Error("OPENAI_API_KEY is not configured");
+ const compact=evidence.map(({id,surface,claimType,subject,observation,source,status,confidence,operatorMatch})=>({id,surface,claimType,subject,observation,source,status,confidence,operatorMatch}));
+ const instructions=["You are the commercial judgment stage of Growth Operator for tour/activity operators.","Act like a strong growth operator, owner and investigator, not an SEO audit.","Use only supplied evidence. Never claim a fact from general knowledge.","Do not manufacture weaknesses. Healthy areas should be explicitly preserved or deprioritized.","A provider failure, UNKNOWN row or missing observation is never evidence of absence.","Contradictions and anomalies become INVESTIGATE until resolved.","Search rank is evidence about discovery only; never equate rank with conversion or revenue.","A VALIDATED_OPPORTUNITY or QUICK_WIN requires observed evidence strong enough to justify action now.","Every finding and next move must cite supplied evidence IDs.","EconomicBoundary must say what is and is not supported. Never manufacture ROI.","Prefer a small number of commercially meaningful findings over filling buckets.","If an unexpected observation matters more than the original research question, elevate it."].join("\n");
+ const payload=await callStructured({model,apiKey,name:"go_commercial_synthesis",schema:COMMERCIAL_SYNTHESIS_SCHEMA,instructions,input:{dossier,evidence:compact,signals,plan}});
+ const validation=validateCommercialSynthesis(payload.value,evidence);if(!validation.ok)throw new Error("Commercial synthesis failed truth validation: "+validation.errors.map(x=>x.error).join("; "));
+ return {synthesis:payload.value,model:payload.model,responseId:payload.responseId,usage:payload.usage};
 }
 
 export function validateModelCitations(dossier={},validIds=new Set()){const cited=[];for(const p of dossier.products||[])cited.push(...(p.evidenceIds||[]));for(const p of dossier.positioning||[])cited.push(...(p.evidenceIds||[]));for(const p of dossier.travelerIntents||[])cited.push(...(p.evidenceIds||[]));const invalidIds=[...new Set(cited.filter(id=>!validIds.has(id)))];return {ok:invalidIds.length===0,invalidIds,cited:[...new Set(cited)]}}

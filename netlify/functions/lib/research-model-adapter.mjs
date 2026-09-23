@@ -19,7 +19,7 @@ export async function buildBusinessDossierWithModel({evidence=[],apiKey,model=pr
  const compact=evidence.map(({id,surface,claimType,subject,observation,source,status})=>({id,surface,claimType,subject,observation,source,status}));
  const instructions=["You are the Business Understanding stage of Growth Operator, software for tour/activity operators.","Infer only from supplied evidence. Never use outside knowledge.","Understand what the operator actually sells before market judgment.","Distinguish transaction model from activity: rental is not tour; charter is not generic tour; admission is not guided tour.","Every product, positioning theme and traveler intent must cite supplied evidence IDs.","Do not create traveler intent for an unsupported product family.","Preserve uncertainty in unknowns rather than guessing."].join("\n");
  const payload=await callStructured({model,apiKey,name:"go_business_dossier",schema:BUSINESS_DOSSIER_SCHEMA,instructions,input:{evidence:compact}});
- const validation=validateModelCitations(payload.value,new Set(evidence.map(x=>x.id)));if(!validation.ok)throw new Error("Research model cited invalid evidence IDs: "+validation.invalidIds.join(", "));
+ const validation=validateBusinessDossier(payload.value,evidence);if(!validation.ok)throw new Error("Business dossier failed truth validation: "+validation.errors.join("; "));
  return {dossier:payload.value,model:payload.model,responseId:payload.responseId,usage:payload.usage};
 }
 
@@ -39,6 +39,20 @@ export async function synthesizeCommercialJudgmentWithModel({dossier,evidence=[]
  const payload=await callStructured({model,apiKey,name:"go_commercial_synthesis",schema:COMMERCIAL_SYNTHESIS_SCHEMA,instructions,input:{dossier,evidence:compact,signals,plan}});
  const validation=validateCommercialSynthesis(payload.value,evidence);if(!validation.ok)throw new Error("Commercial synthesis failed truth validation: "+validation.errors.map(x=>x.error).join("; "));
  return {synthesis:payload.value,model:payload.model,responseId:payload.responseId,usage:payload.usage};
+}
+
+export function validateBusinessDossier(dossier={},evidence=[]){
+ const errors=[],validIds=new Set(evidence.map(x=>x.id)),citation=validateModelCitations(dossier,validIds);
+ if(!citation.ok)errors.push("invalid evidence ids: "+citation.invalidIds.join(", "));
+ const firstParty=new Map(evidence.filter(x=>x.surface==="FIRST_PARTY_RENDERED"&&x.status==="OBSERVED").map(x=>[x.id,x]));
+ const evidenceText=id=>{const row=firstParty.get(id);if(!row)return"";const o=row.observation||{};return [row.subject?.label,o.title,...(o.headings||[]),o.text].join(" ").toLowerCase()};
+ const supported=(needle,ids=[])=>{needle=String(needle||"").toLowerCase().trim();if(!needle)return false;const tokens=needle.replace(/[^a-z0-9 ]/g," ").split(/\s+/).filter(x=>x.length>2);return ids.some(id=>{const text=evidenceText(id);return text&&(text.includes(needle)||tokens.filter(t=>text.includes(t)).length>=Math.max(1,Math.ceil(tokens.length*.6)))})};
+ if(!String(dossier.businessName||"").trim())errors.push("businessName required");
+ if(!String(dossier.summary||"").trim())errors.push("summary required");
+ for(const [i,p] of (dossier.products||[]).entries()){if(!(p.evidenceIds||[]).some(id=>firstParty.has(id)))errors.push("product "+i+" lacks observed first-party evidence");else if(!supported(p.name,p.evidenceIds))errors.push("product "+i+" name is not grounded in cited first-party text")}
+ for(const [i,x] of (dossier.travelerIntents||[]).entries()){if(!(x.evidenceIds||[]).some(id=>firstParty.has(id)))errors.push("traveler intent "+i+" lacks first-party support")}
+ if(dossier.businessModel!=="unknown"&&(dossier.products||[]).length===0)errors.push("known business model requires at least one evidenced product");
+ return {ok:errors.length===0,errors};
 }
 
 export function validateModelCitations(dossier={},validIds=new Set()){const cited=[];for(const p of dossier.products||[])cited.push(...(p.evidenceIds||[]));for(const p of dossier.positioning||[])cited.push(...(p.evidenceIds||[]));for(const p of dossier.travelerIntents||[])cited.push(...(p.evidenceIds||[]));const invalidIds=[...new Set(cited.filter(id=>!validIds.has(id)))];return {ok:invalidIds.length===0,invalidIds,cited:[...new Set(cited)]}}

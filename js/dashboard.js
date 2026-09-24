@@ -75,7 +75,7 @@ document.addEventListener("DOMContentLoaded", () => {
 function renderGOWorkbench() {
   setText("go-work-headline", goWorkState.headline);
   setText("go-completed-count", String(goWorkState.completed.length));
-  setText("go-revenue-tracked", `$${Math.round(goWorkState.revenueModel.annual).toLocaleString("en-US")}`);
+  setText("go-revenue-tracked", profile.researchBacked ? "Needs connected data" : `$${Math.round(goWorkState.revenueModel.annual).toLocaleString("en-US")}`);
 
   const approvalList = document.getElementById("go-approval-list");
   approvalList.innerHTML = goWorkState.approvals.map(item => `
@@ -124,6 +124,10 @@ function renderGOWorkbench() {
   });
 
   document.getElementById("revenue-math-button")?.addEventListener("click", () => {
+    if (profile.researchBacked) {
+      openModal({eyebrow:"CONNECTED DATA REQUIRED",title:"GO will not invent the dollars yet.",copy:"This research-backed finding is grounded in public evidence, but traffic, booking, capacity and margin data are still needed before GO can model a defensible opportunity value.",callout:"<strong>What happens next:</strong> connect the operating signal, save the baseline, then measure the result after the approved mission.",action:"Review the mission →"});
+      return;
+    }
     const model = goWorkState.revenueModel;
     const liftPercent = (model.modeledLift * 100).toFixed(1);
     openModal({

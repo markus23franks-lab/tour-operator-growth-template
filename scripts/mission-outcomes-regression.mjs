@@ -4,9 +4,10 @@ import vm from 'node:vm';
 const memory=new Map();
 const context={window:{},URL,localStorage:{getItem:key=>memory.get(key)||null,setItem:(key,value)=>memory.set(key,value)}};
 vm.createContext(context);
+vm.runInContext(readFileSync('js/research-scope.js','utf8'),context);
 vm.runInContext(readFileSync('js/mission-outcomes.js','utf8'),context);
 const api=context.window.GOMissionOutcomes;
-const claim={website:'https://operator-one.example/tours/',claimId:'claim_0',headline:'Improve a booking path',evidenceIds:['page-a']};
+const claim={website:'https://operator-one.example/tours/',claimId:'claim_0',headline:'Improve a booking path',evidenceIds:['page-a'],supportQuotes:[{evidenceId:'page-a',quote:'Reserve online'}],capturedAt:'2026-09-10T12:00:00Z'};
 const other={...claim,website:'https://operator-two.example/'};
 const baseline={metric:'Direct bookings',unit:'bookings',value:'12',period:'7-day window',observedAt:'2026-09-10',source:'Booking system report'};
 const reject=(fn,label)=>{try{fn();throw new Error(`Unexpected success: ${label}`)}catch(e){if(e.message.startsWith('Unexpected success'))throw e}};
@@ -16,6 +17,7 @@ reject(()=>api.baseline(claim,{...baseline,value:'12.5'}),'fractional booking co
 reject(()=>api.baseline(claim,{...baseline,unit:'revenue_usd',value:'12.345'}),'fractional cent');
 api.baseline(claim,baseline);
 if(api.read(other)!==null)throw new Error('another business inherited the first baseline');
+if(api.read({...claim,capturedAt:'2026-09-11T12:00:00Z'})!==null||api.read({...claim,supportQuotes:[{evidenceId:'page-a',quote:'Call to reserve'}]})!==null)throw new Error('a new investigation inherited an old baseline');
 reject(()=>api.reportAction(claim,{description:'Changed page',performedAt:'2026-09-12',reportedBy:'Owner'}),'action without approval attestation');
 reject(()=>api.reportAction(claim,{description:'Changed page',performedAt:'2026-09-09',reportedBy:'Owner',approved:true}),'action before baseline');
 api.reportAction(claim,{description:'Changed page',performedAt:'2026-09-12',reportedBy:'Owner',approved:true});
@@ -28,4 +30,5 @@ if(measured.state!=='FOLLOW_UP_RECORDED'||measured.action.origin!=='OPERATOR_REP
 if(Object.values(measured).some(value=>value==='GO_EXECUTED'||value==='ATTRIBUTED_REVENUE'))throw new Error('record invented GO execution or attribution');
 api.baseline(other,{...baseline,value:'3'});
 if(api.read(other).baseline.value!==3||api.read(claim).baseline.value!==12)throw new Error('operator records crossed');
+if(api.read({...claim,capturedAt:'2026-09-11T12:00:00Z'})!==null)throw new Error('a later run inherited the old outcome');
 console.log('Mission outcome regression passed');

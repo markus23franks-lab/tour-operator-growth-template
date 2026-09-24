@@ -1,4 +1,4 @@
-import {validateCommercialSynthesis,deterministicSignalFindings} from '../netlify/functions/lib/commercial-synthesis.mjs';
+import {validateCommercialSynthesis,deterministicSignalFindings,discardUnverifiableQuotes} from '../netlify/functions/lib/commercial-synthesis.mjs';
 let fail=0;const check=(n,a,e)=>{if(JSON.stringify(a)!==JSON.stringify(e)){fail++;console.error('FAIL',n,{a,e})}else console.log('PASS',n)};
 const observed={id:'ev1',surface:'LOCAL_MAPS',claimType:'BUSINESS_ENTITY_OBSERVED',subject:{label:'Raft Co'},observation:{},source:{provider:'fixture',query:'rafting'},observedAt:'2026-09-22',confidence:'HIGH',status:'OBSERVED'};
 const unknown={...observed,id:'ev2',status:'UNKNOWN'};
@@ -32,5 +32,8 @@ const detailed={...siteChange,evidenceIds:['detail'],supportQuotes:[{evidenceId:
 check('observed detail quote can ground a product change',validateCommercialSynthesis({...base,opportunities:[detailed]},[observed,detail]).ok,true);
 check('paraphrase does not become source proof',validateCommercialSynthesis({...base,opportunities:[{...detailed,supportQuotes:[{evidenceId:'detail',quote:'Private events are phone-only'}]}]},[observed,detail]).ok,false);
 check('quote cannot borrow an uncited page',validateCommercialSynthesis({...base,opportunities:[{...detailed,supportQuotes:[{evidenceId:'home',quote:'Private events call us'}]}]},[observed,homepage,detail]).ok,false);
+const ellipsis=discardUnverifiableQuotes({...base,investigations:[{...investigation,evidenceIds:['detail'],supportQuotes:[{evidenceId:'detail',quote:'Private events call us...'}]}]},[observed,detail]);
+check('terminal ellipsis is normalized only when the prefix is exact',ellipsis.synthesis.investigations[0].supportQuotes[0].quote,'Private events call us');
+check('quote normalization is recorded',ellipsis.normalized.length,1);
 
 if(fail)process.exit(1);console.log('\nCommercial synthesis truth regression passed');

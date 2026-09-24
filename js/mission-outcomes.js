@@ -24,16 +24,10 @@
     return number;
   };
   const identity = claim => {
-    const website = new URL(requireText(claim.website, 'Website')).origin.toLowerCase();
-    const claimId = requireText(claim.claimId, 'Claim ID', 120);
-    const evidenceIds = [...new Set((claim.evidenceIds || []).map(String))].sort();
-    if (!evidenceIds.length) throw new Error('The claim needs cited evidence before measurement.');
-    const fingerprint = JSON.stringify([website, claimId, evidenceIds, claim.headline || '']);
-    // The full identity is retained in the record and checked on read. This hash
-    // keeps storage keys short; collisions cannot make a mismatched record valid.
-    let hash = 2166136261;
-    for (const character of fingerprint) hash = Math.imul(hash ^ character.charCodeAt(0), 16777619);
-    return {website, claimId, evidenceIds, fingerprint, key:prefix + (hash >>> 0).toString(16)};
+    requireText(claim.website, 'Website');
+    requireText(claim.claimId, 'Claim ID', 120);
+    const scope = window.GOResearchScope.identity({website:claim.website,claim,capturedAt:claim.capturedAt});
+    return {...scope,key:prefix+scope.key};
   };
   const read = claim => {
     const scope = identity(claim);

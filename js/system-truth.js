@@ -2,7 +2,6 @@
    A claim type is a topic, never a numeric score or proof of business performance. */
 (() => {
   const names = ['Visibility','Trust','Conversion','Operations','Intelligence','Growth'];
-  const topics = {DISCOVERY:'Visibility',VISIBILITY:'Visibility',TRUST:'Trust',CONVERSION:'Conversion'};
   const unknown = {
     Visibility:'Discovery channels and qualified traffic are not established for this system.',
     Trust:'Customer reputation and its effect on booking decisions are not established.',
@@ -16,10 +15,14 @@
     if (research?.state !== 'PROOF_JUDGED' || !research.actionPlan?.moves?.length) return null;
     const first = research.actionPlan.moves[0];
     const systems = names.map(name => ({name,state:'UNKNOWN',label:'Needs evidence',detail:unknown[name],move:null}));
-    for (const move of research.actionPlan.moves) {
-      const target = systems.find(row => row.name === topics[String(move.type || '').toUpperCase()]);
-      if (!target || target.move || !move.evidenceIds?.length || !move.supportQuotes?.length) continue;
-      target.move = move;
+    for (const target of systems.filter(row => row.name !== 'Growth')) {
+      const moves=research.actionPlan.moves.filter(move => move.system === target.name && move.evidenceIds?.length && move.supportQuotes?.length);
+      if (!moves.length) continue;
+      if (moves.length > 1 && new Set(moves.map(move => move.state)).size > 1) {
+        Object.assign(target,{state:'UNKNOWN',label:'Mixed evidence',detail:'GO has different signals in this system. Review the cited findings before treating it as healthy or constrained.',move:null});
+        continue;
+      }
+      const move=moves[0];target.move=move;
       if (move.state === 'LEVERAGE') Object.assign(target,{state:'HEALTH',label:'Observed strength',detail:move.why || move.headline});
       else if (move.state === 'VALIDATED_OPPORTUNITY') Object.assign(target,{state:'CONCERN',label:'Evidence-backed opportunity',detail:move.why || move.headline});
       else Object.assign(target,{state:'UNKNOWN',label:'Question to verify',detail:move.proof || move.why || unknown[target.name]});

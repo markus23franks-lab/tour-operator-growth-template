@@ -1,4 +1,5 @@
 const TYPES=new Set(["QUICK_WIN","VALIDATED_OPPORTUNITY","INVESTIGATE","LEVERAGE","MEASURE","DO_NOT_PRIORITIZE"]);
+const SYSTEMS=new Set(["Visibility","Trust","Conversion","Operations","Intelligence","Growth","Unknown"]);
 const clean=v=>String(v??"").replace(/\s+/g," ").trim();
 
 export const COMMERCIAL_SYNTHESIS_SCHEMA={type:"object",additionalProperties:false,properties:{
@@ -10,7 +11,7 @@ export const COMMERCIAL_SYNTHESIS_SCHEMA={type:"object",additionalProperties:fal
  nextMove:{type:"object",additionalProperties:false,properties:{findingHeadline:{type:"string"},type:{type:"string",enum:[...TYPES]},headline:{type:"string"},whyNow:{type:"string"},evidenceIds:{type:"array",items:{type:"string"}},proofNeeded:{type:"array",items:{type:"string"}},connectedDataNeeded:{type:"array",items:{type:"string"}}},required:["findingHeadline","type","headline","whyNow","evidenceIds","proofNeeded","connectedDataNeeded"]}
 },required:["executiveRead","strengths","opportunities","investigations","doNotPrioritize","nextMove"]};
 
-function findingSchema(){return {type:"object",additionalProperties:false,properties:{type:{type:"string",enum:[...TYPES]},headline:{type:"string"},whyItMatters:{type:"string"},evidenceIds:{type:"array",items:{type:"string"}},supportQuotes:{type:"array",items:{type:"object",additionalProperties:false,properties:{evidenceId:{type:"string"},quote:{type:"string"}},required:["evidenceId","quote"]}},contradictionIds:{type:"array",items:{type:"string"}},confidence:{type:"string",enum:["HIGH","MEDIUM","LOW"]},actionBoundary:{type:"string"},economicBoundary:{type:"string"}},required:["type","headline","whyItMatters","evidenceIds","supportQuotes","contradictionIds","confidence","actionBoundary","economicBoundary"]}}
+function findingSchema(){return {type:"object",additionalProperties:false,properties:{type:{type:"string",enum:[...TYPES]},system:{type:"string",enum:[...SYSTEMS]},headline:{type:"string"},whyItMatters:{type:"string"},evidenceIds:{type:"array",items:{type:"string"}},supportQuotes:{type:"array",items:{type:"object",additionalProperties:false,properties:{evidenceId:{type:"string"},quote:{type:"string"}},required:["evidenceId","quote"]}},contradictionIds:{type:"array",items:{type:"string"}},confidence:{type:"string",enum:["HIGH","MEDIUM","LOW"]},actionBoundary:{type:"string"},economicBoundary:{type:"string"}},required:["type","system","headline","whyItMatters","evidenceIds","supportQuotes","contradictionIds","confidence","actionBoundary","economicBoundary"]}}
 const moneyAmounts=text=>[...String(text||"").matchAll(/\$\s*(\d+(?:,\d{3})*(?:\.\d{1,2})?)(?!\d)/g)].map(x=>Number(x[1].replaceAll(",","")));
 const sourceText=row=>[row?.subject?.label,row?.observation?.title,...(row?.observation?.headings||[]),row?.observation?.mainText,row?.observation?.text,row?.observation?.snippet,row?.observation?.priceText].filter(Boolean).map(clean);
 const validQuote=(anchor,ids,byId)=>{const row=byId.get(anchor?.evidenceId),quote=clean(anchor?.quote);return ids.includes(anchor?.evidenceId)&&row&&quote.length>=12&&quote.length<=280&&sourceText(row).some(t=>t.includes(quote))};
@@ -41,6 +42,7 @@ export function validateCommercialSynthesis(synthesis={},records=[]){
  const findings=buckets.flatMap(bucket=>(synthesis[bucket]||[]).map(x=>({...x,_bucket:bucket})));
  for(const [index,f] of findings.entries()){
    if(!TYPES.has(f.type))errors.push({index,error:"invalid finding type"});
+   if(f.system && !SYSTEMS.has(f.system))errors.push({index,error:"invalid growth system topic"});
    const ids=[...new Set(f.evidenceIds||[])],missing=ids.filter(id=>!byId.has(id));
    if(!ids.length)errors.push({index,error:"finding requires evidence"});
    if(missing.length)errors.push({index,error:"missing evidence ids: "+missing.join(", ")});
@@ -85,7 +87,7 @@ export function validateCommercialSynthesis(synthesis={},records=[]){
 }
 
 export function deterministicSignalFindings(signals={}){
- const strengths=(signals.strengths||[]).map(x=>({type:"LEVERAGE",headline:x.headline,whyItMatters:"GO observed public discovery presence. Do not spend effort fixing visibility that is already working without stronger evidence.",evidenceIds:x.evidenceIds||[],contradictionIds:[],confidence:"HIGH",actionBoundary:"Preserve and measure this strength; do not infer conversion or revenue from rank alone.",economicBoundary:"Revenue impact requires first-party traffic, booking and attribution data."}));
- const investigations=(signals.anomalies||[]).map(x=>({type:"INVESTIGATE",headline:x.headline,whyItMatters:x.reason,evidenceIds:x.evidenceIds||[],contradictionIds:[],confidence:"MEDIUM",actionBoundary:"Verify entity identity and intent before recommending any listing change or consolidation.",economicBoundary:"Do not assign revenue impact until the anomaly is verified and exposure/conversion effects are measured."}));
+ const strengths=(signals.strengths||[]).map(x=>({type:"LEVERAGE",system:"Visibility",headline:x.headline,whyItMatters:"GO observed public discovery presence. Do not spend effort fixing visibility that is already working without stronger evidence.",evidenceIds:x.evidenceIds||[],contradictionIds:[],confidence:"HIGH",actionBoundary:"Preserve and measure this strength; do not infer conversion or revenue from rank alone.",economicBoundary:"Revenue impact requires first-party traffic, booking and attribution data."}));
+ const investigations=(signals.anomalies||[]).map(x=>({type:"INVESTIGATE",system:"Unknown",headline:x.headline,whyItMatters:x.reason,evidenceIds:x.evidenceIds||[],contradictionIds:[],confidence:"MEDIUM",actionBoundary:"Verify entity identity and intent before recommending any listing change or consolidation.",economicBoundary:"Do not assign revenue impact until the anomaly is verified and exposure/conversion effects are measured."}));
  return {strengths,investigations};
 }

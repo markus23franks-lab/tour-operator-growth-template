@@ -1,9 +1,11 @@
-import {validateCommercialSynthesis,deterministicSignalFindings,discardUnverifiableQuotes} from '../netlify/functions/lib/commercial-synthesis.mjs';
+import {COMMERCIAL_SYNTHESIS_SCHEMA,validateCommercialSynthesis,deterministicSignalFindings,discardUnverifiableQuotes} from '../netlify/functions/lib/commercial-synthesis.mjs';
 let fail=0;const check=(n,a,e)=>{if(JSON.stringify(a)!==JSON.stringify(e)){fail++;console.error('FAIL',n,{a,e})}else console.log('PASS',n)};
 const observed={id:'ev1',surface:'LOCAL_MAPS',claimType:'BUSINESS_ENTITY_OBSERVED',subject:{label:'Raft Co'},observation:{},source:{provider:'fixture',query:'rafting'},observedAt:'2026-09-22',confidence:'HIGH',status:'OBSERVED'};
 const unknown={...observed,id:'ev2',status:'UNKNOWN'};
 const investigation={type:'INVESTIGATE',headline:'Resolve entities',whyItMatters:'Potential fragmentation',evidenceIds:['ev1'],contradictionIds:[],confidence:'MEDIUM',actionBoundary:'Verify ownership',economicBoundary:'Revenue effect unknown'};
 const base={executiveRead:'Visible already; investigate entity integrity.',strengths:[],opportunities:[],investigations:[investigation],doNotPrioritize:[],nextMove:{findingHeadline:'Resolve entities',type:'INVESTIGATE',headline:'Resolve entities',whyNow:'Potential fragmentation',evidenceIds:['ev1'],proofNeeded:['entity identity'],connectedDataNeeded:[]}};
+check('model contract requires a separate system topic',COMMERCIAL_SYNTHESIS_SCHEMA.properties.investigations.items.required.includes('system'),true);
+check('invalid system topic rejected',validateCommercialSynthesis({...base,investigations:[{...investigation,system:'Sales'}]},[observed]).ok,false);
 check('valid synthesis passes',validateCommercialSynthesis(base,[observed]).ok,true);
 check('fake evidence rejected',validateCommercialSynthesis({...base,nextMove:{...base.nextMove,evidenceIds:['fake']}},[observed]).ok,false);
 const fakeGap={...base,opportunities:[{type:'VALIDATED_OPPORTUNITY',headline:'Fix visibility',whyItMatters:'x',evidenceIds:['ev2'],contradictionIds:[],confidence:'HIGH',actionBoundary:'fix',economicBoundary:'unknown'}]};

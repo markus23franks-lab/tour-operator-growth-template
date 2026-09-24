@@ -7,7 +7,7 @@ const hash=s=>{let h=2166136261;for(let i=0;i<s.length;i++){h^=s.charCodeAt(i);h
 export async function collectFirstPartyEvidence({website,timeoutMs=8000,firecrawlApiKey=process.env.FIRECRAWL_API_KEY}){
   const root=new URL(website);if(firecrawlApiKey){try{return await collectWithFirecrawl(root.href,firecrawlApiKey,timeoutMs)}catch{}}
   const home=await fetchHtml(root.href,timeoutMs);
-  const links=rankInternalLinks(home,root).slice(0,MAX_PAGES-1);
+  const links=selectDiverseLinks(rankInternalLinks(home,root),MAX_PAGES-1);
   const pages=[{url:root.href,html:home},...(await Promise.all(links.map(async url=>{try{return {url,html:await fetchHtml(url,timeoutMs)}}catch{return null}}))).filter(Boolean)];
   const observedAt=new Date().toISOString();
   const records=pages.map((page,index)=>{
@@ -39,6 +39,15 @@ function htmlToObservation(html,url){
   const text=clean(decode(html.replace(/<script[\s\S]*?<\/script>/gi," ").replace(/<style[\s\S]*?<\/style>/gi," ").replace(/<svg[\s\S]*?<\/svg>/gi," ").replace(/<[^>]+>/g," "))).slice(0,30000);
   return {url,title,headings,bookingLinks:dedupe(bookingLinks,x=>x.url),prices,text};
 }
-function rankInternalLinks(html,root){const rows=[];const seen=new Set();for(const m of html.matchAll(/<a\b[^>]*href=["']([^"'#]+)["'][^>]*>([\s\S]*?)<\/a>/gi)){try{const u=new URL(decode(m[1]),root);if(u.origin!==root.origin||seen.has(u.href))continue;const label=clean(decode(m[2].replace(/<[^>]+>/g," "))),v=(u.pathname+" "+label).toLowerCase();if(!label||/privacy|terms|blog|news|contact|about|login|cart|faq|gallery/.test(v))continue;let score=0;if(/tour|trip|raft|rental|charter|experience|activity|admission|ticket|book|price|product/.test(v))score+=5;if(u.pathname.split("/").filter(Boolean).length<=2)score+=2;if(score){seen.add(u.href);rows.push({url:u.href,score})}}catch{}}return rows.sort((a,b)=>b.score-a.score).map(x=>x.url)}
+function rankInternalLinks(html,root){const rows=[];const seen=new Set();for(const m of html.matchAll(/<a\b[^>]*href=["']([^"'#]+)["'][^>]*>([\s\S]*?)<\/a>/gi)){try{const u=new URL(decode(m[1]),root);if(u.origin!==root.origin||seen.has(u.href))continue;const label=clean(decode(m[2].replace(/<[^>]+>/g," "))),v=(u.pathname+" "+label).toLowerCase();if(!label||/privacy|terms|blog|news|contact|about|login|cart|faq|gallery/.test(v))continue;let score=0;if(/tour|trip|raft|rental|charter|experience|activity|admission|ticket|book|price|product|private|event|wedding|group/.test(v))score+=5;if(u.pathname.split("/").filter(Boolean).length<=2)score+=2;if(score){seen.add(u.href);rows.push({url:u.href,score})}}catch{}}return rows.sort((a,b)=>b.score-a.score).map(x=>x.url)}
+// A navigation menu can contain dozens of one product family's pages. Reserve
+// room for other product families before using the remaining page budget.
+function selectDiverseLinks(urls,limit){const groups=new Map(),chosen=[];
+ for(const url of urls){const family=new URL(url).pathname.split("/").filter(Boolean)[0]||"/";if(!groups.has(family))groups.set(family,[]);groups.get(family).push(url)}
+ for(let round=0;chosen.length<limit&&[...groups.values()].some(x=>x.length);round++){
+  for(const group of groups.values()){if(chosen.length===limit)break;if(group.length)chosen.push(group.shift())}
+ }
+ return chosen;
+}
 function decode(v){return String(v||"").replace(/&amp;/gi,"&").replace(/&quot;/gi,'"').replace(/&#39;/gi,"'").replace(/&nbsp;/gi," ").replace(/&lt;/gi,"<").replace(/&gt;/gi,">")}
 function dedupe(rows,key){const s=new Set();return rows.filter(x=>{const k=key(x);if(s.has(k))return false;s.add(k);return true})}

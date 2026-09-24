@@ -30,7 +30,15 @@ if(api.build(research).measurement!=='Operator-reported action · follow-up need
 context.window.GOMissionOutcomes.followUp(scope,{value:19,period:'3 days',startedAt:'2026-09-21',observedAt:'2026-09-23',source:'Booking report'});
 if(!api.build(research).measurement.includes('impact unverified'))throw new Error('Outcome was attributed');
 if(api.build({...research,website:'https://other.example'}).measurement!=='No measured outcome'||api.build({...research,capturedAt:'2026-09-21T12:00:00Z'}).measurement!=='No measured outcome')throw new Error('Outcome leaked across operator or investigation');
-const dashboard=readFileSync('Pages/dashboard.html','utf8'),score=readFileSync('Pages/growth-score.html','utf8'),assessment=readFileSync('js/assessment.js','utf8'),dashboardCSS=readFileSync('styles.css','utf8');
-if(!dashboard.includes('id="system-truth-grid"')||!dashboard.includes('js/system-truth.js')||!score.includes('js/growth-score-research.js')||!assessment.includes('if(window.GOSystemTruth?.build(window.GOResearchBridge?.read())) return;'))throw new Error('System view not wired to product pages');
+const dashboard=readFileSync('Pages/dashboard.html','utf8'),score=readFileSync('Pages/growth-score.html','utf8'),dashboardCSS=readFileSync('styles.css','utf8');
+if(!dashboard.includes('id="system-truth-grid"')||!dashboard.includes('js/system-truth.js')||!score.includes('js/growth-score-research.js')||score.includes('js/assessment.js'))throw new Error('System view not wired to product pages or legacy score renderer remains active');
 if(!dashboardCSS.includes('.research-mode .nav-link:not([href="dashboard.html"]):not([href="mission.html"]):not([href="growth-score.html"])'))throw new Error('Research navigation hides the Growth Score route');
+// Exercise the no-investigation render path, which used to expose fallback /100 scores.
+let ready,inserted;
+const footer={querySelector:()=>({href:'growth-snapshot.html',textContent:''})};
+const document={body:{classList:{add(){}}},addEventListener:(_,fn)=>{ready=fn},createElement:name=>({name,children:[],append(...children){this.children.push(...children)},className:'',textContent:''}),querySelector:selector=>selector==='main.score-shell'?{querySelector:()=>footer,insertBefore:node=>{inserted=node}}:{textContent:''}};
+const scoreContext={window:{GOSystemTruth:{build:()=>null},GOResearchBridge:{read:()=>null}},document,localStorage:{getItem:()=>null},URL};vm.createContext(scoreContext);
+vm.runInContext(readFileSync('js/growth-score-research.js','utf8'),scoreContext);ready();
+const flatten=node=>[node,...(node.children||[]).flatMap(flatten)];
+if(!inserted||!flatten(inserted).some(child=>child.textContent==='NO COMPLETED RESEARCH READ')||!flatten(inserted).some(child=>child.textContent==='Not scored'))throw new Error('No-investigation Growth Score did not render an explicit unscored state');
 console.log('System truth regression passed');

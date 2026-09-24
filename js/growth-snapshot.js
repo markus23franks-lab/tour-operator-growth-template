@@ -1,37 +1,32 @@
 "use strict";
 
 const fallback = {
-  businessName: "Blue River Rafting",
-  growthScore: 76,
-  scores: { Visibility: 82, Trust: 74, Conversion: 61, Operations: 74, Intelligence: 68, Growth: 76 },
-  revenueOpportunity: 26480,
-  website: "https://blueriverrafting.com"
+  businessName: "Your business",
+  scores: {},
+  website: ""
 };
 
 const prospectProfile = read("growthOperatorProspectProfile", null);
 const profile = prospectProfile || read("growthOperatorBusinessReviewProfile", fallback);
-const assessment = read("growthOperatorAssessment", {});
-const businessName = profile.businessName || assessment.businessName || fallback.businessName;
 const isProspect = Boolean(prospectProfile);
-const score = Number(profile.growthScore ?? fallback.growthScore);
-const totalOpportunity = isProspect ? Number(profile.revenueOpportunity || 0) : Number(profile.revenueOpportunity || fallback.revenueOpportunity);
-const scores = profile.scores || fallback.scores;
-const opportunities = Array.isArray(profile.opportunities) && profile.opportunities.length ? profile.opportunities : buildOpportunities(scores, totalOpportunity);
+const businessName = isProspect ? (profile.businessName || fallback.businessName) : fallback.businessName;
+const opportunities = isProspect && Array.isArray(profile.opportunities) ? profile.opportunities : [];
 const hasLiveResearch = Boolean(profile?.researchIntelligence?.brain?.candidates?.length || read("growthOperatorOpportunityBrain", null)?.brain?.candidates?.length);
 
 document.addEventListener("DOMContentLoaded", () => {
   text("business-name", businessName);
-  text("growth-score", score);
+  text("growth-score", "—");
+  text("score-label", "NOT SCORED");
   text("opportunity-count", opportunities.length);
-  text("modeled-total", totalOpportunity ? money(totalOpportunity) : (profile.revenueLabel || "Connect business data"));
-  text("pace-estimate", totalOpportunity ? money(totalOpportunity) : "Not modeled yet");
-  document.getElementById("score-ring").style.setProperty("--score", score);
-  text("score-read", profile.analysisType ? profile.analysisType : (score >= 80 ? "Strong business. Smaller leaks." : score >= 65 ? "Strong foundation. Clear upside." : "Real upside. Start with the basics."));
-  text("score-copy", profile.summary || (score >= 80 ? "GO sees a healthy foundation with a few focused opportunities worth testing." : "You do not need to fix everything. GO found a few moves that deserve attention first."));
+  text("modeled-total", "Needs connected data");
+  text("pace-estimate", "Not modeled yet");
+  document.getElementById("score-ring").style.setProperty("--score", 0);
+  text("score-read", "Public findings are not a calibrated score.");
+  text("score-copy", isProspect ? (profile.summary || "Review the cited findings below; business performance still needs connected data.") : "Analyze a business to see what GO can support with public evidence.");
   if (isProspect) {
     text("snapshot-eyebrow", "PUBLIC + OPERATOR GROWTH SNAPSHOT");
-    text("score-label", "PROVISIONAL PUBLIC-EVIDENCE SCORE");
-    text("score-read", `${profile.analysisConfidence || "High"} confidence in the public read — not a complete diagnosis.`);
+    text("score-label", "NOT SCORED");
+    text("score-read", "Public evidence is not a complete business health score.");
     text("hero-lede", "GO carried the evidence from the business analysis into this Snapshot. These are the same findings — prioritized, actionable and separated from anything that still needs connected data.");
     text("revenue-strip-label", "REVENUE OPPORTUNITY");
     text("revenue-strip-copy", "GO needs first-party data before putting a defensible dollar value on these findings");
@@ -44,88 +39,20 @@ document.addEventListener("DOMContentLoaded", () => {
       ? "GO is not manufacturing problems from a healthy public website. These are the next questions worth proving with market or connected data."
       : "No generic audit. Each finding below comes directly from evidence GO showed in the business analysis.");
   }
+  if (!isProspect) {
+    text("opportunity-heading", "No reviewed prospect findings loaded.");
+    text("opportunity-lede", "Analyze a business to begin a public investigation. GO will withhold a score and dollar estimate until it can defend them.");
+    text("hero-lede", "GO has not loaded a reviewed business investigation for this Snapshot.");
+    const action=document.querySelector('.hero-actions .primary');if(action){action.href='operator-analyzer.html';action.textContent='Analyze a business →';}
+  }
   renderOpportunities();
   wire();
 });
 
-function buildOpportunities(currentScores, total) {
-  const templates = {
-    Conversion: {
-      icon: "↗",
-      title: "Turn more website visitors into bookings",
-      problem: "People are showing interest, but the booking path is asking them to work too hard before they can reserve.",
-      action: "GO would simplify the mobile booking path, strengthen the main booking action, save the baseline and measure conversion after the change.",
-      metric: "Website visits → completed bookings",
-      evidence: "Booking conversion",
-      evidenceValue: `${currentScores.Conversion || 61}/100`,
-      evidenceType: "conversion"
-    },
-    Intelligence: {
-      icon: "◎",
-      title: "See exactly where competitors are winning customers",
-      problem: "Competitors can quietly pull ahead on reviews, pricing, visibility and positioning while the owner is busy running the business.",
-      action: "GO would benchmark the competitors that matter, watch what changes and surface only the moves worth responding to.",
-      metric: "Competitive position",
-      evidence: "Competitive awareness",
-      evidenceValue: `${currentScores.Intelligence || 68}/100`,
-      evidenceType: "competitor"
-    },
-    Trust: {
-      icon: "★",
-      title: "Turn happy customers into more 5-star reviews",
-      problem: "A great experience creates more bookings when fresh reviews keep showing future customers that people trust the business.",
-      action: "GO would improve review generation, monitor review velocity and place stronger trust proof where travelers make booking decisions.",
-      metric: "Review velocity + booking conversion",
-      evidence: "Customer trust",
-      evidenceValue: `${currentScores.Trust || 74}/100`,
-      evidenceType: "reviews"
-    },
-    Visibility: {
-      icon: "⌖",
-      title: "Show up more often when customers are ready to book",
-      problem: "Customers cannot book a business they do not find when they search for experiences nearby.",
-      action: "GO would improve local visibility signals, track search movement and focus on the searches most likely to produce qualified traffic.",
-      metric: "Search visibility + organic visits",
-      evidence: "Local visibility",
-      evidenceValue: `${currentScores.Visibility || 70}/100`,
-      evidenceType: "visibility"
-    },
-    Operations: {
-      icon: "⚡",
-      title: "Stop interested customers from falling through the cracks",
-      problem: "Calls, inquiries and unfinished bookings lose value when follow-up is slow or inconsistent.",
-      action: "GO would tighten response and follow-up workflows, track what happens to each inquiry and protect more of the demand already coming in.",
-      metric: "Inquiry → booking rate",
-      evidence: "Lead follow-up",
-      evidenceValue: `${currentScores.Operations || 70}/100`,
-      evidenceType: "followup"
-    },
-    Growth: {
-      icon: "✦",
-      title: "Know what to fix first to get more bookings",
-      problem: "Most owners have plenty of ideas. The hard part is knowing which improvement deserves attention first and whether it actually worked.",
-      action: "GO would rank the highest-value opportunities, tackle one measurable improvement first and use the result to choose the next move.",
-      metric: "Priority → measured business result",
-      evidence: "Growth focus",
-      evidenceValue: `${currentScores.Growth || score}/100`,
-      evidenceType: "priority"
-    }
-  };
-
-  const ranked = Object.entries(currentScores).sort((a,b) => Number(a[1]) - Number(b[1])).slice(0,3);
-  const weights = [.46,.32,.22];
-  return ranked.map(([pillar, pillarScore], index) => ({
-    pillar,
-    pillarScore,
-    amount: Math.round(total * weights[index]),
-    ...templates[pillar]
-  }));
-}
-
 function renderOpportunities() {
   const root = document.getElementById("opportunity-list");
   root.innerHTML = opportunities.map((item, index) => {
-    const modeled = Number(item.amount || 0);
+    const modeled = 0;
     const moneyHeadline = modeled ? money(modeled) : (item.moneyLabel || "Needs connected data");
     const sourceMarkup = Array.isArray(item.sources) && item.sources.length
       ? `<div class="snapshot-source-stack">${item.sources.map(source => `<div class="snapshot-source ${source.type || "public"}"><b>${source.label}</b><span>${source.detail}</span></div>`).join("")}</div>`
@@ -163,7 +90,6 @@ function evidenceVisual(item) {
 }
 
 function wire() {
-  document.querySelectorAll("[data-math]").forEach(button => button.addEventListener("click", () => openMath(Number(button.dataset.math))));
   document.querySelectorAll("[data-needs-data]").forEach(button => button.addEventListener("click", () => openNeedsData(Number(button.dataset.needsData))));
   document.getElementById("close-modal").addEventListener("click", closeMath);
   document.getElementById("math-modal").addEventListener("click", event => { if (event.target.id === "math-modal") closeMath(); });
@@ -178,17 +104,6 @@ function openNeedsData(index) {
   const item = opportunities[index];
   text("math-title", `${item.pillar}: what GO needs to prove revenue impact`);
   document.getElementById("math-content").innerHTML = `<div class="math-grid"><div><small>WEBSITE TRAFFIC</small><strong>Connect analytics</strong></div><div><small>BOOKING CONVERSION</small><strong>Connect booking data</strong></div><div><small>AVERAGE BOOKING VALUE</small><strong>Use actual sales</strong></div><div><small>ATTRIBUTION</small><strong>Track before / after</strong></div></div><p><strong>GO's rule:</strong> ${item.moneyLabel || "No revenue claim yet."} We can identify the business problem from public and operator evidence, but we only turn it into a dollar model when the inputs are defensible.</p>`;
-  document.getElementById("math-modal").hidden = false;
-}
-
-function openMath(index) {
-  const item = opportunities[index];
-  const visitors = 1800;
-  const avgBooking = 165;
-  const monthlyTarget = Math.max(1, Math.round(item.amount / 12 / avgBooking));
-  const lift = ((monthlyTarget / visitors) * 100).toFixed(2);
-  text("math-title", `${item.pillar}: ${money(item.amount)} modeled annual opportunity`);
-  document.getElementById("math-content").innerHTML = `<div class="math-grid"><div><small>ASSUMED MONTHLY VISITORS</small><strong>${visitors.toLocaleString()}</strong></div><div><small>ASSUMED AVG. BOOKING</small><strong>${money(avgBooking)}</strong></div><div><small>MODELED MONTHLY GAIN</small><strong>+${monthlyTarget} bookings</strong></div><div><small>MODELED LIFT NEEDED</small><strong>~${lift}%</strong></div></div><p><strong>Why this matters:</strong> GO shows the assumptions instead of hiding them. Once analytics and booking data are connected, these assumptions are replaced with the operator's actual traffic, conversion, booking value and revenue.</p>`;
   document.getElementById("math-modal").hidden = false;
 }
 

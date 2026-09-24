@@ -635,7 +635,7 @@ function openMissionWorkspace(mode) {
     scores: profile.scores,
     revenueOpportunity: profile.revenueOpportunity,
     mission: profile.mission,
-    ...(profile.researchBacked ? {researchBacked:true,claim:window.GOResearchBridge.read()?.actionPlan?.moves?.[0]} : {}),
+    ...(profile.researchBacked ? {researchBacked:true,claim:window.GOResearchBridge.read()?.actionPlan?.moves?.[0],researchCapturedAt:window.GOResearchBridge.read()?.capturedAt,researchSourceType:window.GOResearchBridge.read()?.sourceType} : {}),
     mode,
     startedAt: new Date().toISOString()
   };

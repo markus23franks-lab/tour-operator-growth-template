@@ -11,4 +11,8 @@ const bad=buildClaimLedger({synthesis:{strengths:[],opportunities:[{...finding,e
 if(validateClaimLedger(bad,[serp]).ok)throw new Error('search-only action claim accepted');
 const badPlan=buildOperatorActionPlan({ledger:bad});
 if(badPlan.moves[0]?.state==='VALIDATED_OPPORTUNITY')throw new Error('search-only claim became action-ready');
+const realShape={type:'LEVERAGE',headline:'Show the canine cruise',whyItMatters:'A dated seasonal offer is bookable.',actionBoundary:'Verify capacity before sending traffic.',economicBoundary:'Demand and margin are unknown.',confidence:'HIGH',evidenceIds:['page'],supportQuotes:[{evidenceId:'page',quote:'Canine Cruise tickets start at $46'}]};
+const actual=buildClaimLedger({synthesis:{strengths:[realShape],opportunities:[],investigations:[{...realShape,type:'INVESTIGATE',headline:'Inspect a different offer'}],doNotPrioritize:[],nextMove:{findingHeadline:realShape.headline,type:'LEVERAGE',headline:'Check inventory, then promote canine departures',proofNeeded:['Remaining seats'],connectedDataNeeded:['Booking pace']}},records:[page]});
+const actualPlan=buildOperatorActionPlan({ledger:actual,synthesis:{nextMove:{findingHeadline:realShape.headline,headline:'Check inventory, then promote canine departures',proofNeeded:['Remaining seats'],connectedDataNeeded:['Booking pace']}}});
+if(actualPlan.moves[0].action!=='Check inventory, then promote canine departures'||actualPlan.moves[0].why!==realShape.whyItMatters||!actualPlan.moves[0].proof.includes('Booking pace'))throw new Error('actual model fields or chosen next move lost');
 console.log('Product-scoped claim ledger regression passed');

@@ -22,7 +22,7 @@ For a founder-selected operator, open a **private** issue titled `[GO single] ..
 
 ## Security and limits
 
-Do not store provider keys or raw internal research artifacts in the public GO repository. The private workflow should use read-only repository permissions, fixed code refs, small bounded corpus, explicit secret-presence checks and no secret-bearing logs. Since code running in Actions can use its secrets, only trusted branch commits should be evaluated. Review changes to outbound network calls before running a secret-backed evaluation.
+Do not store provider keys or raw internal research artifacts in the public GO repository. The private workflow uses read-only contents and actions permissions plus issue-write permission solely to post the run link to its triggering private issue. It uses fixed code refs, a small bounded corpus, explicit secret-presence checks and no secret-bearing logs. Since code running in Actions can use its secrets, only trusted branch commits should be evaluated. Review changes to outbound network calls before running a secret-backed evaluation.
 
 The runner's `local` mode was smoke-tested without provider keys: it reached the handler's `MODEL_NOT_CONFIGURED` state through an internally generated access token. That establishes invocation only. No live investigation has been completed on this runtime.
 

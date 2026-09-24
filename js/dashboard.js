@@ -35,11 +35,11 @@ const intelligence = intelligenceEngine.analyze({ assessment, previewScores, pre
 const scores = intelligence.scores;
 const mission = intelligence.mission;
 const profile = buildProfile(intelligence.assessment, scores, mission);
-const researchProfile = window.GOResearchBridge?.apply(profile);
-if (researchProfile) Object.assign(profile, researchProfile);
 profile.growthScore = intelligence.growthScore;
 profile.findings = intelligence.findings;
 profile.intelligence = intelligence;
+const researchProfile = window.GOResearchBridge?.apply(profile);
+if (researchProfile) Object.assign(profile, researchProfile);
 
 const goEngine = profile.researchBacked ? null : new window.GOWorkEngine(profile);
 const goWorkState = goEngine?.state || null;
@@ -65,6 +65,10 @@ document.addEventListener("DOMContentLoaded", () => {
   if (profile.researchBacked) {
     window.GOResearchExperience.render(profile);
     document.getElementById("brief-start-mission")?.addEventListener("click", () => openMissionWorkspace("start"));
+    document.querySelector('.nav-link[href="mission.html"]')?.addEventListener("click", event => {
+      event.preventDefault();
+      openMissionWorkspace("start");
+    });
     return;
   }
   personalizeDashboard();

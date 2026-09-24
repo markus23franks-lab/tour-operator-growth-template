@@ -14,7 +14,10 @@ const grounded={businessName:'Raft Co',operatingMarket:'Tahoe City',summary:'Sel
 check('grounded business dossier passes semantic evidence gate',validateBusinessDossier(grounded,fp).ok,true);
 check('invented product name fails semantic evidence gate',validateBusinessDossier({...grounded,products:[{...grounded.products[0],name:'Private Snorkeling Charter'}]},fp).ok,false);
 check('known model without evidenced products fails',validateBusinessDossier({...grounded,products:[]},fp).ok,false);
-const normalized=normalizeSynthesisBuckets({opportunities:[{type:'MEASURE',headline:'Track review recency'},{type:'QUICK_WIN',headline:'Fix observed detail page'}]});
+const normalized=normalizeSynthesisBuckets({opportunities:[{type:'MEASURE',headline:'Track review recency',evidenceIds:['ev1']},{type:'QUICK_WIN',headline:'Fix observed detail page',evidenceIds:['ev1']}]});
 check('measurement proposal does not become action-ready opportunity',normalized.opportunities.map(x=>x.headline),['Fix observed detail page']);
+const crowded=normalizeSynthesisBuckets({investigations:[{type:'MEASURE',headline:'Track ranks',evidenceIds:['ev1']},{type:'INVESTIGATE',headline:'Investigate A',evidenceIds:['ev1']},{type:'INVESTIGATE',headline:'Investigate B',evidenceIds:['ev1']},{type:'INVESTIGATE',headline:'Investigate C',evidenceIds:['ev1']},{type:'INVESTIGATE',headline:'Investigate D',evidenceIds:['ev1']}],doNotPrioritize:[{type:'DO_NOT_PRIORITIZE',headline:'Uncited idea',evidenceIds:[]}],nextMove:{findingHeadline:'Investigate D'}});
+check('presentation cap retains the next move investigation',crowded.investigations.map(x=>x.headline),['Investigate D','Investigate A','Investigate B']);
+check('uncited deprioritization is withheld',crowded.doNotPrioritize.length,0);
 
 if(fail)process.exit(1);console.log('\nResearch model evidence-binding regression passed');

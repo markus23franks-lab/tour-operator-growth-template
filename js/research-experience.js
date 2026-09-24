@@ -4,6 +4,7 @@
   function render(profile) {
     document.body.classList.add("research-mode");
     const research = window.GOResearchBridge.read();
+    const truth = window.GOSystemTruth?.build(research);
     const plan = research.actionPlan;
     const first = plan.moves[0];
     const date = research.capturedAt && !Number.isNaN(Date.parse(research.capturedAt)) ? research.capturedAt.slice(0,10) : null;
@@ -13,6 +14,22 @@
     const summary = research.judgment?.executiveRead || research.dossier?.summary || "GO investigated this business and selected a question worth pursuing.";
     set("greeting", `GO's read on ${profile.businessName}`);
     set("briefing-line", summary);
+    if (truth) {
+      const section=document.getElementById('system-truth');
+      section.hidden=false;
+      const grid=document.getElementById('system-truth-grid');
+      grid.replaceChildren();
+      for (const system of truth.systems) {
+        const card=tag('article',''); card.className=`system-truth-card ${system.state.toLowerCase()}`;
+        card.append(tag('small',system.name.toUpperCase()),tag('strong',system.label),tag('p',system.detail));
+        if (system.move?.scope?.pages?.length) {
+          const source=system.move.scope.pages[0];
+          try { const url=new URL(source); if (['https:','http:'].includes(url.protocol)) { const link=tag('a','Read source →');link.href=url.href;link.target='_blank';link.rel='noopener noreferrer';card.append(link); } } catch { /* no link */ }
+        }
+        grid.append(card);
+      }
+      set('truth-priority',first.headline);set('truth-mission',truth.mission);set('truth-measurement',truth.measurement);
+    }
     set("scan-time", `${dated} · verify current facts before acting`);
     set("brief-business-name", profile.businessName);
     set("sidebar-business", profile.businessName);

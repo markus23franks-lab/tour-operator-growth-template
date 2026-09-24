@@ -30,6 +30,8 @@ function canonicalDisplayBusinessName(value){
 document.addEventListener("DOMContentLoaded",render);
 
 function render(){
+  if(window.GOSystemTruth?.build(window.GOResearchBridge?.read())) return;
+  document.body.classList.add('preview-score-mode');
   const name=displayBusinessName, scores=normalizeScores(profile.scores||fallback.scores), areas=buildAreas(scores), baseline=calculateBaseline(areas,profile.growthScore), priority=choosePriority(areas,profile.opportunities||[]), evidence=collectEvidence(priority,areas), model=buildEconomicModel(priority,evidence);
   set("business-heading",`${name}'s Growth Score`); set("score-number",baseline); set("baseline-number",baseline); document.getElementById("score-ring").style.setProperty("--score",baseline);
   set("score-label",connected?"VERIFIED GROWTH BASELINE":"PUBLIC GROWTH BASELINE"); set("score-read",scoreRead(baseline)); set("score-summary",profile.summary||fallback.summary);

@@ -15,10 +15,12 @@
     if (text > new Date().toISOString().slice(0, 10)) throw new Error(`${label} cannot be in the future.`);
     return text;
   };
-  const amount = value => {
+  const amount = (value, unit) => {
     if (String(value ?? '').trim() === '') throw new Error('A measured value is required.');
     const number = Number(value);
     if (!Number.isFinite(number) || number < 0 || number > 1e12) throw new Error('Enter a nonnegative measured value.');
+    if (['bookings', 'inquiries', 'website_visits'].includes(unit) && !Number.isInteger(number)) throw new Error('Count metrics need a whole number.');
+    if (unit === 'revenue_usd' && Math.abs(number*100-Math.round(number*100)) > 1e-6) throw new Error('Revenue values may have at most two decimal places.');
     return number;
   };
   const identity = claim => {
@@ -53,7 +55,7 @@
       fingerprint:scope.fingerprint, website:scope.website, claimId:scope.claimId,
       evidenceIds:scope.evidenceIds, headline:requireText(claim.headline, 'Claim headline'),
       state:'BASELINE_RECORDED',
-      baseline:{metric:requireText(entry.metric, 'Metric name', 100),unit,value:amount(entry.value),period:requireText(entry.period, 'Measurement period', 100),observedAt:date(entry.observedAt, 'Baseline date'),source:requireText(entry.source, 'Data source', 100)},
+      baseline:{metric:requireText(entry.metric, 'Metric name', 100),unit,value:amount(entry.value,unit),period:requireText(entry.period, 'Measurement period', 100),observedAt:date(entry.observedAt, 'Baseline date'),source:requireText(entry.source, 'Data source', 100)},
       action:null, followUps:[]
     });
   };
@@ -72,10 +74,10 @@
     const scope = identity(claim), record = read(claim);
     if (!record?.action) throw new Error('Report the action before recording a later measurement.');
     const observedAt = date(entry.observedAt, 'Follow-up date');
-    if (observedAt < record.action.performedAt || (record.followUps.length && observedAt < record.followUps.at(-1).observedAt)) throw new Error('Follow-up date must follow the action and prior measurements.');
+    if (observedAt <= record.action.performedAt || (record.followUps.length && observedAt < record.followUps.at(-1).observedAt)) throw new Error('Follow-up date must follow the action and prior measurements.');
     const period = requireText(entry.period, 'Measurement period', 100);
     if (period !== record.baseline.period) throw new Error('Use the same measurement period as the baseline.');
-    const value = amount(entry.value);
+    const value = amount(entry.value,record.baseline.unit);
     record.followUps.push({value,period,observedAt,source:requireText(entry.source, 'Data source', 100),difference:value-record.baseline.value});
     record.state='FOLLOW_UP_RECORDED';
     return write(scope, record);

@@ -24,5 +24,10 @@ const citedPrice={...base,nextMove:{...base.nextMove,headline:'Verify $46 ticket
 check('source text supports a cited amount',validateCommercialSynthesis(citedPrice,[observed,donation]).ok,true);
 check('action type cannot promote an investigation',validateCommercialSynthesis({...base,nextMove:{...base.nextMove,type:'QUICK_WIN'}},[observed]).ok,false);
 check('next move must link a real finding',validateCommercialSynthesis({...base,nextMove:{...base.nextMove,findingHeadline:'Unlisted fix'}},[observed]).ok,false);
+const homepage={...observed,id:'home',surface:'FIRST_PARTY_RENDERED',observation:{url:'https://operator.example/',text:'Private events call us'}};
+const detail={...homepage,id:'detail',observation:{url:'https://operator.example/private-events',text:'Private events call us'}};
+const siteChange={...investigation,type:'VALIDATED_OPPORTUNITY',headline:'Change private event checkout',evidenceIds:['home']};
+check('homepage alone cannot validate a specific product change',validateCommercialSynthesis({...base,opportunities:[siteChange]},[observed,homepage]).ok,false);
+check('observed detail page can ground a product change',validateCommercialSynthesis({...base,opportunities:[{...siteChange,evidenceIds:['detail']}]},[observed,detail]).ok,true);
 
 if(fail)process.exit(1);console.log('\nCommercial synthesis truth regression passed');

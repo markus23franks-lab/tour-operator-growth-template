@@ -15,4 +15,7 @@ if(nodes.get('brief-start-mission').textContent==='Review saved investigation �
 saved={...saved,website:judgment.website};
 context.window.GOResearchExperience.render(profile);
 if(nodes.get('brief-start-mission').textContent!=='Review saved investigation →'||!nodes.get('brief-summary-line').textContent.includes('outcome measurement'))throw new Error('saved investigation did not return to the dashboard with its boundary');
+context.window.GOMissionOutcomes={read:()=>({state:'FOLLOW_UP_RECORDED',baseline:{value:12,unit:'bookings'},followUps:[{value:19,period:'7-day window'}]})};
+context.window.GOResearchExperience.render(profile);
+if(nodes.get('brief-start-mission').textContent!=='Review outcome record →'||!nodes.get('brief-summary-line').textContent.includes('Cause is not established'))throw new Error('measured observation was lost or incorrectly attributed');
 console.log('Research memory regression passed');

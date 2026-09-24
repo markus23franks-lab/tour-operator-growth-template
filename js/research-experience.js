@@ -37,6 +37,20 @@
       set("recommendation-copy", "Review the saved research and decide whether the proposed work should be approved.");
       if (start) start.textContent = "Review saved investigation →";
     }
+    let outcome=null;
+    try { outcome=window.GOMissionOutcomes?.read({website:profile.website,...first}); } catch { /* no valid scoped outcome */ }
+    if (outcome?.state === 'FOLLOW_UP_RECORDED') {
+      const latest=outcome.followUps.at(-1),unit=outcome.baseline.unit.replaceAll('_',' ');
+      set('brief-summary-line',`Operator recorded ${outcome.baseline.value.toLocaleString()} → ${latest.value.toLocaleString()} ${unit} across matching ${latest.period} periods. Cause is not established.`);
+      set('recommendation-copy','Review the observation and decide whether this mission should continue, change, or give way to another opportunity.');
+      if (start) start.textContent='Review outcome record →';
+    } else if (outcome?.state === 'ACTION_REPORTED') {
+      set('brief-summary-line','Operator reported an approved action. A comparable follow-up measurement is still needed.');
+      if (start) start.textContent='Record follow-up →';
+    } else if (outcome?.state === 'BASELINE_RECORDED') {
+      set('brief-summary-line','Operator baseline recorded. No action or outcome has been measured.');
+      if (start) start.textContent='Review baseline →';
+    }
     set("findings-title", `${profile.businessName}: GO's evidence-backed read`);
     set("findings-intro", "Read the source passages and the proof GO still needs before acting.");
     set("findings-source-label", "SAVED INVESTIGATION");

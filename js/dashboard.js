@@ -41,8 +41,8 @@ profile.growthScore = intelligence.growthScore;
 profile.findings = intelligence.findings;
 profile.intelligence = intelligence;
 
-const goEngine = new window.GOWorkEngine(profile);
-const goWorkState = goEngine.state;
+const goEngine = profile.researchBacked ? null : new window.GOWorkEngine(profile);
+const goWorkState = goEngine?.state || null;
 
 const modalContent = {
   mission: {
@@ -62,6 +62,11 @@ const modalContent = {
 };
 
 document.addEventListener("DOMContentLoaded", () => {
+  if (profile.researchBacked) {
+    window.GOResearchExperience.render(profile);
+    document.getElementById("brief-start-mission")?.addEventListener("click", () => openMissionWorkspace("start"));
+    return;
+  }
   personalizeDashboard();
   renderFindings(profile);
   renderGOWorkbench();
@@ -626,6 +631,7 @@ function openMissionWorkspace(mode) {
     scores: profile.scores,
     revenueOpportunity: profile.revenueOpportunity,
     mission: profile.mission,
+    ...(profile.researchBacked ? {researchBacked:true,claim:window.GOResearchBridge.read()?.actionPlan?.moves?.[0]} : {}),
     mode,
     startedAt: new Date().toISOString()
   };

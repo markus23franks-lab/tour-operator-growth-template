@@ -14,6 +14,10 @@ assert.ok(input.evidence.some(x=>x.id==='competitor'),'competitor site retained'
 assert.ok(input.evidence.some(x=>x.surface==='LOCAL_MAPS'));
 assert.ok(!JSON.stringify(input.signals).includes('targetEntities'),'raw signals do not reintroduce hundreds of records');
 assert.equal(input.sampling.totalRecords,evidence.length);
+const contactInput=buildSynthesisInput({evidence:[{id:'contact',surface:'FIRST_PARTY_RENDERED',status:'OBSERVED',observation:{url:'https://operator.example/private-events',text:'Navigation '.repeat(80)+'Contact charter sales at chartersales@operator.example.',contactEmails:['chartersales@operator.example'],prices:['$1']}}]});
+assert.deepEqual(contactInput.evidence[0].observation.contactEmails,['chartersales@operator.example']);
+assert.ok(contactInput.evidence[0].observation.text.includes('Contact charter sales'));
+assert.equal(contactInput.evidence[0].observation.prices,undefined,'untyped amounts stay out of model input');
 const tentative={type:'INVESTIGATE',headline:'Validate channel economics',evidenceIds:['first-0']};
 const normalized=normalizeSynthesisBuckets({strengths:[],opportunities:[tentative],investigations:[],doNotPrioritize:[]});
 assert.equal(normalized.opportunities.length,0,'tentative work is never portrayed as validated opportunity');

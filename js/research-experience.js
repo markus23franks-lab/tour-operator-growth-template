@@ -42,13 +42,15 @@
     if (start) start.textContent = first.state === "VALIDATED_OPPORTUNITY" ? "Review GO's proposed work →" : "Open GO investigation →";
     let saved = null;
     try { saved = JSON.parse(localStorage.getItem("growthOperatorLastCompletedMission")); } catch { /* no saved investigation */ }
-    if (saved?.state === "RESEARCH_PREPARED" && saved.website === profile.website && saved.claimId === first.claimId) {
+    let fingerprint = null;
+    try { fingerprint = window.GOResearchScope.identity({website:profile.website,claim:first,capturedAt:research.capturedAt}).fingerprint; } catch { /* no valid cited claim */ }
+    if (fingerprint && saved?.state === "RESEARCH_PREPARED" && saved.fingerprint === fingerprint) {
       set("brief-summary-line", "Investigation saved. Operator approval and outcome measurement are still ahead.");
       set("recommendation-copy", "Review the saved research and decide whether the proposed work should be approved.");
       if (start) start.textContent = "Review saved investigation →";
     }
     let outcome=null;
-    try { outcome=window.GOMissionOutcomes?.read({website:profile.website,...first}); } catch { /* no valid scoped outcome */ }
+    try { outcome=window.GOMissionOutcomes?.read({website:profile.website,capturedAt:research.capturedAt,...first}); } catch { /* no valid scoped outcome */ }
     if (outcome?.state === 'FOLLOW_UP_RECORDED') {
       const latest=outcome.followUps.at(-1),unit=outcome.baseline.unit.replaceAll('_',' ');
       set('brief-summary-line',`Operator recorded ${outcome.baseline.value.toLocaleString()} → ${latest.value.toLocaleString()} ${unit} across matching ${latest.period} periods. Cause is not established.`);

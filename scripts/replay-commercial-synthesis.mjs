@@ -17,7 +17,7 @@ const usage=[];
 let output;
 try{
  const result=await synthesizeCommercialJudgmentWithModel({dossier,evidence,signals,plan:followUpPlan,apiKey:process.env.OPENAI_API_KEY,onUsage:x=>usage.push({model:x.model,usage:x.usage})});
- output={state:'PROOF_JUDGED',website:source.summary.website,sourceEvidenceRecords:evidence.length,visibleEvidenceRecords:selected.evidence.length,judgment:result.synthesis,discardedQuotes:result.discardedQuotes,normalizedQuotes:result.normalizedQuotes,usage};
+ output={state:'PROOF_JUDGED',website:source.summary.website,sourceEvidenceRecords:evidence.length,visibleEvidenceRecords:selected.evidence.length,judgment:result.synthesis,claimLedger:result.claimLedger,discardedQuotes:result.discardedQuotes,normalizedQuotes:result.normalizedQuotes,usage};
 }catch(error){
  output={state:'JUDGMENT_REJECTED',website:source.summary.website,sourceEvidenceRecords:evidence.length,visibleEvidenceRecords:selected.evidence.length,error:error instanceof Error?error.message:String(error),...(error?.draftJudgment?{draftJudgment:error.draftJudgment}:{}),discardedQuotes:error?.discardedQuotes||[],normalizedQuotes:error?.normalizedQuotes||[],usage};
 }

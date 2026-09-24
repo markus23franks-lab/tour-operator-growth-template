@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import {buildSynthesisInput} from '../netlify/functions/lib/research-model-adapter.mjs';
+import {buildSynthesisInput,normalizeSynthesisBuckets} from '../netlify/functions/lib/research-model-adapter.mjs';
 
 const evidence=[];
 for(let i=0;i<6;i++)evidence.push({id:'first-'+i,surface:'FIRST_PARTY_RENDERED',status:'OBSERVED',subject:{label:'Operator'},observation:{text:'Product details '.repeat(800),url:'https://operator.example/'+i},source:{url:'https://operator.example/'+i}});
@@ -14,4 +14,8 @@ assert.ok(input.evidence.some(x=>x.id==='competitor'),'competitor site retained'
 assert.ok(input.evidence.some(x=>x.surface==='LOCAL_MAPS'));
 assert.ok(!JSON.stringify(input.signals).includes('targetEntities'),'raw signals do not reintroduce hundreds of records');
 assert.equal(input.sampling.totalRecords,evidence.length);
+const tentative={type:'INVESTIGATE',headline:'Validate channel economics',evidenceIds:['first-0']};
+const normalized=normalizeSynthesisBuckets({strengths:[],opportunities:[tentative],investigations:[],doNotPrioritize:[]});
+assert.equal(normalized.opportunities.length,0,'tentative work is never portrayed as validated opportunity');
+assert.equal(normalized.investigations[0].headline,tentative.headline);
 console.log('Synthesis selection regression passed');

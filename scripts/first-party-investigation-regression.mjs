@@ -13,4 +13,10 @@ for(const [name,key] of [['rendered','test'],['direct','']]){
  check(name+' preserves thousands separator',result.records[0].observation.prices.includes('$1,000'),true);
  check(name+' does not fabricate $1 price',result.records[0].observation.prices.includes('$1'),false);
 }
+const navigation=['/cruises/architecture','/cruises/night','/cruises/canine','/cruises/creepy','/cruises/sightseeing','/private-events','/weddings'].map(x=>`<a href="${x}">${x.slice(1).replaceAll('-',' ')}</a>`).join('');
+global.fetch=async url=>({ok:true,status:200,text:async()=>'<html><title>Multi-product operator</title>'+navigation+'<p>'+String(url)+' Product details and booking information for a guided operator. '.repeat(4)+'</p></html>'});
+const diverse=await collectFirstPartyEvidence({website:'https://multi.example',firecrawlApiKey:''});
+check('bounded crawler retains cross-family private events page',diverse.records.some(x=>x.observation.url==='https://multi.example/private-events'),true);
+check('bounded crawler retains cross-family weddings page',diverse.records.some(x=>x.observation.url==='https://multi.example/weddings'),true);
+check('bounded crawler remains within six pages',diverse.pagesRead,6);
 if(fail)process.exit(1);console.log('\nFirst-party rendered acquisition regression passed');

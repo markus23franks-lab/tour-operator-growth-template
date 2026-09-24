@@ -6,6 +6,7 @@ const compactObservation=(observation,maxText=8000)=>{
   url:o.url,title:o.title,headings:Array.isArray(o.headings)?o.headings.slice(0,30):undefined,
   text:typeof o.text==='string'?o.text.slice(0,maxText):o.text,
   bookingLinks:Array.isArray(o.bookingLinks)?o.bookingLinks.slice(0,12):undefined,
+  contactEmails:Array.isArray(o.contactEmails)?o.contactEmails.slice(0,12):undefined,
   // Raw page-wide amounts have no product association (they may be parking or donations).
   // Keep them in the evidence artifact, but do not hand them to a reasoning stage as fees.
   address:o.address,phone:o.phone,website:o.website,placeId:o.placeId,
@@ -33,7 +34,7 @@ export async function buildBusinessDossierWithModel({evidence=[],apiKey,model=pr
  const compact=evidence.map(({id,surface,claimType,subject,observation,source,status})=>({id,surface,claimType,subject,observation:compactObservation(observation),source,status}));
  const instructions=["You are the Business Understanding stage of Growth Operator, software for tour/activity operators.","Infer only from supplied evidence. Never use outside knowledge.","Understand what the operator actually sells before market judgment.","Distinguish transaction model from activity: rental is not tour; charter is not generic tour; admission is not guided tour.","Every product, positioning theme and traveler intent must cite supplied evidence IDs.","Do not create traveler intent for an unsupported product family.","Preserve uncertainty in unknowns rather than guessing."].join("\n");
  const payload=await callStructured({model,apiKey,name:"go_business_dossier",schema:BUSINESS_DOSSIER_SCHEMA,instructions,input:{evidence:compact},onUsage});
- const validation=validateBusinessDossier(payload.value,evidence);if(!validation.ok)throw new Error("Business dossier failed truth validation: "+validation.errors.join("; "));
+ const validation=validateBusinessDossier(payload.value,evidence);if(!validation.ok){const error=new Error("Business dossier failed truth validation: "+validation.errors.join("; "));error.draftDossier=payload.value;throw error}
  return {dossier:payload.value,model:payload.model,responseId:payload.responseId,usage:payload.usage};
 }
 
@@ -83,7 +84,7 @@ export function buildSynthesisInput({dossier,evidence=[],signals={},plan={}}){
   rows.slice(0,3).forEach(add);
  }
  for(const row of market.filter(x=>x.surface==="COMPETITOR_SITE"))add(row);
- const compact=[...selected.values()].map(({id,surface,claimType,subject,observation,source,status,confidence,operatorMatch})=>({id,surface,claimType,subject:{label:subject?.label},observation:compactObservation(observation,500),source:{query:source?.query,url:source?.url},status,confidence,operatorMatch:{likely:operatorMatch?.likely}}));
+ const compact=[...selected.values()].map(({id,surface,claimType,subject,observation,source,status,confidence,operatorMatch})=>({id,surface,claimType,subject:{label:subject?.label},observation:compactObservation(observation,surface==="FIRST_PARTY_RENDERED"?1500:500),source:{query:source?.query,url:source?.url},status,confidence,operatorMatch:{likely:operatorMatch?.likely}}));
  const briefSignals={presence:(signals.presence||[]).map(x=>({query:x.query,state:x.state,surfaces:x.surfaces,evidenceIds:x.evidenceIds?.filter(id=>selected.has(id))})),anomalies:(signals.anomalies||[]).map(x=>({type:x.type,headline:x.headline,evidenceIds:x.evidenceIds?.filter(id=>selected.has(id))})),competitorCandidates:(signals.competitorCandidates||[]).slice(0,5).map(x=>({name:x.name,domain:x.domain,queries:x.queries,bestPosition:x.bestPosition}))};
  const input={dossier,evidence:compact,signals:briefSignals,plan:{questions:(plan.questions||[]).slice(0,3).map(q=>({question:q.question,commercialReason:q.commercialReason,seedQueries:q.seedQueries}))},sampling:{totalRecords:evidence.length,visibleRecords:compact.length,rule:"Evidence is sampled; omitted records are not proof of absence."}};
  if(JSON.stringify(input).length>90000)throw new Error("Synthesis evidence selection exceeds 90000 characters before model dispatch");

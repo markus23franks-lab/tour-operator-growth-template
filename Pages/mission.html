@@ -21,6 +21,7 @@
         <button data-tab="evidence">Why we picked it</button>
         <button data-tab="preview">Preview fix</button>
         <button data-tab="progress">Progress</button>
+        <button data-tab="outcome" hidden>Outcome record</button>
       </nav>
       <div class="score-impact">
         <small>PROJECTED SCORE IMPACT</small>
@@ -77,6 +78,47 @@
         <div class="progress-hero"><div class="progress-ring" id="progress-ring"><strong id="progress-number">0%</strong><span>complete</span></div><div><h3 id="progress-message">Your mission is ready to begin.</h3><p>Complete each checklist item. Growth Operator will eventually verify connected signals and track the outcome after launch.</p></div></div>
         <div class="measurement-grid"><article><small>BASELINE SCORE</small><strong id="baseline-score">66</strong></article><article><small>PROJECTED SCORE</small><strong id="projected-score">70</strong></article><article><small>TRACKING WINDOW</small><strong>14 days</strong></article></div>
       </section>
+
+      <section class="workspace-panel outcome-panel" data-panel="outcome" hidden>
+        <div class="panel-heading"><div><p class="eyebrow">OPERATOR RECORD</p><h2>What happened after the decision?</h2></div><span id="outcome-status" class="preview-badge">NO BASELINE YET</span></div>
+        <p class="outcome-intro">Enter figures from your own system. A change in a metric is an observation, not proof that GO caused it. This research preview saves the record in this browser only.</p>
+        <p id="outcome-error" role="alert" hidden></p>
+        <div id="outcome-history" class="outcome-history"></div>
+        <form id="outcome-baseline" class="outcome-form">
+          <h3>1. Record the baseline</h3>
+          <div class="outcome-fields">
+            <label>Metric name <input name="metric" required maxlength="100" placeholder="e.g. Direct bookings"></label>
+            <label>Unit <select name="unit"><option value="bookings">Bookings</option><option value="inquiries">Inquiries</option><option value="website_visits">Website visits</option><option value="revenue_usd">Revenue in USD</option><option value="custom">Other count</option></select></label>
+            <label>Measured value <input name="value" type="number" min="0" step="any" required placeholder="From your records"></label>
+            <label>Period length <input name="period" required maxlength="100" placeholder="e.g. 7-day window"></label>
+            <label>Period end date <input name="observedAt" type="date" required></label>
+            <label>Data source <input name="source" required maxlength="100" placeholder="e.g. Booking platform report"></label>
+          </div>
+          <button type="submit" class="primary-button">Save baseline</button>
+        </form>
+        <form id="outcome-action" class="outcome-form" hidden>
+          <h3>2. Report an action actually taken</h3>
+          <p>Record what an operator did after approval. This does not claim that GO published or executed the change.</p>
+          <div class="outcome-fields">
+            <label>Action taken <input name="description" required maxlength="500" placeholder="Describe the actual change"></label>
+            <label>Date performed <input name="performedAt" type="date" required></label>
+            <label>Reported by <input name="reportedBy" required maxlength="100" placeholder="Name or team"></label>
+          </div>
+          <label class="outcome-attestation"><input name="approved" type="checkbox" required> I confirm the operator approved and performed this action.</label>
+          <button type="submit" class="primary-button">Record reported action</button>
+        </form>
+        <form id="outcome-followup" class="outcome-form" hidden>
+          <h3>3. Compare a later period</h3>
+          <p>Use the same metric and period length. GO records the difference without assigning cause or revenue credit.</p>
+          <div class="outcome-fields">
+            <label>Measured value <input name="value" type="number" min="0" step="any" required></label>
+            <label>Period length <input name="period" required maxlength="100" placeholder="Same as baseline"></label>
+            <label>Period end date <input name="observedAt" type="date" required></label>
+            <label>Data source <input name="source" required maxlength="100" placeholder="Same system if possible"></label>
+          </div>
+          <button type="submit" class="primary-button">Record follow-up</button>
+        </form>
+      </section>
     </main>
   </div>
 
@@ -84,6 +126,8 @@
     <div class="completion-card"><span>✓</span><p>MISSION COMPLETE</p><h2>Growth happens when insight becomes action.</h2><p id="completion-copy">Your progress has been saved.</p><button id="return-dashboard">Return to dashboard →</button></div>
   </div>
 
+  <script src="../js/mission-outcomes.js"></script>
+  <script src="../js/mission-outcome-ui.js"></script>
   <script src="../js/mission.js"></script>
 </body>
 </html>

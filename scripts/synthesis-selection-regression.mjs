@@ -18,6 +18,8 @@ const contactInput=buildSynthesisInput({evidence:[{id:'contact',surface:'FIRST_P
 assert.deepEqual(contactInput.evidence[0].observation.contactEmails,['chartersales@operator.example']);
 assert.ok(contactInput.evidence[0].observation.text.includes('Contact charter sales'));
 assert.equal(contactInput.evidence[0].observation.prices,undefined,'untyped amounts stay out of model input');
+const mainInput=buildSynthesisInput({evidence:[{id:'main',surface:'FIRST_PARTY_RENDERED',status:'OBSERVED',observation:{url:'https://operator.example/events',text:'Navigation '.repeat(200),mainText:'Private events: call our charter sales team.'}}]});
+assert.equal(mainInput.evidence[0].observation.text,'Private events: call our charter sales team.');
 const tentative={type:'INVESTIGATE',headline:'Validate channel economics',evidenceIds:['first-0']};
 const normalized=normalizeSynthesisBuckets({strengths:[],opportunities:[tentative],investigations:[],doNotPrioritize:[]});
 assert.equal(normalized.opportunities.length,0,'tentative work is never portrayed as validated opportunity');

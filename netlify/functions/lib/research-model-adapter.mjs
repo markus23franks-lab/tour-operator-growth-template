@@ -4,7 +4,7 @@ const compactObservation=(observation,maxText=8000)=>{
  const o=observation||{};
  return {
   url:o.url,title:o.title,headings:Array.isArray(o.headings)?o.headings.slice(0,30):undefined,
-  text:typeof o.text==='string'?o.text.slice(0,maxText):o.text,
+  text:typeof (o.mainText||o.text)==='string'?(o.mainText||o.text).slice(0,maxText):o.text,
   bookingLinks:Array.isArray(o.bookingLinks)?o.bookingLinks.slice(0,12):undefined,
   contactEmails:Array.isArray(o.contactEmails)?o.contactEmails.slice(0,12):undefined,
   // Raw page-wide amounts have no product association (they may be parking or donations).

@@ -30,6 +30,13 @@
     set("expected-result", first.proof || "Connect booking and customer data to measure any impact.");
     const start = document.getElementById("brief-start-mission");
     if (start) start.textContent = first.state === "VALIDATED_OPPORTUNITY" ? "Review GO's proposed work →" : "Open GO investigation →";
+    let saved = null;
+    try { saved = JSON.parse(localStorage.getItem("growthOperatorLastCompletedMission")); } catch { /* no saved investigation */ }
+    if (saved?.state === "RESEARCH_PREPARED" && saved.website === profile.website && saved.claimId === first.claimId) {
+      set("brief-summary-line", "Investigation saved. Operator approval and outcome measurement are still ahead.");
+      set("recommendation-copy", "Review the saved research and decide whether the proposed work should be approved.");
+      if (start) start.textContent = "Review saved investigation →";
+    }
     set("findings-title", `${profile.businessName}: GO's evidence-backed read`);
     set("findings-intro", "Read the source passages and the proof GO still needs before acting.");
     set("findings-source-label", "SAVED INVESTIGATION");

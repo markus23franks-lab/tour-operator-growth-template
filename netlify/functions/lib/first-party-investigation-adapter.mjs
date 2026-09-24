@@ -1,5 +1,7 @@
 const MAX_PAGES=6;
 const clean=v=>String(v??"").replace(/\s+/g," ").trim();
+// Keep thousands separators intact: "$1,000" must never become a fictitious "$1" price.
+const extractAmounts=text=>[...new Set(String(text).match(/\$\s*(?:\d{1,3}(?:,\d{3})+|\d+)(?:\.\d{2})?(?![\d,])/g)||[])].slice(0,30);
 const hash=s=>{let h=2166136261;for(let i=0;i<s.length;i++){h^=s.charCodeAt(i);h=Math.imul(h,16777619)}return (h>>>0).toString(36)};
 
 export async function collectFirstPartyEvidence({website,timeoutMs=8000,firecrawlApiKey=process.env.FIRECRAWL_API_KEY}){
@@ -23,7 +25,7 @@ async function collectWithFirecrawl(website,apiKey,timeoutMs){
   const payload=await res.json().catch(()=>({}));if(!res.ok||payload.success===false)throw new Error(payload.error||"Firecrawl returned "+res.status);
   const data=payload.data||payload;const markdown=String(data.markdown||"");if(markdown.length<150)throw new Error("Firecrawl returned too little content");
   const observedAt=new Date().toISOString(),title=clean(data.metadata?.title||new URL(website).hostname);
-  const record={id:"ev_fp_"+hash(website+"|firecrawl|"+title),surface:"FIRST_PARTY_RENDERED",claimType:"FIRST_PARTY_HOME",subject:{entityId:null,label:title},observation:{url:website,title,headings:markdown.split("\n").filter(x=>/^#{1,3}\s/.test(x)).map(x=>clean(x.replace(/^#{1,3}\s+/,""))).slice(0,30),bookingLinks:(data.links||[]).filter(x=>/book|reserve|availability|ticket|rent|peek|fareharbor|bokun|rezdy|xola/i.test(String(x))).slice(0,20).map(url=>({label:"booking link",url})),prices:[...new Set(markdown.match(/\$\s?\d{1,5}(?:\.\d{2})?/g)||[])].slice(0,30),text:clean(markdown).slice(0,30000),screenshot:data.screenshot||""},source:{provider:"Firecrawl",url:website,providerRef:data.metadata?.sourceURL||""},observedAt,confidence:"HIGH",status:"OBSERVED"};
+  const record={id:"ev_fp_"+hash(website+"|firecrawl|"+title),surface:"FIRST_PARTY_RENDERED",claimType:"FIRST_PARTY_HOME",subject:{entityId:null,label:title},observation:{url:website,title,headings:markdown.split("\n").filter(x=>/^#{1,3}\s/.test(x)).map(x=>clean(x.replace(/^#{1,3}\s+/,""))).slice(0,30),bookingLinks:(data.links||[]).filter(x=>/book|reserve|availability|ticket|rent|peek|fareharbor|bokun|rezdy|xola/i.test(String(x))).slice(0,20).map(url=>({label:"booking link",url})),prices:extractAmounts(markdown),text:clean(markdown).slice(0,30000),screenshot:data.screenshot||""},source:{provider:"Firecrawl",url:website,providerRef:data.metadata?.sourceURL||""},observedAt,confidence:"HIGH",status:"OBSERVED"};
   return {website,records:[record],pagesRead:1,rendered:true,provider:"Firecrawl"};
  }finally{clearTimeout(timer)}
 }
@@ -33,7 +35,7 @@ function htmlToObservation(html,url){
   const title=clean(decode((html.match(/<title[^>]*>([\s\S]*?)<\/title>/i)?.[1]||"").replace(/<[^>]+>/g," ")));
   const headings=[...html.matchAll(/<h[1-3][^>]*>([\s\S]*?)<\/h[1-3]>/gi)].map(x=>clean(decode(x[1].replace(/<[^>]+>/g," ")))).filter(Boolean).slice(0,30);
   const bookingLinks=[];for(const m of html.matchAll(/<a\b[^>]*href=["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi)){const label=clean(decode(m[2].replace(/<[^>]+>/g," ")));if(/book|reserve|availability|ticket|rent/i.test(label)||/peek|fareharbor|bokun|rezdy|xola|checkfront|bookeo|rezgo|rocketrez/i.test(m[1])){try{bookingLinks.push({label,url:new URL(decode(m[1]),url).href})}catch{}}}
-  const prices=[...new Set((decode(html.replace(/<[^>]+>/g," ")).match(/\$\s?\d{1,5}(?:\.\d{2})?/g)||[]))].slice(0,30);
+  const prices=extractAmounts(decode(html.replace(/<[^>]+>/g," ")));
   const text=clean(decode(html.replace(/<script[\s\S]*?<\/script>/gi," ").replace(/<style[\s\S]*?<\/style>/gi," ").replace(/<svg[\s\S]*?<\/svg>/gi," ").replace(/<[^>]+>/g," "))).slice(0,30000);
   return {url,title,headings,bookingLinks:dedupe(bookingLinks,x=>x.url),prices,text};
 }

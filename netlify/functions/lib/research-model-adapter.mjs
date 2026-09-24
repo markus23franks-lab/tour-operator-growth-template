@@ -1,4 +1,4 @@
-import {COMMERCIAL_SYNTHESIS_SCHEMA,validateCommercialSynthesis} from "./commercial-synthesis.mjs";
+import {COMMERCIAL_SYNTHESIS_SCHEMA,discardUnverifiableQuotes,validateCommercialSynthesis} from "./commercial-synthesis.mjs";
 const ENDPOINT="https://api.openai.com/v1/responses";
 const compactObservation=(observation,maxText=8000)=>{
  const o=observation||{};
@@ -52,11 +52,12 @@ export async function synthesizeCommercialJudgmentWithModel({dossier,evidence=[]
  const input=buildSynthesisInput({dossier,evidence,signals,plan});
  const instructions=["You are the commercial judgment stage of Growth Operator for tour/activity operators.","Act like a strong growth operator, owner and investigator, not an SEO audit.","Use only supplied evidence. Never claim a fact from general knowledge.","Do not manufacture weaknesses. Healthy areas should be explicitly preserved or deprioritized.","A provider failure, UNKNOWN row or missing observation is never evidence of absence.","A listing or search snippet without a price cannot establish that the product page lacks a price; inspect the product page or classify this as INVESTIGATE.","A generic extracted prices array does not identify which product, fee, donation or parking charge an amount belongs to; use source text for context.","Contradictions and anomalies become INVESTIGATE until resolved.","Search rank is evidence about discovery only; never equate rank with conversion or revenue.","A VALIDATED_OPPORTUNITY or QUICK_WIN requires observed evidence strong enough to justify action now.","Every finding and next move must cite supplied evidence IDs. Give each finding one or two short supportQuotes copied verbatim from the cited observation text or snippet; use empty supportQuotes only when no exact passage is available.","An action-ready opportunity must include a verbatim support quote from a first-party detail page. A quote about a different fee, product or vendor does not establish this product claim; classify uncertainty as INVESTIGATE.","Choose exactly one existing finding as the next move; copy its headline into findingHeadline, match its type, and include all its evidence IDs. Never combine unverified investigations into a QUICK_WIN.","EconomicBoundary must say what is and is not supported. Never manufacture ROI.","Prefer a small number of commercially meaningful findings over filling buckets.","If an unexpected observation matters more than the original research question, elevate it."].join("\n");
  const payload=await callStructured({model,apiKey,name:"go_commercial_synthesis",schema:COMMERCIAL_SYNTHESIS_SCHEMA,instructions,input,onUsage});
- const synthesis=normalizeSynthesisBuckets(payload.value);
+ const normalized=normalizeSynthesisBuckets(payload.value);
+ const {synthesis,discarded,normalized:normalizedQuotes}=discardUnverifiableQuotes(normalized,input.evidence);
  // Validate against the exact projection shown to the model. A cited ID must
  // not borrow a quote or amount from omitted portions of the underlying page.
- const validation=validateCommercialSynthesis(synthesis,input.evidence);if(!validation.ok){const error=new Error("Commercial synthesis failed truth validation: "+validation.errors.map(x=>x.error).join("; "));error.draftJudgment=synthesis;throw error}
- return {synthesis,model:payload.model,responseId:payload.responseId,usage:payload.usage};
+ const validation=validateCommercialSynthesis(synthesis,input.evidence);if(!validation.ok){const error=new Error("Commercial synthesis failed truth validation: "+validation.errors.map(x=>x.error).join("; "));error.draftJudgment=synthesis;error.discardedQuotes=discarded;error.normalizedQuotes=normalizedQuotes;throw error}
+ return {synthesis,discardedQuotes:discarded,normalizedQuotes,model:payload.model,responseId:payload.responseId,usage:payload.usage};
 }
 
 export function normalizeSynthesisBuckets(value){

@@ -7,4 +7,10 @@ check('preserves screenshot as evidence observation',rendered.records[0].observa
 check('rendered page remains normalized evidence',rendered.records[0].surface,'FIRST_PARTY_RENDERED');
 const fallback=await collectFirstPartyEvidence({website:'https://fallback.example',firecrawlApiKey:''});
 check('direct fetch remains fallback',fallback.records[0].source.provider,'GO Direct Fetch');
+global.fetch=async url=>String(url).includes('firecrawl')?{ok:true,status:200,json:async()=>({success:true,data:{markdown:('# Canine tickets start at $46; a $1,000 charity donation is separate.\n').repeat(8),metadata:{title:'Canine'}}})}:{ok:true,status:200,text:async()=>'<html><title>Canine</title><p>Canine tickets start at $46; a $1,000 charity donation is separate. '.repeat(5)+'</p></html>'};
+for(const [name,key] of [['rendered','test'],['direct','']]){
+ const result=await collectFirstPartyEvidence({website:'https://canine.example',firecrawlApiKey:key});
+ check(name+' preserves thousands separator',result.records[0].observation.prices.includes('$1,000'),true);
+ check(name+' does not fabricate $1 price',result.records[0].observation.prices.includes('$1'),false);
+}
 if(fail)process.exit(1);console.log('\nFirst-party rendered acquisition regression passed');

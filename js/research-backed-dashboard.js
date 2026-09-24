@@ -4,7 +4,6 @@
 (() => {
   const read = () => { try { return JSON.parse(localStorage.getItem("growthOperatorResearchJudgment")) || null; } catch { return null; } };
   const pillar = type => ({QUICK_WIN:"Conversion",VALIDATED_OPPORTUNITY:"Growth",INVESTIGATE:"Intelligence",LEVERAGE:"Trust",MEASURE:"Growth"}[type] || "Growth");
-  const confidence = value => ({HIGH:88,MEDIUM:70,LOW:48}[String(value || "MEDIUM").toUpperCase()] || 60);
   window.GOResearchBridge = {
     read,
     apply(profile) {
@@ -34,8 +33,18 @@
       const primaryPillar = pillar(primary.state || primary.type);
       return {
         ...profile,
+        // Public research does not identify the owner or measure a Growth Score.
+        ownerName: "Operator not connected",
+        firstName: "Operator",
+        initials: "GO",
         businessName: dossier.businessName || profile.businessName,
         website: research.website || profile.website,
+        bookingPlatform: "Not connected",
+        scores: null,
+        growthScore: null,
+        percentile: null,
+        scoreChange: null,
+        intelligence: null,
         researchBacked: true,
         researchState: plan.state,
         researchSource: "MODEL-LED INVESTIGATION · CLAIM LEDGER",
@@ -44,7 +53,7 @@
           pillar: primaryPillar,
           title: primary.headline,
           reason: primary.why || "GO found a supported public signal worth evaluating.",
-          confidence: confidence(primary.confidence),
+          confidence: primary.confidence || "Unverified",
           description: primary.action || plan.next
         },
         revenueOpportunity: null,

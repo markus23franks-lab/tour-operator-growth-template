@@ -1,0 +1,20 @@
+import {readFileSync} from 'node:fs';
+import vm from 'node:vm';
+
+const context={window:{},URL,Date};
+vm.createContext(context);
+vm.runInContext(readFileSync('js/research-artifact-import.js','utf8'),context);
+const extract=context.window.GOResearchArtifactImport.extract;
+const row={id:'page1',surface:'FIRST_PARTY_RENDERED',subject:{label:'Canine Cruise'},observation:{url:'https://operator.example/canine',title:'Canine Cruise',mainText:'Canine Cruise tickets start at $46. Buy Tickets.'}};
+const claim={claimId:'claim_0',headline:'Promote canine cruise',evidenceIds:['page1'],supportQuotes:[{evidenceId:'page1',quote:'Canine Cruise tickets start at $46'}],provenance:{hasDetailPage:true,verifiedQuoteCount:1}};
+const move={...claim,state:'VALIDATED_OPPORTUNITY',why:'Bookable offer is buried.',action:'Confirm seats before promotion.',proof:'Booking pace',scope:{pages:['https://operator.example/canine']}};
+const artifact={startedAt:'2026-09-20T12:00:00.000Z',results:[{summary:{httpStatus:200,website:'https://operator.example/'},response:{ok:true,state:'PROOF_JUDGED',dossier:{businessName:'Canine Cruise Co',summary:'River business'},judgment:{executiveRead:'Review the canine offer.'},actionPlan:{state:'READY',moves:[move]},claimLedger:[claim],evidence:[row],telemetry:{private:'do not retain'}}}]};
+const reject=(result,label)=>{try{extract(result);throw new Error(`Unexpected success: ${label}`)}catch(error){if(error.message.startsWith('Unexpected success'))throw error}};
+const read=extract(artifact);
+if(read.sourceType!=='ARCHIVED_EVALUATION'||read.capturedAt!==artifact.startedAt||read.actionPlan.moves[0].supportQuotes[0].quote!==claim.supportQuotes[0].quote||JSON.stringify(read).includes('private'))throw new Error('The dated read lost provenance or retained private raw material.');
+reject({...artifact,results:[...artifact.results,...artifact.results]},'multiple operator results');
+reject({...artifact,results:[{...artifact.results[0],summary:{...artifact.results[0].summary,httpStatus:502}}]},'failed run');
+reject({...artifact,results:[{...artifact.results[0],response:{...artifact.results[0].response,evidence:[]}}]},'missing cited evidence');
+reject({...artifact,results:[{...artifact.results[0],response:{...artifact.results[0].response,evidence:[{...row,observation:{...row.observation,mainText:'Different page content'}}]}}]},'unverified quote');
+reject({...artifact,results:[{...artifact.results[0],response:{...artifact.results[0].response,actionPlan:{state:'READY',moves:[{...move,evidenceIds:['other']}]}}}]},'claim and move disagree');
+console.log('Research artifact handoff regression passed');

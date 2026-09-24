@@ -10,11 +10,13 @@ export const COMMERCIAL_SYNTHESIS_SCHEMA={type:"object",additionalProperties:fal
  nextMove:{type:"object",additionalProperties:false,properties:{findingHeadline:{type:"string"},type:{type:"string",enum:[...TYPES]},headline:{type:"string"},whyNow:{type:"string"},evidenceIds:{type:"array",items:{type:"string"}},proofNeeded:{type:"array",items:{type:"string"}},connectedDataNeeded:{type:"array",items:{type:"string"}}},required:["findingHeadline","type","headline","whyNow","evidenceIds","proofNeeded","connectedDataNeeded"]}
 },required:["executiveRead","strengths","opportunities","investigations","doNotPrioritize","nextMove"]};
 
-function findingSchema(){return {type:"object",additionalProperties:false,properties:{type:{type:"string",enum:[...TYPES]},headline:{type:"string"},whyItMatters:{type:"string"},evidenceIds:{type:"array",items:{type:"string"}},contradictionIds:{type:"array",items:{type:"string"}},confidence:{type:"string",enum:["HIGH","MEDIUM","LOW"]},actionBoundary:{type:"string"},economicBoundary:{type:"string"}},required:["type","headline","whyItMatters","evidenceIds","contradictionIds","confidence","actionBoundary","economicBoundary"]}}
+function findingSchema(){return {type:"object",additionalProperties:false,properties:{type:{type:"string",enum:[...TYPES]},headline:{type:"string"},whyItMatters:{type:"string"},evidenceIds:{type:"array",items:{type:"string"}},supportQuotes:{type:"array",items:{type:"object",additionalProperties:false,properties:{evidenceId:{type:"string"},quote:{type:"string"}},required:["evidenceId","quote"]}},contradictionIds:{type:"array",items:{type:"string"}},confidence:{type:"string",enum:["HIGH","MEDIUM","LOW"]},actionBoundary:{type:"string"},economicBoundary:{type:"string"}},required:["type","headline","whyItMatters","evidenceIds","supportQuotes","contradictionIds","confidence","actionBoundary","economicBoundary"]}}
 const moneyAmounts=text=>[...String(text||"").matchAll(/\$\s*(\d+(?:,\d{3})*(?:\.\d{1,2})?)(?!\d)/g)].map(x=>Number(x[1].replaceAll(",","")));
 
 export function validateCommercialSynthesis(synthesis={},records=[]){
  const byId=new Map(records.map(x=>[x.id,x])),errors=[];
+ const isDetail=row=>{if(row?.surface!=="FIRST_PARTY_RENDERED")return false;try{return new URL(row.observation?.url||row.source?.url).pathname.replace(/\/+$/,"").length>0}catch{return false}};
+ const sourceText=row=>[row?.observation?.mainText,row?.observation?.text,row?.observation?.snippet,row?.observation?.priceText].filter(Boolean).map(clean);
  // The generic "prices" list is a lossy extraction of all money on a page,
  // including donations and parking. Ground numbers in cited source text instead.
  const checkMoney=(description,text,ids)=>{const supported=new Set(moneyAmounts(ids.map(id=>{const x=byId.get(id);return [x?.observation?.text,x?.observation?.snippet,x?.observation?.price,x?.observation?.priceText].filter(Boolean).join(" ")}).join(" ")));for(const amount of new Set(moneyAmounts(text)))if(!supported.has(amount))errors.push({error:`${description} cites unsupported $${amount} amount`})};
@@ -26,15 +28,20 @@ export function validateCommercialSynthesis(synthesis={},records=[]){
    if(!ids.length)errors.push({index,error:"finding requires evidence"});
    if(missing.length)errors.push({index,error:"missing evidence ids: "+missing.join(", ")});
    const cited=ids.map(id=>byId.get(id)).filter(Boolean);
+   const quotes=f.supportQuotes||[],verified=[];
+   if(quotes.length>4)errors.push({index,error:"too many support quotes"});
+   for(const anchor of quotes){
+    const row=byId.get(anchor.evidenceId),quote=clean(anchor.quote);
+    if(!ids.includes(anchor.evidenceId)||!row){errors.push({index,error:"support quote must cite finding evidence"});continue}
+    if(quote.length<12||quote.length>280||!sourceText(row).some(t=>t.includes(quote))){errors.push({index,error:"support quote not found verbatim in cited source"});continue}
+    verified.push({row,quote});
+   }
    checkMoney(`finding ${index}`,[f.headline,f.whyItMatters,f.actionBoundary,f.economicBoundary].join(" "),ids);
    if(["QUICK_WIN","VALIDATED_OPPORTUNITY","LEVERAGE"].includes(f.type)&&cited.some(x=>["UNKNOWN","CONTRADICTED"].includes(x.status)))errors.push({index,error:"definitive finding relies on unresolved evidence"});
    const contradictions=[...new Set(f.contradictionIds||[])];
    if(contradictions.some(id=>!byId.has(id)))errors.push({index,error:"missing contradiction evidence"});
    if(["QUICK_WIN","VALIDATED_OPPORTUNITY"].includes(f.type)&&contradictions.length)errors.push({index,error:"actionable opportunity has unresolved contradiction"});
-   if(["QUICK_WIN","VALIDATED_OPPORTUNITY"].includes(f.type)&&!cited.some(x=>{
-    if(x.surface!=="FIRST_PARTY_RENDERED")return false;
-    try{return new URL(x.observation?.url||x.source?.url).pathname.replace(/\/+$/,"").length>0}catch{return false}
-   }))errors.push({index,error:"actionable opportunity needs an observed first-party detail page, not only a homepage or search listing"});
+   if(["QUICK_WIN","VALIDATED_OPPORTUNITY"].includes(f.type)&&!verified.some(x=>isDetail(x.row)))errors.push({index,error:"actionable opportunity needs a verbatim anchor from an observed first-party detail page"});
    if(f._bucket==="opportunities"&&!["QUICK_WIN","VALIDATED_OPPORTUNITY"].includes(f.type))errors.push({index,error:"opportunity bucket contains non-opportunity"});
    if(f._bucket==="investigations"&&f.type!=="INVESTIGATE")errors.push({index,error:"investigation bucket contains non-investigation"});
  }

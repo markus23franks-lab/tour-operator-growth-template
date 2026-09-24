@@ -1,0 +1,18 @@
+import {readFileSync} from 'node:fs';
+import vm from 'node:vm';
+
+const judgment={website:'https://one.example/',dossier:{businessName:'One'},actionPlan:{moves:[{claimId:'claim_0',state:'INVESTIGATE',headline:'Verify booking path',why:'Source uncertainty',action:'Inspect checkout',proof:'Booking data',scope:{pages:[]},supportQuotes:[]}]}};
+const nodes=new Map();
+const element=()=>({textContent:'',classList:{add(){}},append(){},replaceChildren(){}});
+const document={body:element(),getElementById(id){if(!nodes.has(id))nodes.set(id,element());return nodes.get(id)},querySelector(){return element()},createElement:element};
+let saved={state:'RESEARCH_PREPARED',website:'https://other.example/',claimId:'claim_0'};
+const context={window:{GOResearchBridge:{read:()=>judgment}},document,localStorage:{getItem:()=>JSON.stringify(saved)},URL};
+vm.createContext(context);
+vm.runInContext(readFileSync('js/research-experience.js','utf8'),context);
+const profile={businessName:'One',website:judgment.website};
+context.window.GOResearchExperience.render(profile);
+if(nodes.get('brief-start-mission').textContent==='Review saved investigation →')throw new Error('another operator inherited the saved mission');
+saved={...saved,website:judgment.website};
+context.window.GOResearchExperience.render(profile);
+if(nodes.get('brief-start-mission').textContent!=='Review saved investigation →'||!nodes.get('brief-summary-line').textContent.includes('outcome measurement'))throw new Error('saved investigation did not return to the dashboard with its boundary');
+console.log('Research memory regression passed');

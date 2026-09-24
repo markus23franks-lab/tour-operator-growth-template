@@ -3,11 +3,9 @@
   const el=(name,text) => { const node=document.createElement(name);node.textContent=String(text ?? '');return node; };
   document.addEventListener('DOMContentLoaded',() => {
     const researchTruth=window.GOSystemTruth?.build(window.GOResearchBridge?.read());
-    let prospect=null;
-    try { prospect=JSON.parse(localStorage.getItem('growthOperatorProspectProfile')); } catch { /* no prospect */ }
     const names=['Visibility','Trust','Conversion','Operations','Intelligence','Growth'];
     const truth=researchTruth || {
-      businessName:prospect?.businessName || 'Growth Operator',
+      businessName:'Growth Operator',
       primary:{headline:'No verified priority loaded'},mission:'No research Mission loaded',measurement:'No measured outcome',
       systems:names.map(name=>({name,state:'UNKNOWN',label:'Needs evidence',detail:'No completed, claim-scoped investigation is loaded for this system.'}))
     };
@@ -35,6 +33,6 @@
     const footer=main.querySelector('.footer-actions');main.insertBefore(section,footer);
     const snapshot=footer.querySelector('a[href="growth-snapshot.html"]');
     if(snapshot&&researchTruth){snapshot.href='dashboard.html';snapshot.textContent='← Dashboard';}
-    else if(snapshot&&!prospect){snapshot.href='operator-analyzer.html';snapshot.textContent='← Analyze a business';}
+    else if(snapshot){snapshot.href='operator-analyzer.html';snapshot.textContent='← Analyze a business';}
   });
 })();

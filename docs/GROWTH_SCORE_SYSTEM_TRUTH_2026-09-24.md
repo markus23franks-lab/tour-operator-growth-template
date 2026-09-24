@@ -12,7 +12,7 @@
 | Conversion | Public booking entry may be observed; funnel conversion is unavailable without connected data. | Unknown until a cited finding carries an explicit Conversion topic. |
 | Operations | No verified operating-system data in the reduced research result. | Unknown. |
 | Intelligence | Research process exists, but source-to-booking attribution is not connected. | Unknown. |
-| Growth | A cited primary move and local Mission/outcome record exist. Neither is a company health score. | Show selected priority, scoped Mission state and operator-reported measurement state without score or causal claim. |
+| Growth | A cited primary move and local Mission/outcome record exist. Neither is evidence of company growth health. | Keep system state unknown; show selected priority, scoped Mission state and operator-reported measurement separately without a score or causal claim. |
 
 ## Implemented boundary
 
@@ -21,6 +21,8 @@ The researched dashboard now shows all six systems plus priority → Mission →
 The prior claim ledger's `type` meant action state (`QUICK_WIN`, `LEVERAGE`, `INVESTIGATE`), not one of the six systems. Existing archived reads consequently leave Visibility, Trust, Conversion, Operations and Intelligence unknown; only the selected Growth priority and scoped Mission/measurement state are populated. The synthesis contract now asks for a separate `system` topic, passed through the claim ledger and checked during import. A future fresh run can assign a cited claim to a system without turning the topic into a /100 health score. No live model run has tested the new topic output. The dashboard navigation now exposes this unscored view in research mode; the original preview-hide CSS previously hid that link.
 
 The research dashboard bridge previously inferred a pillar from action state (`QUICK_WIN` → Conversion and `LEVERAGE` → Trust). It now uses an explicit supported system topic; older unclassified claims use Growth as a neutral priority bucket rather than making a false system claim.
+
+A selected opportunity does not by itself establish a Growth-system concern. The six-system Growth card stays unknown while the chosen priority remains explicit in its own field. Without completed research, the Growth Score route uses a neutral business label even if an unrelated prospect profile was previously saved in this browser.
 
 The public Growth Snapshot no longer creates sample opportunities or a numeric score when no prospect has been loaded. A prospect's sourced findings remain readable, but stored score and opportunity-dollar fields do not become visible claims. Its optional Opportunity Brain brief now requires the saved handoff and prospect to share an operator website origin, preventing a previous operator's brain from being rendered for the next business. The dashboard first load hides its static preview cards until the browser resolves the research state. Without research it shows an investigation entry, offers the six-system view, and does not instantiate synthetic work. The separate sample is available only through `?demo=1`, labeled as example data.
 

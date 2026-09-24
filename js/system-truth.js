@@ -28,9 +28,9 @@
       else Object.assign(target,{state:'UNKNOWN',label:'Question to verify',detail:move.proof || move.why || unknown[target.name]});
     }
     const growth = systems.at(-1);
-    growth.state = first.state === 'VALIDATED_OPPORTUNITY' ? 'CONCERN' : 'UNKNOWN';
-    growth.label = first.state === 'VALIDATED_OPPORTUNITY' ? 'Priority selected' : 'Investigation selected';
-    growth.detail = first.headline;
+    growth.state = 'UNKNOWN';
+    growth.label = 'Execution and outcome unverified';
+    growth.detail = 'GO selected a priority, but an approved action and comparable outcome are needed to evaluate this system.';
     growth.move = first;
     const scope = {website:research.website,capturedAt:research.capturedAt,...first};
     let mission=null,outcome=null;

@@ -199,3 +199,8 @@
 
 /* Build 023 â€” shared primary brand lockup */
 .dashboard-brand-lockup{display:flex;align-items:center;gap:11px;margin:0 4px 20px;min-height:64px;text-decoration:none}.dashboard-brand-mark{width:48px;height:48px;object-fit:contain;filter:drop-shadow(0 0 13px rgba(0,155,255,.55))}.dashboard-brand-type{display:grid;gap:3px;line-height:1}.dashboard-brand-type strong{font-size:14px;letter-spacing:.22em;color:#fff}.dashboard-brand-type small{font-size:9px;letter-spacing:.32em;color:#1da8ff;font-weight:900}
+.research-mode .go-workbench,.research-mode .summary-grid,.research-mode .mission-layout,.research-mode .lower-grid,.research-mode .plan-banner,.research-mode .sidebar-card.plan-card{display:none!important}
+.research-finding{padding:20px;margin:12px 0;border:1px solid #175985;border-radius:12px;background:#071d2d}
+.research-finding small{display:block;margin:14px 0 5px;color:#64c7f7;font-weight:700;letter-spacing:.07em}
+.research-finding h3{margin:3px 0 9px}.research-finding p{line-height:1.5;color:#b6cad7}.research-finding blockquote{margin:8px 0;padding:10px 14px;border-left:3px solid #62d3b1;background:#092639}.research-finding a{display:block;color:#71caff;overflow-wrap:anywhere;margin:6px 0}
+.research-mode .date-control,.research-mode .top-actions .icon-button,.research-mode .brief-action-stack a[href="growth-snapshot.html"],.research-mode .brief-action-stack a[href="business-review.html"],.research-mode .findings-summary .review-link,.research-mode .findings-summary .live-check-link,.research-mode .nav-link:not([href="dashboard.html"]):not([href="mission.html"]):not([href="operator-analyzer.html"]){display:none!important}

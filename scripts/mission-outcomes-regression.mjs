@@ -12,6 +12,8 @@ const baseline={metric:'Direct bookings',unit:'bookings',value:'12',period:'7-da
 const reject=(fn,label)=>{try{fn();throw new Error(`Unexpected success: ${label}`)}catch(e){if(e.message.startsWith('Unexpected success'))throw e}};
 
 reject(()=>api.reportAction(claim,{description:'Changed page',performedAt:'2026-09-12',reportedBy:'Owner',approved:true}),'action without a baseline');
+reject(()=>api.baseline(claim,{...baseline,value:'12.5'}),'fractional booking count');
+reject(()=>api.baseline(claim,{...baseline,unit:'revenue_usd',value:'12.345'}),'fractional cent');
 api.baseline(claim,baseline);
 if(api.read(other)!==null)throw new Error('another business inherited the first baseline');
 reject(()=>api.reportAction(claim,{description:'Changed page',performedAt:'2026-09-12',reportedBy:'Owner'}),'action without approval attestation');
@@ -20,6 +22,7 @@ api.reportAction(claim,{description:'Changed page',performedAt:'2026-09-12',repo
 reject(()=>api.baseline(claim,{...baseline,value:'900'}),'silently changing a baseline after action');
 reject(()=>api.followUp(claim,{value:'19',period:'30-day window',observedAt:'2026-09-20',source:'Booking system report'}),'comparing incompatible periods');
 reject(()=>api.followUp(claim,{value:'19',period:'7-day window',observedAt:'2026-09-11',source:'Booking system report'}),'follow-up before action');
+reject(()=>api.followUp(claim,{value:'19',period:'7-day window',observedAt:'2026-09-12',source:'Booking system report'}),'follow-up on action date');
 const measured=api.followUp(claim,{value:'19',period:'7-day window',observedAt:'2026-09-20',source:'Booking system report'});
 if(measured.state!=='FOLLOW_UP_RECORDED'||measured.action.origin!=='OPERATOR_REPORTED'||measured.followUps[0].difference!==7||measured.followUps[0].source!=='Booking system report')throw new Error('observation lost provenance or difference');
 if(Object.values(measured).some(value=>value==='GO_EXECUTED'||value==='ATTRIBUTED_REVENUE'))throw new Error('record invented GO execution or attribution');

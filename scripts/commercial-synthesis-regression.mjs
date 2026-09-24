@@ -16,5 +16,10 @@ const tooMany={...base,strengths:Array.from({length:5},(_,i)=>({type:'LEVERAGE',
 check('synthesis cannot flood operator with findings',validateCommercialSynthesis(tooMany,[observed]).ok,false);
 const duplicate={...base,strengths:[{type:'LEVERAGE',headline:'Same thing',whyItMatters:'x',evidenceIds:['ev1'],contradictionIds:[],confidence:'HIGH',actionBoundary:'preserve',economicBoundary:'unknown'}],investigations:[{type:'INVESTIGATE',headline:'Same thing',whyItMatters:'x',evidenceIds:['ev1'],contradictionIds:[],confidence:'MEDIUM',actionBoundary:'verify',economicBoundary:'unknown'}]};
 check('duplicate commercial findings rejected',validateCommercialSynthesis(duplicate,[observed]).ok,false);
+const donation={...observed,id:'donation',observation:{text:'Tickets cost $46; charity donation $1,000.',prices:['$46','$1','$1,000']}};
+const badPrice={...base,nextMove:{...base.nextMove,headline:'Reconcile $12 vs $1 dog fee',evidenceIds:['donation']}};
+check('truncated donation cannot ground fictitious dog fee',validateCommercialSynthesis(badPrice,[donation]).ok,false);
+const citedPrice={...base,nextMove:{...base.nextMove,headline:'Verify $46 ticket listing',evidenceIds:['donation']}};
+check('source text supports a cited amount',validateCommercialSynthesis(citedPrice,[donation]).ok,true);
 
 if(fail)process.exit(1);console.log('\nCommercial synthesis truth regression passed');

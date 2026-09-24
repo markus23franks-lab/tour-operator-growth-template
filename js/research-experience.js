@@ -1,0 +1,53 @@
+(() => {
+  const set = (id, value) => { const node = document.getElementById(id); if (node) node.textContent = String(value ?? ""); };
+  const tag = (name, text) => { const node = document.createElement(name); node.textContent = String(text ?? ""); return node; };
+  function render(profile) {
+    document.body.classList.add("research-mode");
+    const research = window.GOResearchBridge.read();
+    const plan = research.actionPlan;
+    const first = plan.moves[0];
+    const strength = plan.moves.find(move => move.state === "LEVERAGE") || research.judgment?.strengths?.[0];
+    const summary = research.judgment?.executiveRead || research.dossier?.summary || "GO investigated this business and selected a question worth pursuing.";
+    set("greeting", `GO's read on ${profile.businessName}`);
+    set("briefing-line", summary);
+    set("scan-time", "Saved public investigation · verify before acting");
+    set("brief-business-name", profile.businessName);
+    set("sidebar-business", profile.businessName);
+    set("sidebar-owner", "GO research preview");
+    set("today-label", "SAVED OPERATOR INVESTIGATION");
+    set("overall-assessment", summary);
+    set("brief-summary-status", first.state === "VALIDATED_OPPORTUNITY" ? "Evidence-backed opportunity" : "Investigation selected");
+    set("brief-summary-line", "Public evidence identifies a next move. Booking impact needs your operating data.");
+    set("working-title", strength?.headline || "GO is still verifying what works");
+    set("working-copy", strength?.why || strength?.whyItMatters || "GO will preserve observed strengths as it investigates.");
+    const headline = document.querySelector(".brief-opportunity small");
+    if (headline) headline.textContent = first.state === "VALIDATED_OPPORTUNITY" ? "GO OPPORTUNITY" : "GO INVESTIGATION";
+    set("opportunity-title", first.headline);
+    set("opportunity-copy", first.why);
+    set("recommendation-title", first.action);
+    set("recommendation-copy", first.state === "VALIDATED_OPPORTUNITY" ? "Review the evidence and bounded work before approving a change." : "Verify the open question before changing the business.");
+    set("recommendation-why", first.why);
+    set("expected-result", first.proof || "Connect booking and customer data to measure any impact.");
+    const start = document.getElementById("brief-start-mission");
+    if (start) start.textContent = first.state === "VALIDATED_OPPORTUNITY" ? "Review GO's proposed work →" : "Open GO investigation →";
+    set("findings-title", `${profile.businessName}: GO's evidence-backed read`);
+    set("findings-intro", "Read the source passages and the proof GO still needs before acting.");
+    set("findings-source-label", "SAVED INVESTIGATION");
+    set("findings-source-title", "Public pages and market observations");
+    set("findings-source-status", "Saved public evidence · current facts require verification");
+    const list = document.getElementById("findings-list");
+    list.replaceChildren();
+    for (const move of plan.moves) {
+      const card = document.createElement("article");
+      card.className = "research-finding";
+      card.append(tag("small", move.state === "LEVERAGE" ? "WHAT'S WORKING" : move.state === "VALIDATED_OPPORTUNITY" ? "EVIDENCE-BACKED OPPORTUNITY" : "INVESTIGATION"),tag("h3",move.headline),tag("p",move.why),tag("small","WHAT GO WOULD DO"),tag("p",move.action),tag("small","SOURCE PASSAGES"));
+      for (const item of move.supportQuotes || []) card.append(tag("blockquote",`“${item.quote}”`));
+      for (const url of move.scope?.pages || []) {
+        try { const parsed = new URL(url); if (!['http:','https:'].includes(parsed.protocol)) continue; const a=tag("a",parsed.hostname + parsed.pathname); a.href=parsed.href;a.target="_blank";a.rel="noopener noreferrer";card.append(a); } catch { /* malformed source URL is not linked */ }
+      }
+      card.append(tag("small","WHAT STILL NEEDS PROOF"),tag("p",move.proof || "Connected operating data is needed before claiming impact."));
+      list.append(card);
+    }
+  }
+  window.GOResearchExperience = {render};
+})();

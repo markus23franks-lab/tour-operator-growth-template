@@ -59,13 +59,19 @@ export async function synthesizeCommercialJudgmentWithModel({dossier,evidence=[]
 }
 
 export function normalizeSynthesisBuckets(value){
- const copy={...value,strengths:[...(value.strengths||[])],opportunities:[],investigations:[...(value.investigations||[])],doNotPrioritize:[...(value.doNotPrioritize||[])]};
+ const cited=items=>(items||[]).filter(x=>(x.evidenceIds||[]).length&&x.type!=="MEASURE");
+ const copy={...value,strengths:cited(value.strengths),opportunities:[],investigations:cited(value.investigations),doNotPrioritize:cited(value.doNotPrioritize)};
  for(const finding of value.opportunities||[]){
+  if(finding.type==="MEASURE"||!(finding.evidenceIds||[]).length)continue;
   if(finding.type==="INVESTIGATE")copy.investigations.push(finding);
   else if(finding.type==="LEVERAGE")copy.strengths.push(finding);
   else if(finding.type==="DO_NOT_PRIORITIZE")copy.doNotPrioritize.push(finding);
-  else if(finding.type==="MEASURE")continue; // Measurement alone is not an actionable opportunity.
   else copy.opportunities.push(finding);
+ }
+ if(copy.investigations.length>3){
+  const anchor=value.nextMove?.findingHeadline;
+  copy.investigations.sort((a,b)=>Number(b.headline===anchor)-Number(a.headline===anchor));
+  copy.investigations=copy.investigations.slice(0,3);
  }
  return copy;
 }

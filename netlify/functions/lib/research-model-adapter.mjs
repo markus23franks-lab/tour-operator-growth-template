@@ -6,7 +6,8 @@ const compactObservation=(observation,maxText=8000)=>{
   url:o.url,title:o.title,headings:Array.isArray(o.headings)?o.headings.slice(0,30):undefined,
   text:typeof o.text==='string'?o.text.slice(0,maxText):o.text,
   bookingLinks:Array.isArray(o.bookingLinks)?o.bookingLinks.slice(0,12):undefined,
-  prices:Array.isArray(o.prices)?o.prices.slice(0,12):undefined,
+  // Raw page-wide amounts have no product association (they may be parking or donations).
+  // Keep them in the evidence artifact, but do not hand them to a reasoning stage as fees.
   address:o.address,phone:o.phone,website:o.website,placeId:o.placeId,
   position:o.position,snippet:o.snippet,domain:o.domain,link:o.link,
   rating:o.rating,reviews:o.reviews,category:o.category,openState:o.openState,

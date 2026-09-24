@@ -23,4 +23,9 @@ global.fetch=async()=>({ok:true,status:200,text:async()=>'<html><title>Private E
 const contact=await collectFirstPartyEvidence({website:'https://operator.example/private-events',firecrawlApiKey:''});
 check('sales contact retained as typed evidence',contact.records[0].observation.contactEmails.includes('chartersales@operator.example'),true);
 check('vendor mailto is not labeled a booking link',contact.records[0].observation.bookingLinks.length,0);
+global.fetch=async()=>({ok:true,status:200,text:async()=>'<html><title>Private Events</title><nav><a href="/gift-cards">Book Gift Cards</a> Architecture Cruises Sightseeing Cruises '.repeat(25)+'</nav><main><h1>Private Events</h1><p>Call our sales team at 847-358-1330 or email chartersales@operator.example for event availability. '.repeat(5)+'</p></main></html>'});
+const main=await collectFirstPartyEvidence({website:'https://operator.example/events',firecrawlApiKey:''});
+check('main content prioritized over repeated navigation',main.records[0].observation.mainText.startsWith('Private Events Call our sales team'),true);
+check('complete raw text retained for later audit',main.records[0].observation.text.includes('Architecture Cruises'),true);
+check('global gift-card links are not attributed to product main content',main.records[0].observation.bookingLinks.length,0);
 if(fail)process.exit(1);console.log('\nFirst-party rendered acquisition regression passed');

@@ -3,7 +3,8 @@
    source-first path from claim ledger → Snapshot language → Mission. */
 (() => {
   const read = () => { try { return JSON.parse(localStorage.getItem("growthOperatorResearchJudgment")) || null; } catch { return null; } };
-  const pillar = type => ({QUICK_WIN:"Conversion",VALIDATED_OPPORTUNITY:"Growth",INVESTIGATE:"Intelligence",LEVERAGE:"Trust",MEASURE:"Growth"}[type] || "Growth");
+  const systems = new Set(['Visibility','Trust','Conversion','Operations','Intelligence','Growth']);
+  const pillar = system => systems.has(system) ? system : 'Growth';
   window.GOResearchBridge = {
     read,
     apply(profile) {
@@ -14,7 +15,7 @@
       const dossier = research.dossier || {};
       const findings = plan.moves.map((move, index) => ({
         id: move.claimId || `research-${index}`,
-        pillar: pillar(move.state || move.type),
+        pillar: pillar(move.system),
         icon: move.state === "VALIDATED_OPPORTUNITY" ? "→" : move.state === "LEVERAGE" ? "✓" : "?",
         title: move.headline,
         summary: `${move.why || "GO found a supported signal."} ${move.proof ? `Before acting: ${move.proof}` : ""}`.trim(),
@@ -30,7 +31,7 @@
         scope: move.scope,
         provenance: move.provenance
       }));
-      const primaryPillar = pillar(primary.state || primary.type);
+      const primaryPillar = pillar(primary.system);
       return {
         ...profile,
         // Public research does not identify the owner or measure a Growth Score.

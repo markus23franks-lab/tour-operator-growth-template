@@ -4,5 +4,9 @@ const store=new Map([['growthOperatorResearchJudgment',JSON.stringify({state:'PR
 const context={window:{},localStorage:{getItem:key=>store.get(key)||null},console};vm.createContext(context);vm.runInContext(readFileSync('js/research-backed-dashboard.js','utf8'),context);
 const profile=context.window.GOResearchBridge.apply({businessName:'Old',ownerName:'Preview Founder',website:'',bookingPlatform:'FareHarbor',growthScore:83,scores:{Growth:83},intelligence:{mode:'preview'},findings:[{title:'Preview claim'}],mission:{title:'Old'}});
 if(!profile.researchBacked||profile.businessName!=='Canine Cruise'||profile.mission.title!=='Promote canine cruise'||profile.revenueOpportunity!==null)throw new Error('research dashboard bridge did not preserve grounded mission boundary');
+if(profile.mission.pillar!=='Growth'||profile.findings[0].pillar!=='Growth')throw new Error('An unclassified action state was mistaken for a six-system topic');
+store.set('growthOperatorResearchJudgment',JSON.stringify({...JSON.parse(store.get('growthOperatorResearchJudgment')),actionPlan:{state:'READY',moves:[{...JSON.parse(store.get('growthOperatorResearchJudgment')).actionPlan.moves[0],system:'Visibility'}]}}));
+const classified=context.window.GOResearchBridge.apply({businessName:'Old',mission:{title:'Old'}});
+if(classified.mission.pillar!=='Visibility'||classified.findings[0].pillar!=='Visibility')throw new Error('An explicit claim system was lost in the dashboard bridge');
 if(profile.growthScore!==null||profile.scores!==null||profile.intelligence!==null||profile.ownerName!=='Operator not connected'||profile.bookingPlatform!=='Not connected'||profile.findings[0].title!=='Promote canine cruise')throw new Error('research handoff leaked preview facts or findings');
 console.log('Research-backed dashboard regression passed');

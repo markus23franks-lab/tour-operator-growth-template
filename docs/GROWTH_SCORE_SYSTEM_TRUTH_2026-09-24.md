@@ -20,6 +20,8 @@ The researched dashboard now shows all six systems plus priority → Mission →
 
 The prior claim ledger's `type` meant action state (`QUICK_WIN`, `LEVERAGE`, `INVESTIGATE`), not one of the six systems. Existing archived reads consequently leave Visibility, Trust, Conversion, Operations and Intelligence unknown; only the selected Growth priority and scoped Mission/measurement state are populated. The synthesis contract now asks for a separate `system` topic, passed through the claim ledger and checked during import. A future fresh run can assign a cited claim to a system without turning the topic into a /100 health score. No live model run has tested the new topic output. The dashboard navigation now exposes this unscored view in research mode; the original preview-hide CSS previously hid that link.
 
+The research dashboard bridge previously inferred a pillar from action state (`QUICK_WIN` → Conversion and `LEVERAGE` → Trust). It now uses an explicit supported system topic; older unclassified claims use Growth as a neutral priority bucket rather than making a false system claim.
+
 This is a scoped public-investigation display. It does not establish durable customer identity, connected business data, causal results or a mathematically calibrated Growth Score. Research import is browser-local. Future product sequencing for reviews, website execution, connected data and public funnel is Founder HQ's decision.
 
 ## Verification

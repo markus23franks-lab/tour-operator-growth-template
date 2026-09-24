@@ -27,11 +27,11 @@ const nodes=new Map(),element=()=>({textContent:'',classList:{add(){}},append(){
 const document={body:element(),getElementById(id){if(!nodes.has(id))nodes.set(id,element());return nodes.get(id)},querySelector(){return element()},createElement:element};
 const product={window:{},URL,Date,document,localStorage:{getItem:key=>storage.get(key)||null,setItem:(key,value)=>storage.set(key,value)}};
 vm.createContext(product);
-for(const path of ['js/research-backed-dashboard.js','js/mission-outcomes.js','js/research-experience.js'])vm.runInContext(readFileSync(path,'utf8'),product);
+for(const path of ['js/research-backed-dashboard.js','js/research-scope.js','js/mission-outcomes.js','js/research-experience.js'])vm.runInContext(readFileSync(path,'utf8'),product);
 const profile=product.window.GOResearchBridge.apply({businessName:'Preview',ownerName:'Preview person',website:'https://preview.example/',findings:[{title:'Invented finding'}]});
 product.window.GOResearchExperience.render(profile);
 if(profile.businessName!=='Canine Cruise Co'||profile.findings.some(f=>f.title==='Invented finding')||!nodes.get('today-label').textContent.includes('ARCHIVED EVALUATION · 2026-09-20')||nodes.get('opportunity-title').textContent!==move.headline)throw new Error('Imported research did not reach the real dated dashboard.');
-const scoped={website:profile.website,...read.actionPlan.moves[0]};
+const scoped={website:profile.website,capturedAt:read.capturedAt,...read.actionPlan.moves[0]};
 product.window.GOMissionOutcomes.baseline(scoped,{metric:'Bookings',unit:'bookings',value:12,period:'7-day window',observedAt:'2026-09-20',source:'Booking system'});
 product.window.GOMissionOutcomes.reportAction(scoped,{description:'Operator changed page',performedAt:'2026-09-21',reportedBy:'Owner',approved:true});
 product.window.GOMissionOutcomes.followUp(scoped,{value:19,period:'7-day window',observedAt:'2026-09-22',source:'Booking system'});

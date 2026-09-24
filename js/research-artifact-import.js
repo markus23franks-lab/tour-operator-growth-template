@@ -20,14 +20,21 @@
     for (const move of moves) {
       const claim = claims.get(move.claimId);
       const quoteKeys = quotes => (quotes || []).map(q => `${q.evidenceId}\u0000${text(q.quote)}`);
-      if (!claim || !same(move.evidenceIds, claim.evidenceIds) || !same(quoteKeys(move.supportQuotes), quoteKeys(claim.supportQuotes)) || !move.evidenceIds?.length || !text(move.headline) || !text(response.dossier?.businessName)) throw new Error('A decision no longer matches its cited claim.');
+      if (!claim || !same(move.evidenceIds, claim.evidenceIds) || !same(quoteKeys(move.supportQuotes), quoteKeys(claim.supportQuotes)) || !same(move.scope?.pages, claim.scope?.pages) || !move.evidenceIds?.length || text(move.headline) !== text(claim.headline) || !text(response.dossier?.businessName)) throw new Error('A decision no longer matches its cited claim.');
       if (!move.evidenceIds.every(id => byId.has(id))) throw new Error('A cited evidence record is missing.');
       for (const quote of move.supportQuotes || []) {
         const row = byId.get(quote.evidenceId);
         const source = [row?.subject?.label,row?.observation?.title,...(row?.observation?.headings || []),row?.observation?.mainText,row?.observation?.text,row?.observation?.snippet,row?.observation?.priceText].map(text).join(' ');
         if (!move.evidenceIds.includes(quote.evidenceId) || !text(quote.quote) || !source.includes(text(quote.quote))) throw new Error('A source passage could not be verified.');
       }
-      if (move.state === 'VALIDATED_OPPORTUNITY' && (!claim.provenance?.hasDetailPage || !move.supportQuotes?.length)) throw new Error('An action-ready claim lacks verified page evidence.');
+      if (move.state === 'VALIDATED_OPPORTUNITY') {
+        const detail = move.evidenceIds.some(id => {
+          const row = byId.get(id);
+          if (row?.surface !== 'FIRST_PARTY_RENDERED') return false;
+          try { return new URL(row.observation?.url || row.source?.url).pathname.replace(/\/+$/, '').length > 0; } catch { return false; }
+        });
+        if (!['QUICK_WIN','VALIDATED_OPPORTUNITY'].includes(claim.type) || !detail || !move.supportQuotes?.length || !claim.provenance?.hasDetailPage) throw new Error('An action-ready claim lacks verified page evidence.');
+      }
     }
     return {
       state:'PROOF_JUDGED', sourceType:'ARCHIVED_EVALUATION', capturedAt:capturedAt.toISOString(),

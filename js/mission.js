@@ -20,7 +20,9 @@ function renderResearchMission(){
  ];
  const key=`growthOperatorResearchMissionProgress:${state.website||'unknown'}:${claim.claimId||'current'}`;
  let done=[];try{done=JSON.parse(localStorage.getItem(key))||[]}catch{}
- set('mission-eyebrow',claim.state==='VALIDATED_OPPORTUNITY'?'EVIDENCE-BACKED MISSION':'GO INVESTIGATION MISSION');
+ const sourceDate=state.researchCapturedAt && !Number.isNaN(Date.parse(state.researchCapturedAt)) ? state.researchCapturedAt.slice(0,10) : 'date unknown';
+ const sourceLabel=state.researchSourceType==='ARCHIVED_EVALUATION'?'ARCHIVED EVALUATION':'SAVED INVESTIGATION';
+ set('mission-eyebrow',`${sourceLabel} · ${sourceDate} · ${claim.state==='VALIDATED_OPPORTUNITY'?'EVIDENCE-BACKED MISSION':'GO INVESTIGATION MISSION'}`);
  document.querySelector('.mission-stats article:first-child small').textContent='IMPACT STATUS';
  set('workspace-title',claim.action||state.mission.title);set('workspace-subtitle',claim.why||state.mission.reason);
  set('side-pillar','GO research');set('impact-value','Needs booking data');set('confidence-value',claim.confidence||'Unverified');set('time-value','To scope');set('pillar-value',claim.state||'INVESTIGATE');set('pillar-score','Public evidence');set('baseline-score','Not connected');set('projected-score','Not modeled');set('projected-points','—');

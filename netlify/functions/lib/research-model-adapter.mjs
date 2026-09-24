@@ -47,11 +47,33 @@ export async function buildInvestigationPlanWithModel({dossier,evidence=[],signa
 
 export async function synthesizeCommercialJudgmentWithModel({dossier,evidence=[],signals={},plan={},apiKey,model=process.env.GO_SYNTHESIS_MODEL||process.env.GO_RESEARCH_MODEL||"gpt-5",onUsage}){
  if(!apiKey)throw new Error("OPENAI_API_KEY is not configured");
- const compact=evidence.map(({id,surface,claimType,subject,observation,source,status,confidence,operatorMatch})=>({id,surface,claimType,subject,observation:compactObservation(observation,1000),source,status,confidence,operatorMatch}));
+ const input=buildSynthesisInput({dossier,evidence,signals,plan});
  const instructions=["You are the commercial judgment stage of Growth Operator for tour/activity operators.","Act like a strong growth operator, owner and investigator, not an SEO audit.","Use only supplied evidence. Never claim a fact from general knowledge.","Do not manufacture weaknesses. Healthy areas should be explicitly preserved or deprioritized.","A provider failure, UNKNOWN row or missing observation is never evidence of absence.","Contradictions and anomalies become INVESTIGATE until resolved.","Search rank is evidence about discovery only; never equate rank with conversion or revenue.","A VALIDATED_OPPORTUNITY or QUICK_WIN requires observed evidence strong enough to justify action now.","Every finding and next move must cite supplied evidence IDs.","EconomicBoundary must say what is and is not supported. Never manufacture ROI.","Prefer a small number of commercially meaningful findings over filling buckets.","If an unexpected observation matters more than the original research question, elevate it."].join("\n");
- const payload=await callStructured({model,apiKey,name:"go_commercial_synthesis",schema:COMMERCIAL_SYNTHESIS_SCHEMA,instructions,input:{dossier,evidence:compact,signals,plan},onUsage});
- const validation=validateCommercialSynthesis(payload.value,evidence);if(!validation.ok)throw new Error("Commercial synthesis failed truth validation: "+validation.errors.map(x=>x.error).join("; "));
+ const payload=await callStructured({model,apiKey,name:"go_commercial_synthesis",schema:COMMERCIAL_SYNTHESIS_SCHEMA,instructions,input,onUsage});
+ const visibleIds=new Set(input.evidence.map(x=>x.id));
+ const validation=validateCommercialSynthesis(payload.value,evidence.filter(x=>visibleIds.has(x.id)));if(!validation.ok)throw new Error("Commercial synthesis failed truth validation: "+validation.errors.map(x=>x.error).join("; "));
  return {synthesis:payload.value,model:payload.model,responseId:payload.responseId,usage:payload.usage};
+}
+
+// A deterministic coverage sample keeps all original evidence in the response artifact.
+// The model sees a bounded selection spanning queries and surfaces; missing records
+// cannot be treated as proof of absence.
+export function buildSynthesisInput({dossier,evidence=[],signals={},plan={}}){
+ const selected=new Map(),groups=new Map();
+ const add=row=>{if(row?.id&&!selected.has(row.id)&&selected.size<48)selected.set(row.id,row)};
+ evidence.filter(x=>x.surface==="FIRST_PARTY_RENDERED").slice(0,6).forEach(add);
+ const market=evidence.filter(x=>x.surface!=="FIRST_PARTY_RENDERED");
+ for(const row of market){const key=[row.source?.query||"",row.surface].join("|");if(!groups.has(key))groups.set(key,[]);groups.get(key).push(row)}
+ for(const rows of groups.values()){
+  rows.sort((a,b)=>Number(b.operatorMatch?.likely)-Number(a.operatorMatch?.likely)||Number(a.observation?.position||999)-Number(b.observation?.position||999));
+  rows.slice(0,3).forEach(add);
+ }
+ for(const row of market.filter(x=>x.surface==="COMPETITOR_SITE"))add(row);
+ const compact=[...selected.values()].map(({id,surface,claimType,subject,observation,source,status,confidence,operatorMatch})=>({id,surface,claimType,subject:{label:subject?.label},observation:compactObservation(observation,500),source:{query:source?.query,url:source?.url},status,confidence,operatorMatch:{likely:operatorMatch?.likely}}));
+ const briefSignals={presence:(signals.presence||[]).map(x=>({query:x.query,state:x.state,surfaces:x.surfaces,evidenceIds:x.evidenceIds?.filter(id=>selected.has(id))})),anomalies:(signals.anomalies||[]).map(x=>({type:x.type,headline:x.headline,evidenceIds:x.evidenceIds?.filter(id=>selected.has(id))})),competitorCandidates:(signals.competitorCandidates||[]).slice(0,5).map(x=>({name:x.name,domain:x.domain,queries:x.queries,bestPosition:x.bestPosition}))};
+ const input={dossier,evidence:compact,signals:briefSignals,plan:{questions:(plan.questions||[]).slice(0,3).map(q=>({question:q.question,commercialReason:q.commercialReason,seedQueries:q.seedQueries}))},sampling:{totalRecords:evidence.length,visibleRecords:compact.length,rule:"Evidence is sampled; omitted records are not proof of absence."}};
+ if(JSON.stringify(input).length>90000)throw new Error("Synthesis evidence selection exceeds 90000 characters before model dispatch");
+ return input;
 }
 
 export function validateBusinessDossier(dossier={},evidence=[]){

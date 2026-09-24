@@ -1,4 +1,4 @@
-import {validateModelCitations,validatePlanCitations,validateBusinessDossier} from '../netlify/functions/lib/research-model-adapter.mjs';
+import {validateModelCitations,validatePlanCitations,validateBusinessDossier,normalizeSynthesisBuckets} from '../netlify/functions/lib/research-model-adapter.mjs';
 let fail=0;const check=(n,a,e)=>{if(JSON.stringify(a)!==JSON.stringify(e)){fail++;console.error('FAIL',n,{a,e})}else console.log('PASS',n)};
 const valid=new Set(['ev1','ev2']);
 const dossier={products:[{evidenceIds:['ev1']}],positioning:[{evidenceIds:['ev2']}],travelerIntents:[{evidenceIds:['ev1','ev2']}]};
@@ -14,5 +14,7 @@ const grounded={businessName:'Raft Co',operatingMarket:'Tahoe City',summary:'Sel
 check('grounded business dossier passes semantic evidence gate',validateBusinessDossier(grounded,fp).ok,true);
 check('invented product name fails semantic evidence gate',validateBusinessDossier({...grounded,products:[{...grounded.products[0],name:'Private Snorkeling Charter'}]},fp).ok,false);
 check('known model without evidenced products fails',validateBusinessDossier({...grounded,products:[]},fp).ok,false);
+const normalized=normalizeSynthesisBuckets({opportunities:[{type:'MEASURE',headline:'Track review recency'},{type:'QUICK_WIN',headline:'Fix observed detail page'}]});
+check('measurement proposal does not become action-ready opportunity',normalized.opportunities.map(x=>x.headline),['Fix observed detail page']);
 
 if(fail)process.exit(1);console.log('\nResearch model evidence-binding regression passed');

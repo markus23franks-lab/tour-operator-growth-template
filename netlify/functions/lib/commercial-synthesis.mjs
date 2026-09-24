@@ -7,7 +7,7 @@ export const COMMERCIAL_SYNTHESIS_SCHEMA={type:"object",additionalProperties:fal
  opportunities:{type:"array",items:findingSchema()},
  investigations:{type:"array",items:findingSchema()},
  doNotPrioritize:{type:"array",items:findingSchema()},
- nextMove:{type:"object",additionalProperties:false,properties:{type:{type:"string",enum:[...TYPES]},headline:{type:"string"},whyNow:{type:"string"},evidenceIds:{type:"array",items:{type:"string"}},proofNeeded:{type:"array",items:{type:"string"}},connectedDataNeeded:{type:"array",items:{type:"string"}}},required:["type","headline","whyNow","evidenceIds","proofNeeded","connectedDataNeeded"]}
+ nextMove:{type:"object",additionalProperties:false,properties:{findingHeadline:{type:"string"},type:{type:"string",enum:[...TYPES]},headline:{type:"string"},whyNow:{type:"string"},evidenceIds:{type:"array",items:{type:"string"}},proofNeeded:{type:"array",items:{type:"string"}},connectedDataNeeded:{type:"array",items:{type:"string"}}},required:["findingHeadline","type","headline","whyNow","evidenceIds","proofNeeded","connectedDataNeeded"]}
 },required:["executiveRead","strengths","opportunities","investigations","doNotPrioritize","nextMove"]};
 
 function findingSchema(){return {type:"object",additionalProperties:false,properties:{type:{type:"string",enum:[...TYPES]},headline:{type:"string"},whyItMatters:{type:"string"},evidenceIds:{type:"array",items:{type:"string"}},contradictionIds:{type:"array",items:{type:"string"}},confidence:{type:"string",enum:["HIGH","MEDIUM","LOW"]},actionBoundary:{type:"string"},economicBoundary:{type:"string"}},required:["type","headline","whyItMatters","evidenceIds","contradictionIds","confidence","actionBoundary","economicBoundary"]}}
@@ -43,6 +43,12 @@ export function validateCommercialSynthesis(synthesis={},records=[]){
  if((synthesis.strengths||[]).length>4)errors.push({error:"too many operator-facing strengths"});
  if(!TYPES.has(next.type))errors.push({error:"invalid next move type"});
  if(!clean(next.headline))errors.push({error:"next move headline required"});
+ const anchor=findings.find(f=>clean(f.headline)===clean(next.findingHeadline));
+ if(!anchor)errors.push({error:"next move must cite an existing finding headline"});
+ else{
+  if(next.type!==anchor.type)errors.push({error:"next move type must match its finding type"});
+  if(!(anchor.evidenceIds||[]).every(id=>nextIds.includes(id)))errors.push({error:"next move must include its finding evidence"});
+ }
  if(nextIds.some(id=>!byId.has(id)))errors.push({error:"next move cites missing evidence"});
  if(["QUICK_WIN","VALIDATED_OPPORTUNITY"].includes(next.type)&&nextIds.map(id=>byId.get(id)).filter(Boolean).some(x=>["UNKNOWN","CONTRADICTED"].includes(x.status)))errors.push({error:"next move relies on unresolved evidence"});
  if(["QUICK_WIN","VALIDATED_OPPORTUNITY","LEVERAGE"].includes(next.type)&&!nextIds.length)errors.push({error:"definitive next move requires evidence"});

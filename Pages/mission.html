@@ -91,6 +91,7 @@
             <label>Unit <select name="unit"><option value="bookings">Bookings</option><option value="inquiries">Inquiries</option><option value="website_visits">Website visits</option><option value="revenue_usd">Revenue in USD</option><option value="custom">Other count</option></select></label>
             <label>Measured value <input name="value" type="number" min="0" step="any" required placeholder="From your records"></label>
             <label>Period length <input name="period" required maxlength="100" placeholder="e.g. 7-day window"></label>
+            <label>Period start date <input name="startedAt" type="date" required></label>
             <label>Period end date <input name="observedAt" type="date" required></label>
             <label>Data source <input name="source" required maxlength="100" placeholder="e.g. Booking platform report"></label>
           </div>
@@ -109,10 +110,11 @@
         </form>
         <form id="outcome-followup" class="outcome-form" hidden>
           <h3>3. Compare a later period</h3>
-          <p>Use the same metric and period length. GO records the difference without assigning cause or revenue credit.</p>
+          <p>Use the same metric and number of days, beginning after the action. GO records the difference without assigning cause or revenue credit.</p>
           <div class="outcome-fields">
             <label>Measured value <input name="value" type="number" min="0" step="any" required></label>
             <label>Period length <input name="period" required maxlength="100" placeholder="Same as baseline"></label>
+            <label>Period start date <input name="startedAt" type="date" required></label>
             <label>Period end date <input name="observedAt" type="date" required></label>
             <label>Data source <input name="source" required maxlength="100" placeholder="Same system if possible"></label>
           </div>

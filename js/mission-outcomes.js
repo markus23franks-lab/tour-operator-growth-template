@@ -23,6 +23,12 @@
     if (unit === 'revenue_usd' && Math.abs(number*100-Math.round(number*100)) > 1e-6) throw new Error('Revenue values may have at most two decimal places.');
     return number;
   };
+  const windowDates = (entry, label) => {
+    const startedAt = date(entry.startedAt, `${label} start date`);
+    const observedAt = date(entry.observedAt, `${label} end date`);
+    if (startedAt > observedAt) throw new Error(`${label} start date must be on or before its end date.`);
+    return {startedAt, observedAt};
+  };
   const identity = claim => {
     requireText(claim.website, 'Website');
     requireText(claim.claimId, 'Claim ID', 120);
@@ -45,11 +51,12 @@
     if (prior?.action) throw new Error('The baseline is locked after an action is reported.');
     const unit = requireText(entry.unit, 'Metric unit', 32);
     if (!units.has(unit)) throw new Error('Choose a supported metric unit.');
+    const dates = windowDates(entry, 'Baseline');
     return write(scope, {
       fingerprint:scope.fingerprint, website:scope.website, claimId:scope.claimId,
       evidenceIds:scope.evidenceIds, headline:requireText(claim.headline, 'Claim headline'),
       state:'BASELINE_RECORDED',
-      baseline:{metric:requireText(entry.metric, 'Metric name', 100),unit,value:amount(entry.value,unit),period:requireText(entry.period, 'Measurement period', 100),observedAt:date(entry.observedAt, 'Baseline date'),source:requireText(entry.source, 'Data source', 100)},
+      baseline:{metric:requireText(entry.metric, 'Metric name', 100),unit,value:amount(entry.value,unit),period:requireText(entry.period, 'Measurement period', 100),...dates,source:requireText(entry.source, 'Data source', 100)},
       action:null, followUps:[]
     });
   };
@@ -59,7 +66,8 @@
     if (record.action) throw new Error('An action has already been reported for this measurement.');
     if (entry.approved !== true && entry.approved !== 'on') throw new Error('Confirm the operator approved and performed the action.');
     const performedAt = date(entry.performedAt, 'Action date');
-    if (performedAt < record.baseline.observedAt) throw new Error('Action date must follow the baseline date.');
+    if (!record.baseline.startedAt) throw new Error('This older baseline needs a dated start before measuring an action.');
+    if (performedAt <= record.baseline.observedAt) throw new Error('Action date must follow the baseline period.');
     record.action = {description:requireText(entry.description, 'Action description', 500),performedAt,reportedBy:requireText(entry.reportedBy, 'Person reporting the action', 100),approvalAttested:true,origin:'OPERATOR_REPORTED'};
     record.state='ACTION_REPORTED';
     return write(scope, record);
@@ -67,12 +75,15 @@
   const followUp = (claim, entry) => {
     const scope = identity(claim), record = read(claim);
     if (!record?.action) throw new Error('Report the action before recording a later measurement.');
-    const observedAt = date(entry.observedAt, 'Follow-up date');
-    if (observedAt <= record.action.performedAt || (record.followUps.length && observedAt < record.followUps.at(-1).observedAt)) throw new Error('Follow-up date must follow the action and prior measurements.');
+    const {startedAt,observedAt} = windowDates(entry, 'Follow-up');
+    if (startedAt <= record.action.performedAt || (record.followUps.length && startedAt <= record.followUps.at(-1).observedAt)) throw new Error('The entire follow-up period must be after the action and prior measurements.');
     const period = requireText(entry.period, 'Measurement period', 100);
     if (period !== record.baseline.period) throw new Error('Use the same measurement period as the baseline.');
+    if (!record.baseline.startedAt) throw new Error('This older baseline has no dated start; its measurement windows cannot be compared.');
+    const days = (start,end) => (Date.parse(`${end}T00:00:00Z`)-Date.parse(`${start}T00:00:00Z`))/86400000;
+    if (days(startedAt,observedAt) !== days(record.baseline.startedAt,record.baseline.observedAt)) throw new Error('The follow-up must cover the same number of days as the baseline.');
     const value = amount(entry.value,record.baseline.unit);
-    record.followUps.push({value,period,observedAt,source:requireText(entry.source, 'Data source', 100),difference:value-record.baseline.value});
+    record.followUps.push({value,period,startedAt,observedAt,source:requireText(entry.source, 'Data source', 100),difference:value-record.baseline.value});
     record.state='FOLLOW_UP_RECORDED';
     return write(scope, record);
   };

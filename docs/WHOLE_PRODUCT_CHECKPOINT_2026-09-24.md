@@ -40,6 +40,10 @@ The founder-selected next evaluation target is `https://truckeeriverraft.com/`. 
 
 Browser verification remains an explicit release gate. The available cloud browser rejects local `file://` paths by policy, and this branch has no accessible GO staging URL. Do not route around that restriction; establish a legitimate staged product runtime, then check the dashboard-to-Mission journey there. The private Actions research runner is not itself a hosted dashboard or a durable customer service.
 
+### Measurement-window integrity
+
+The operator-reported Mission record now requires explicit start and end dates for baseline and follow-up periods. The baseline must end before the action; a follow-up must begin after the action and after prior observed periods, and it must span the same number of days as the baseline. This prevents a reported improvement from being presented as a comparable observation when its window includes pre-action days or covers a different duration. Existing local records without a start date remain readable, but cannot gain a new action or follow-up under the stronger contract; they need a new dated baseline on a new investigation. The UI retains the non-attribution language. This is still browser-local operator input, not verified platform data or a causal result.
+
 ### Parallel product slice: record an outcome honestly
 
 After re-reading the company and product direction and inspecting existing Mission and work code, Builder chose one no-provider-cost vertical slice: a researched Mission can now record an actual baseline, an operator-reported approved action, and later same-period observations. The dashboard displays the saved observation for the matching researched claim and explicitly withholds causal or revenue attribution. This extends the real opportunity → Mission → action record → measurement → memory chain. It does not invoke an external system, alter the research pipeline or populate the founder test with sample numbers. Focused state/isolation and dashboard regressions pass with the full local suite.

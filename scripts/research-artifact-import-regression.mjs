@@ -32,9 +32,9 @@ const profile=product.window.GOResearchBridge.apply({businessName:'Preview',owne
 product.window.GOResearchExperience.render(profile);
 if(profile.businessName!=='Canine Cruise Co'||profile.findings.some(f=>f.title==='Invented finding')||!nodes.get('today-label').textContent.includes('ARCHIVED EVALUATION · 2026-09-20')||nodes.get('opportunity-title').textContent!==move.headline)throw new Error('Imported research did not reach the real dated dashboard.');
 const scoped={website:profile.website,capturedAt:read.capturedAt,...read.actionPlan.moves[0]};
-product.window.GOMissionOutcomes.baseline(scoped,{metric:'Bookings',unit:'bookings',value:12,period:'7-day window',observedAt:'2026-09-20',source:'Booking system'});
+product.window.GOMissionOutcomes.baseline(scoped,{metric:'Bookings',unit:'bookings',value:12,period:'3-day window',startedAt:'2026-09-18',observedAt:'2026-09-20',source:'Booking system'});
 product.window.GOMissionOutcomes.reportAction(scoped,{description:'Operator changed page',performedAt:'2026-09-21',reportedBy:'Owner',approved:true});
-product.window.GOMissionOutcomes.followUp(scoped,{value:19,period:'7-day window',observedAt:'2026-09-22',source:'Booking system'});
+product.window.GOMissionOutcomes.followUp(scoped,{value:19,period:'3-day window',startedAt:'2026-09-22',observedAt:'2026-09-24',source:'Booking system'});
 product.window.GOResearchExperience.render(profile);
 if(!nodes.get('brief-summary-line').textContent.includes('Cause is not established.'))throw new Error('The measured result was lost or attributed to GO.');
 console.log('Research artifact handoff regression passed');

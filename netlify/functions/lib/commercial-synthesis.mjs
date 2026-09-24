@@ -31,6 +31,10 @@ export function validateCommercialSynthesis(synthesis={},records=[]){
    const contradictions=[...new Set(f.contradictionIds||[])];
    if(contradictions.some(id=>!byId.has(id)))errors.push({index,error:"missing contradiction evidence"});
    if(["QUICK_WIN","VALIDATED_OPPORTUNITY"].includes(f.type)&&contradictions.length)errors.push({index,error:"actionable opportunity has unresolved contradiction"});
+   if(["QUICK_WIN","VALIDATED_OPPORTUNITY"].includes(f.type)&&!cited.some(x=>{
+    if(x.surface!=="FIRST_PARTY_RENDERED")return false;
+    try{return new URL(x.observation?.url||x.source?.url).pathname.replace(/\/+$/,"").length>0}catch{return false}
+   }))errors.push({index,error:"actionable opportunity needs an observed first-party detail page, not only a homepage or search listing"});
    if(f._bucket==="opportunities"&&!["QUICK_WIN","VALIDATED_OPPORTUNITY"].includes(f.type))errors.push({index,error:"opportunity bucket contains non-opportunity"});
    if(f._bucket==="investigations"&&f.type!=="INVESTIGATE")errors.push({index,error:"investigation bucket contains non-investigation"});
  }

@@ -51,8 +51,20 @@ export async function synthesizeCommercialJudgmentWithModel({dossier,evidence=[]
  const instructions=["You are the commercial judgment stage of Growth Operator for tour/activity operators.","Act like a strong growth operator, owner and investigator, not an SEO audit.","Use only supplied evidence. Never claim a fact from general knowledge.","Do not manufacture weaknesses. Healthy areas should be explicitly preserved or deprioritized.","A provider failure, UNKNOWN row or missing observation is never evidence of absence.","Contradictions and anomalies become INVESTIGATE until resolved.","Search rank is evidence about discovery only; never equate rank with conversion or revenue.","A VALIDATED_OPPORTUNITY or QUICK_WIN requires observed evidence strong enough to justify action now.","Every finding and next move must cite supplied evidence IDs.","EconomicBoundary must say what is and is not supported. Never manufacture ROI.","Prefer a small number of commercially meaningful findings over filling buckets.","If an unexpected observation matters more than the original research question, elevate it."].join("\n");
  const payload=await callStructured({model,apiKey,name:"go_commercial_synthesis",schema:COMMERCIAL_SYNTHESIS_SCHEMA,instructions,input,onUsage});
  const visibleIds=new Set(input.evidence.map(x=>x.id));
- const validation=validateCommercialSynthesis(payload.value,evidence.filter(x=>visibleIds.has(x.id)));if(!validation.ok)throw new Error("Commercial synthesis failed truth validation: "+validation.errors.map(x=>x.error).join("; "));
- return {synthesis:payload.value,model:payload.model,responseId:payload.responseId,usage:payload.usage};
+ const synthesis=normalizeSynthesisBuckets(payload.value);
+ const validation=validateCommercialSynthesis(synthesis,evidence.filter(x=>visibleIds.has(x.id)));if(!validation.ok){const error=new Error("Commercial synthesis failed truth validation: "+validation.errors.map(x=>x.error).join("; "));error.draftJudgment=synthesis;throw error}
+ return {synthesis,model:payload.model,responseId:payload.responseId,usage:payload.usage};
+}
+
+export function normalizeSynthesisBuckets(value){
+ const copy={...value,strengths:[...(value.strengths||[])],opportunities:[],investigations:[...(value.investigations||[])],doNotPrioritize:[...(value.doNotPrioritize||[])]};
+ for(const finding of value.opportunities||[]){
+  if(finding.type==="INVESTIGATE")copy.investigations.push(finding);
+  else if(finding.type==="LEVERAGE")copy.strengths.push(finding);
+  else if(finding.type==="DO_NOT_PRIORITIZE")copy.doNotPrioritize.push(finding);
+  else copy.opportunities.push(finding);
+ }
+ return copy;
 }
 
 // A deterministic coverage sample keeps all original evidence in the response artifact.

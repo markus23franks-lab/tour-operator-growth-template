@@ -19,4 +19,8 @@ const diverse=await collectFirstPartyEvidence({website:'https://multi.example',f
 check('bounded crawler retains cross-family private events page',diverse.records.some(x=>x.observation.url==='https://multi.example/private-events'),true);
 check('bounded crawler retains cross-family weddings page',diverse.records.some(x=>x.observation.url==='https://multi.example/weddings'),true);
 check('bounded crawler remains within six pages',diverse.pagesRead,6);
+global.fetch=async()=>({ok:true,status:200,text:async()=>'<html><title>Private Events</title><p>Contact our charter sales team at chartersales@operator.example for availability. '.repeat(5)+'</p><a href="mailto:bookings@vendor.example">bookings@vendor.example</a></html>'});
+const contact=await collectFirstPartyEvidence({website:'https://operator.example/private-events',firecrawlApiKey:''});
+check('sales contact retained as typed evidence',contact.records[0].observation.contactEmails.includes('chartersales@operator.example'),true);
+check('vendor mailto is not labeled a booking link',contact.records[0].observation.bookingLinks.length,0);
 if(fail)process.exit(1);console.log('\nFirst-party rendered acquisition regression passed');

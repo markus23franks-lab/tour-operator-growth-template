@@ -318,3 +318,9 @@ Canonical design and proof plan:
 Do not resume large-scale heuristic expansion in `operator-analyzer.js` unless a narrow deterministic rule is clearly the correct validation mechanism.
 
 The next founder-facing intelligence checkpoint should demonstrate a materially different ability to understand, investigate, notice, reconcile, compare and judge—not another incremental Analyzer result.
+
+## Mission outcome record — September 2026
+
+The first broader-product slice after the research-to-dashboard bridge records a **real operator-supplied baseline, reported action and later measurement** against a researched claim. `js/mission-outcomes.js` scopes each record to website, claim ID, cited evidence IDs and headline; validates nonnegative values, dates, source, metric unit and matching period labels; locks the baseline after action; and requires an operator approval/performance attestation. The Mission exposes this as an optional Outcome record and the research dashboard reads back the same scoped state. An observed numerical difference is displayed as an observation. The action is `OPERATOR_REPORTED`, never `GO_EXECUTED`, and the result is not attributed revenue.
+
+This is intentionally local browser storage for an internal product proof. It is not a production account record, secure shared storage, a connected booking/analytics source, a verified execution event, causal inference or automated reprioritization. The earlier `GOWorkEngine` defaults fabricate monitoring and journal activity for preview mode; do not connect those defaults to a researched operator as if they were actual GO work. Production continuation requires a durable operator/claim work record, approved execution boundary, connected source or verifiable manual evidence, and measured after-state. This slice establishes the state and language boundary without inventing those capabilities.

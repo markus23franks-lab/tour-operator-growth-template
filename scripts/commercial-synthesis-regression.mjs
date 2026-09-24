@@ -26,8 +26,11 @@ check('action type cannot promote an investigation',validateCommercialSynthesis(
 check('next move must link a real finding',validateCommercialSynthesis({...base,nextMove:{...base.nextMove,findingHeadline:'Unlisted fix'}},[observed]).ok,false);
 const homepage={...observed,id:'home',surface:'FIRST_PARTY_RENDERED',observation:{url:'https://operator.example/',text:'Private events call us'}};
 const detail={...homepage,id:'detail',observation:{url:'https://operator.example/private-events',text:'Private events call us'}};
-const siteChange={...investigation,type:'VALIDATED_OPPORTUNITY',headline:'Change private event checkout',evidenceIds:['home']};
+const siteChange={...investigation,type:'VALIDATED_OPPORTUNITY',headline:'Change private event checkout',evidenceIds:['home'],supportQuotes:[{evidenceId:'home',quote:'Private events call us'}]};
 check('homepage alone cannot validate a specific product change',validateCommercialSynthesis({...base,opportunities:[siteChange]},[observed,homepage]).ok,false);
-check('observed detail page can ground a product change',validateCommercialSynthesis({...base,opportunities:[{...siteChange,evidenceIds:['detail']}]},[observed,detail]).ok,true);
+const detailed={...siteChange,evidenceIds:['detail'],supportQuotes:[{evidenceId:'detail',quote:'Private events call us'}]};
+check('observed detail quote can ground a product change',validateCommercialSynthesis({...base,opportunities:[detailed]},[observed,detail]).ok,true);
+check('paraphrase does not become source proof',validateCommercialSynthesis({...base,opportunities:[{...detailed,supportQuotes:[{evidenceId:'detail',quote:'Private events are phone-only'}]}]},[observed,detail]).ok,false);
+check('quote cannot borrow an uncited page',validateCommercialSynthesis({...base,opportunities:[{...detailed,supportQuotes:[{evidenceId:'home',quote:'Private events call us'}]}]},[observed,homepage,detail]).ok,false);
 
 if(fail)process.exit(1);console.log('\nCommercial synthesis truth regression passed');

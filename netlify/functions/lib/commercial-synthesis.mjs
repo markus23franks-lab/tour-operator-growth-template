@@ -11,9 +11,13 @@ export const COMMERCIAL_SYNTHESIS_SCHEMA={type:"object",additionalProperties:fal
 },required:["executiveRead","strengths","opportunities","investigations","doNotPrioritize","nextMove"]};
 
 function findingSchema(){return {type:"object",additionalProperties:false,properties:{type:{type:"string",enum:[...TYPES]},headline:{type:"string"},whyItMatters:{type:"string"},evidenceIds:{type:"array",items:{type:"string"}},contradictionIds:{type:"array",items:{type:"string"}},confidence:{type:"string",enum:["HIGH","MEDIUM","LOW"]},actionBoundary:{type:"string"},economicBoundary:{type:"string"}},required:["type","headline","whyItMatters","evidenceIds","contradictionIds","confidence","actionBoundary","economicBoundary"]}}
+const moneyAmounts=text=>[...String(text||"").matchAll(/\$\s*(\d+(?:,\d{3})*(?:\.\d{1,2})?)(?!\d)/g)].map(x=>Number(x[1].replaceAll(",","")));
 
 export function validateCommercialSynthesis(synthesis={},records=[]){
  const byId=new Map(records.map(x=>[x.id,x])),errors=[];
+ // The generic "prices" list is a lossy extraction of all money on a page,
+ // including donations and parking. Ground numbers in cited source text instead.
+ const checkMoney=(description,text,ids)=>{const supported=new Set(moneyAmounts(ids.map(id=>{const x=byId.get(id);return [x?.observation?.text,x?.observation?.snippet,x?.observation?.price,x?.observation?.priceText].filter(Boolean).join(" ")}).join(" ")));for(const amount of new Set(moneyAmounts(text)))if(!supported.has(amount))errors.push({error:`${description} cites unsupported $${amount} amount`})};
  const buckets=["strengths","opportunities","investigations","doNotPrioritize"];
  const findings=buckets.flatMap(bucket=>(synthesis[bucket]||[]).map(x=>({...x,_bucket:bucket})));
  for(const [index,f] of findings.entries()){
@@ -22,6 +26,7 @@ export function validateCommercialSynthesis(synthesis={},records=[]){
    if(!ids.length)errors.push({index,error:"finding requires evidence"});
    if(missing.length)errors.push({index,error:"missing evidence ids: "+missing.join(", ")});
    const cited=ids.map(id=>byId.get(id)).filter(Boolean);
+   checkMoney(`finding ${index}`,[f.headline,f.whyItMatters,f.actionBoundary,f.economicBoundary].join(" "),ids);
    if(["QUICK_WIN","VALIDATED_OPPORTUNITY","LEVERAGE"].includes(f.type)&&cited.some(x=>["UNKNOWN","CONTRADICTED"].includes(x.status)))errors.push({index,error:"definitive finding relies on unresolved evidence"});
    const contradictions=[...new Set(f.contradictionIds||[])];
    if(contradictions.some(id=>!byId.has(id)))errors.push({index,error:"missing contradiction evidence"});
@@ -30,6 +35,7 @@ export function validateCommercialSynthesis(synthesis={},records=[]){
    if(f._bucket==="investigations"&&f.type!=="INVESTIGATE")errors.push({index,error:"investigation bucket contains non-investigation"});
  }
  const next=synthesis.nextMove||{},nextIds=next.evidenceIds||[];
+ checkMoney("next move",[next.headline,next.whyNow,...(next.proofNeeded||[]),...(next.connectedDataNeeded||[])].join(" "),nextIds);
  const seenHeadlines=new Set();
  for(const f of findings){const key=clean(f.headline).toLowerCase();if(key&&seenHeadlines.has(key))errors.push({error:"duplicate finding headline: "+f.headline});if(key)seenHeadlines.add(key)}
  if((synthesis.opportunities||[]).length>3)errors.push({error:"too many operator-facing opportunities"});

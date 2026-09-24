@@ -40,8 +40,10 @@ profile.findings = intelligence.findings;
 profile.intelligence = intelligence;
 const researchProfile = window.GOResearchBridge?.apply(profile);
 if (researchProfile) Object.assign(profile, researchProfile);
+const demoMode = new URLSearchParams(window.location.search).get('demo') === '1';
+const emptyMode = !profile.researchBacked && !demoMode;
 
-const goEngine = profile.researchBacked ? null : new window.GOWorkEngine(profile);
+const goEngine = profile.researchBacked || emptyMode ? null : new window.GOWorkEngine(profile);
 const goWorkState = goEngine?.state || null;
 
 const modalContent = {
@@ -64,6 +66,7 @@ const modalContent = {
 document.addEventListener("DOMContentLoaded", () => {
   if (profile.researchBacked) {
     window.GOResearchExperience.render(profile);
+    document.body.classList.remove('dashboard-pending');
     document.getElementById("brief-start-mission")?.addEventListener("click", () => openMissionWorkspace("start"));
     document.querySelector('.nav-link[href="mission.html"]')?.addEventListener("click", event => {
       event.preventDefault();
@@ -71,6 +74,9 @@ document.addEventListener("DOMContentLoaded", () => {
     });
     return;
   }
+  if (emptyMode) { renderEmptyDashboard(); document.body.classList.remove('dashboard-pending'); return; }
+  const badge=document.createElement('p');badge.className='dashboard-demo-notice';badge.textContent='SAMPLE PREVIEW · Scores, work, revenue and operator identity below are example data.';
+  document.querySelector('.main-content').prepend(badge);
   personalizeDashboard();
   renderFindings(profile);
   renderGOWorkbench();
@@ -78,7 +84,28 @@ document.addEventListener("DOMContentLoaded", () => {
   animateBars();
   wireInteractions();
   revealCards();
+  document.body.classList.remove('dashboard-pending');
 });
+
+function renderEmptyDashboard() {
+  document.body.classList.add('dashboard-empty-mode');
+  const heading=document.getElementById('greeting');heading.textContent='Your Growth Operator is ready to investigate.';
+  document.getElementById('briefing-line').textContent='No reviewed operator investigation is loaded in this browser yet.';
+  document.querySelector('#scan-context strong').textContent='NO OPERATOR READ LOADED';
+  document.getElementById('scan-time').textContent='Evidence first · score when supportable';
+  document.getElementById('sidebar-owner').textContent='Operator not connected';
+  document.getElementById('sidebar-business').textContent='No business loaded';
+  document.getElementById('sidebar-avatar').textContent='GO';
+  const section=document.createElement('section');section.className='dashboard-empty card';
+  const eyebrow=document.createElement('p');eyebrow.className='eyebrow';eyebrow.textContent='THE GROWTH OPERATOR LOOP';
+  const title=document.createElement('h2');title.textContent='Understand the business. Find the next move. Measure what happened.';
+  const copy=document.createElement('p');copy.textContent='Start with a public investigation. GO will show cited strengths, concerns and unknowns before proposing a Mission. A numeric score and revenue impact wait for evidence and connected business data.';
+  const analyze=document.createElement('a');analyze.className='primary-button';analyze.href='operator-analyzer.html';analyze.textContent='Analyze a business →';
+  const systems=document.createElement('a');systems.className='secondary-button';systems.href='growth-score.html';systems.textContent='View the six systems →';
+  const actions=document.createElement('div');actions.className='dashboard-empty-actions';actions.append(analyze,systems);
+  section.append(eyebrow,title,copy,actions);
+  document.querySelector('.main-content').append(section);
+}
 
 
 function renderGOWorkbench() {

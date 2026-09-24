@@ -241,3 +241,20 @@
 .research-mode .nav-link[href="growth-score.html"]{display:flex!important}
 @media(max-width:900px){.system-truth-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:760px){.system-truth-heading{display:block}.system-truth-grid,.system-truth-flow{grid-template-columns:1fr}}
+
+/* No research loaded: keep synthetic dashboard state behind explicit demo mode. */
+.dashboard-pending .main-content>section,.dashboard-pending .sidebar-card.plan-card{display:none!important}
+.dashboard-pending .nav-link:not([href="dashboard.html"]):not([href="growth-score.html"]):not([href="operator-analyzer.html"]){display:none!important}
+.dashboard-empty-mode .main-content>section:not(.dashboard-empty),
+.dashboard-empty-mode .sidebar-card.plan-card,
+.dashboard-empty-mode .date-control,
+.dashboard-empty-mode .top-actions .icon-button,
+.dashboard-empty-mode .top-actions .avatar,
+.dashboard-empty-mode .nav-link:not([href="dashboard.html"]):not([href="growth-score.html"]):not([href="operator-analyzer.html"]){display:none!important}
+.dashboard-empty{padding:32px;margin-top:22px;max-width:860px}
+.dashboard-empty h2{font-size:clamp(24px,3vw,36px);line-height:1.18;max-width:700px;margin:12px 0}
+.dashboard-empty>p:not(.eyebrow){font-size:15px;line-height:1.65;color:#b4c8d6;max-width:680px}
+.dashboard-empty-actions{display:flex;flex-wrap:wrap;gap:12px;margin-top:23px}
+.dashboard-empty-actions a{display:inline-flex;align-items:center;justify-content:center;text-decoration:none}
+.dashboard-demo-notice{padding:10px 14px;border:1px solid #d59b50;border-radius:8px;color:#f3ca85;background:#3a2817;font-weight:800;font-size:12px}
+@media(max-width:760px){body.dashboard-empty-mode{min-width:0}.dashboard-empty-mode .app-shell{display:block}.dashboard-empty-mode .sidebar{position:static;width:100%;height:auto}.dashboard-empty-mode .sidebar-help,.dashboard-empty-mode .sidebar-card{display:none}.dashboard-empty-mode .main-content{padding:16px}.dashboard-empty{padding:22px}.dashboard-empty-actions{display:grid}}

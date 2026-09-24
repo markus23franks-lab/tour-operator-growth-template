@@ -1,0 +1,14 @@
+import {buildClaimLedger,validateClaimLedger,buildOperatorActionPlan} from '../netlify/functions/lib/claim-ledger.mjs';
+const page={id:'page',surface:'FIRST_PARTY_RENDERED',subject:{label:'Canine Cruise'},observation:{url:'https://operator.example/cruise/canine',title:'Canine Cruise',mainText:'Canine Cruise tickets start at $46. Buy Tickets.' ,bookingLinks:[{url:'https://book.example/canine'}],contactEmails:['sales@operator.example']},source:{url:'https://operator.example/cruise/canine'},status:'OBSERVED'};
+const serp={id:'serp',surface:'ORGANIC_SERP',observation:{snippet:'Canine Cruise tickets'},source:{url:'https://operator.example/cruise/canine'},status:'OBSERVED'};
+const finding={type:'QUICK_WIN',headline:'Promote canine cruise',evidenceIds:['page'],supportQuotes:[{evidenceId:'page',quote:'Canine Cruise tickets start at $46'}]};
+const ledger=buildClaimLedger({synthesis:{strengths:[],opportunities:[finding],investigations:[],doNotPrioritize:[]},records:[page]});
+if(!validateClaimLedger(ledger,[page]).ok)throw new Error('valid product claim rejected');
+if(ledger[0].scope.products[0]!=='Canine Cruise'||ledger[0].scope.amounts[0]!==46)throw new Error('typed product scope missing');
+const plan=buildOperatorActionPlan({ledger});
+if(plan.state!=='READY'||plan.moves[0].state!=='VALIDATED_OPPORTUNITY'||plan.moves[0].claimId!==ledger[0].claimId)throw new Error('claim ledger action-plan bridge missing');
+const bad=buildClaimLedger({synthesis:{strengths:[],opportunities:[{...finding,evidenceIds:['serp'],supportQuotes:[]}],investigations:[],doNotPrioritize:[]},records:[serp]});
+if(validateClaimLedger(bad,[serp]).ok)throw new Error('search-only action claim accepted');
+const badPlan=buildOperatorActionPlan({ledger:bad});
+if(badPlan.moves[0]?.state==='VALIDATED_OPPORTUNITY')throw new Error('search-only claim became action-ready');
+console.log('Product-scoped claim ledger regression passed');

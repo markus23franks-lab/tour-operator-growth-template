@@ -6,15 +6,18 @@
     const research = window.GOResearchBridge.read();
     const plan = research.actionPlan;
     const first = plan.moves[0];
+    const date = research.capturedAt && !Number.isNaN(Date.parse(research.capturedAt)) ? research.capturedAt.slice(0,10) : null;
+    const origin = research.sourceType === 'ARCHIVED_EVALUATION' ? 'ARCHIVED EVALUATION' : research.sourceType === 'LIVE_LAB' ? 'SAVED LIVE INVESTIGATION' : 'SAVED INVESTIGATION · DATE UNKNOWN';
+    const dated = date ? `${origin} · ${date}` : origin;
     const strength = plan.moves.find(move => move.state === "LEVERAGE") || research.judgment?.strengths?.[0];
     const summary = research.judgment?.executiveRead || research.dossier?.summary || "GO investigated this business and selected a question worth pursuing.";
     set("greeting", `GO's read on ${profile.businessName}`);
     set("briefing-line", summary);
-    set("scan-time", "Saved public investigation · verify before acting");
+    set("scan-time", `${dated} · verify current facts before acting`);
     set("brief-business-name", profile.businessName);
     set("sidebar-business", profile.businessName);
     set("sidebar-owner", "GO research preview");
-    set("today-label", "SAVED OPERATOR INVESTIGATION");
+    set("today-label", dated);
     set("overall-assessment", summary);
     set("brief-summary-status", first.state === "VALIDATED_OPPORTUNITY" ? "Evidence-backed opportunity" : "Investigation selected");
     set("brief-summary-line", "Public evidence identifies a next move. Booking impact needs your operating data.");
@@ -53,9 +56,9 @@
     }
     set("findings-title", `${profile.businessName}: GO's evidence-backed read`);
     set("findings-intro", "Read the source passages and the proof GO still needs before acting.");
-    set("findings-source-label", "SAVED INVESTIGATION");
+    set("findings-source-label", dated);
     set("findings-source-title", "Public pages and market observations");
-    set("findings-source-status", "Saved public evidence · current facts require verification");
+    set("findings-source-status", `${dated} · current facts require verification`);
     const list = document.getElementById("findings-list");
     list.replaceChildren();
     for (const move of plan.moves) {

@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import {buildSynthesisInput,normalizeSynthesisBuckets} from '../netlify/functions/lib/research-model-adapter.mjs';
+import {validateCommercialSynthesis} from '../netlify/functions/lib/commercial-synthesis.mjs';
 
 const evidence=[];
 for(let i=0;i<6;i++)evidence.push({id:'first-'+i,surface:'FIRST_PARTY_RENDERED',status:'OBSERVED',subject:{label:'Operator'},observation:{text:'Product details '.repeat(800),url:'https://operator.example/'+i},source:{url:'https://operator.example/'+i}});
@@ -20,6 +21,11 @@ assert.ok(contactInput.evidence[0].observation.text.includes('Contact charter sa
 assert.equal(contactInput.evidence[0].observation.prices,undefined,'untyped amounts stay out of model input');
 const mainInput=buildSynthesisInput({evidence:[{id:'main',surface:'FIRST_PARTY_RENDERED',status:'OBSERVED',observation:{url:'https://operator.example/events',text:'Navigation '.repeat(200),mainText:'Private events: call our charter sales team.'}}]});
 assert.equal(mainInput.evidence[0].observation.text,'Private events: call our charter sales team.');
+const longRow={id:'long',surface:'FIRST_PARTY_RENDERED',status:'OBSERVED',observation:{url:'https://operator.example/events',text:'Visible product description. '+ 'Filler '.repeat(300)+'Hidden price $999 only after truncation.'}};
+const shown=buildSynthesisInput({evidence:[longRow]}).evidence;
+const claim={type:'QUICK_WIN',headline:'Act on hidden fee',whyItMatters:'Potential clarity',evidenceIds:['long'],supportQuotes:[{evidenceId:'long',quote:'Hidden price $999 only after truncation.'}],contradictionIds:[],confidence:'HIGH',actionBoundary:'Publish pricing',economicBoundary:'No return estimate'};
+const judgment={strengths:[],opportunities:[claim],investigations:[],doNotPrioritize:[],nextMove:{findingHeadline:claim.headline,type:claim.type,headline:claim.headline,whyNow:'Now',evidenceIds:['long'],proofNeeded:[],connectedDataNeeded:[]}};
+assert.equal(validateCommercialSynthesis(judgment,shown).ok,false,'hidden source text cannot ground the model-visible claim');
 const tentative={type:'INVESTIGATE',headline:'Validate channel economics',evidenceIds:['first-0']};
 const normalized=normalizeSynthesisBuckets({strengths:[],opportunities:[tentative],investigations:[],doNotPrioritize:[]});
 assert.equal(normalized.opportunities.length,0,'tentative work is never portrayed as validated opportunity');

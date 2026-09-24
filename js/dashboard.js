@@ -35,6 +35,8 @@ const intelligence = intelligenceEngine.analyze({ assessment, previewScores, pre
 const scores = intelligence.scores;
 const mission = intelligence.mission;
 const profile = buildProfile(intelligence.assessment, scores, mission);
+const researchProfile = window.GOResearchBridge?.apply(profile);
+if (researchProfile) Object.assign(profile, researchProfile);
 profile.growthScore = intelligence.growthScore;
 profile.findings = intelligence.findings;
 profile.intelligence = intelligence;
@@ -141,10 +143,12 @@ function personalizeDashboard() {
 
   document.getElementById("greeting").innerHTML = `${greeting}, ${profile.firstName} <span>👋</span>`;
   document.getElementById("today-label").textContent = now.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" }).toUpperCase();
-  document.getElementById("briefing-line").innerHTML = `Here’s what’s moving the needle for <strong>${profile.businessName}</strong> and where we can help you grow.`;
-  document.getElementById("scan-time").textContent = liveAudit ? `Live website check: ${formatAuditTime(liveAudit.completedAt)}` : "Latest preview scan: just now";
+  document.getElementById("briefing-line").innerHTML = profile.researchBacked
+    ? `GO investigated <strong>${profile.businessName}</strong> and carried the evidence into today’s next move.`
+    : `Here’s what’s moving the needle for <strong>${profile.businessName}</strong> and where we can help you grow.`;
+  document.getElementById("scan-time").textContent = profile.researchBacked ? "Model-led judgment · claim ledger" : liveAudit ? `Live website check: ${formatAuditTime(liveAudit.completedAt)}` : "Latest preview scan: just now";
   const contextStrong = document.querySelector("#scan-context strong");
-  if (contextStrong) contextStrong.textContent = liveAudit ? "LIVE WEBSITE DATA" : "PREVIEW ANALYSIS";
+  if (contextStrong) contextStrong.textContent = profile.researchBacked ? "RESEARCH-BACKED READ" : liveAudit ? "LIVE WEBSITE DATA" : "PREVIEW ANALYSIS";
 
   setText("sidebar-owner", profile.ownerName);
   setText("sidebar-business", profile.businessName);
@@ -165,7 +169,7 @@ function personalizeDashboard() {
   setText("mission-description", profile.mission.description);
   setText("mission-confidence", `${profile.mission.confidence}%`);
   document.querySelector(".confidence-bar i").style.setProperty("--value", `${profile.mission.confidence}%`);
-  setText("mission-revenue", `+$${profile.revenueOpportunity.toLocaleString("en-US")}`);
+  setText("mission-revenue", Number.isFinite(profile.revenueOpportunity) ? `+$${profile.revenueOpportunity.toLocaleString("en-US")}` : "Needs connected data");
 
   renderPillars(profile.scores);
   renderGrowthBrief(profile);
@@ -248,10 +252,10 @@ function renderFindings(currentProfile) {
   if (!list) return;
 
   setText("findings-title", `${currentProfile.businessName}: the clearest things we found`);
-  setText("findings-intro", liveAudit ? "These findings use a live mobile Lighthouse check of your website. Open any finding to see the measured signal and what we’d do next." : "We separated strengths from opportunities and ranked what we’d address first. Open any finding to see the reasoning behind it.");
-  setText("findings-source-label", currentProfile.intelligence?.sourceSummary?.label || (liveAudit ? "LIVE SOURCE" : "REVIEWED ACROSS"));
-  setText("findings-source-title", liveAudit ? "Website + GO Engine" : "GO Intelligence Engine");
-  setText("findings-source-status", `v${currentProfile.intelligence?.engineVersion || "1.0"} • ${currentProfile.intelligence?.mode || "preview"}`);
+  setText("findings-intro", currentProfile.researchBacked ? "GO carried a model-led investigation into the dashboard. Each read keeps its evidence scope and states what still needs to be proven." : liveAudit ? "These findings use a live mobile Lighthouse check of your website. Open any finding to see the measured signal and what we’d do next." : "We separated strengths from opportunities and ranked what we’d address first. Open any finding to see the reasoning behind it.");
+  setText("findings-source-label", currentProfile.researchBacked ? "SOURCE + JUDGMENT" : currentProfile.intelligence?.sourceSummary?.label || (liveAudit ? "LIVE SOURCE" : "REVIEWED ACROSS"));
+  setText("findings-source-title", currentProfile.researchBacked ? "GO model + claim ledger" : liveAudit ? "Website + GO Engine" : "GO Intelligence Engine");
+  setText("findings-source-status", currentProfile.researchBacked ? "Evidence-backed · action boundary enforced" : `v${currentProfile.intelligence?.engineVersion || "1.0"} • ${currentProfile.intelligence?.mode || "preview"}`);
 
   list.innerHTML = findings.map((finding, index) => `
     <article class="finding-card ${finding.tone} ${index === 0 ? "finding-primary" : ""}" data-finding-id="${finding.id}">

@@ -63,6 +63,7 @@ export function normalizeSynthesisBuckets(value){
   if(finding.type==="INVESTIGATE")copy.investigations.push(finding);
   else if(finding.type==="LEVERAGE")copy.strengths.push(finding);
   else if(finding.type==="DO_NOT_PRIORITIZE")copy.doNotPrioritize.push(finding);
+  else if(finding.type==="MEASURE")continue; // Measurement alone is not an actionable opportunity.
   else copy.opportunities.push(finding);
  }
  return copy;

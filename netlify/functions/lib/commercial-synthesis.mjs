@@ -12,11 +12,28 @@ export const COMMERCIAL_SYNTHESIS_SCHEMA={type:"object",additionalProperties:fal
 
 function findingSchema(){return {type:"object",additionalProperties:false,properties:{type:{type:"string",enum:[...TYPES]},headline:{type:"string"},whyItMatters:{type:"string"},evidenceIds:{type:"array",items:{type:"string"}},supportQuotes:{type:"array",items:{type:"object",additionalProperties:false,properties:{evidenceId:{type:"string"},quote:{type:"string"}},required:["evidenceId","quote"]}},contradictionIds:{type:"array",items:{type:"string"}},confidence:{type:"string",enum:["HIGH","MEDIUM","LOW"]},actionBoundary:{type:"string"},economicBoundary:{type:"string"}},required:["type","headline","whyItMatters","evidenceIds","supportQuotes","contradictionIds","confidence","actionBoundary","economicBoundary"]}}
 const moneyAmounts=text=>[...String(text||"").matchAll(/\$\s*(\d+(?:,\d{3})*(?:\.\d{1,2})?)(?!\d)/g)].map(x=>Number(x[1].replaceAll(",","")));
+const sourceText=row=>[row?.subject?.label,row?.observation?.title,...(row?.observation?.headings||[]),row?.observation?.mainText,row?.observation?.text,row?.observation?.snippet,row?.observation?.priceText].filter(Boolean).map(clean);
+const validQuote=(anchor,ids,byId)=>{const row=byId.get(anchor?.evidenceId),quote=clean(anchor?.quote);return ids.includes(anchor?.evidenceId)&&row&&quote.length>=12&&quote.length<=280&&sourceText(row).some(t=>t.includes(quote))};
+
+export function discardUnverifiableQuotes(synthesis={},records=[]){
+ const byId=new Map(records.map(x=>[x.id,x])),copy={...synthesis},discarded=[],normalized=[];
+ for(const bucket of ["strengths","opportunities","investigations","doNotPrioritize"]){
+  copy[bucket]=(synthesis[bucket]||[]).map(f=>{const supportQuotes=(f.supportQuotes||[]).flatMap(q=>{
+   if(validQuote(q,f.evidenceIds||[],byId))return [q];
+   const prefix=clean(q?.quote).replace(/(?:\.{3}|…)$/,'').trim();
+   if(prefix.length>=12&&prefix!==clean(q?.quote)&&validQuote({...q,quote:prefix},f.evidenceIds||[],byId)){
+    normalized.push({bucket,headline:f.headline,evidenceId:q.evidenceId,reason:'terminal ellipsis removed'});
+    return [{...q,quote:prefix}];
+   }
+   discarded.push({bucket,headline:f.headline,evidenceId:q?.evidenceId});return [];
+  });return {...f,supportQuotes}});
+ }
+ return {synthesis:copy,discarded,normalized};
+}
 
 export function validateCommercialSynthesis(synthesis={},records=[]){
  const byId=new Map(records.map(x=>[x.id,x])),errors=[];
  const isDetail=row=>{if(row?.surface!=="FIRST_PARTY_RENDERED")return false;try{return new URL(row.observation?.url||row.source?.url).pathname.replace(/\/+$/,"").length>0}catch{return false}};
- const sourceText=row=>[row?.observation?.mainText,row?.observation?.text,row?.observation?.snippet,row?.observation?.priceText].filter(Boolean).map(clean);
  // The generic "prices" list is a lossy extraction of all money on a page,
  // including donations and parking. Ground numbers in cited source text instead.
  const checkMoney=(description,text,ids)=>{const supported=new Set(moneyAmounts(ids.map(id=>{const x=byId.get(id);return [x?.observation?.text,x?.observation?.snippet,x?.observation?.price,x?.observation?.priceText].filter(Boolean).join(" ")}).join(" ")));for(const amount of new Set(moneyAmounts(text)))if(!supported.has(amount))errors.push({error:`${description} cites unsupported $${amount} amount`})};
@@ -33,7 +50,7 @@ export function validateCommercialSynthesis(synthesis={},records=[]){
    for(const anchor of quotes){
     const row=byId.get(anchor.evidenceId),quote=clean(anchor.quote);
     if(!ids.includes(anchor.evidenceId)||!row){errors.push({index,error:"support quote must cite finding evidence"});continue}
-    if(quote.length<12||quote.length>280||!sourceText(row).some(t=>t.includes(quote))){errors.push({index,error:"support quote not found verbatim in cited source"});continue}
+    if(!validQuote(anchor,ids,byId)){errors.push({index,error:"support quote not found verbatim in cited source"});continue}
     verified.push({row,quote});
    }
    checkMoney(`finding ${index}`,[f.headline,f.whyItMatters,f.actionBoundary,f.economicBoundary].join(" "),ids);

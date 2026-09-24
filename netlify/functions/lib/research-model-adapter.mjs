@@ -1,4 +1,5 @@
 import {COMMERCIAL_SYNTHESIS_SCHEMA,discardUnverifiableQuotes,validateCommercialSynthesis} from "./commercial-synthesis.mjs";
+import {buildClaimLedger,validateClaimLedger} from "./claim-ledger.mjs";
 const ENDPOINT="https://api.openai.com/v1/responses";
 const compactObservation=(observation,maxText=8000)=>{
  const o=observation||{};
@@ -57,7 +58,9 @@ export async function synthesizeCommercialJudgmentWithModel({dossier,evidence=[]
  // Validate against the exact projection shown to the model. A cited ID must
  // not borrow a quote or amount from omitted portions of the underlying page.
  const validation=validateCommercialSynthesis(synthesis,input.evidence);if(!validation.ok){const error=new Error("Commercial synthesis failed truth validation: "+validation.errors.map(x=>x.error).join("; "));error.draftJudgment=synthesis;error.discardedQuotes=discarded;error.normalizedQuotes=normalizedQuotes;throw error}
- return {synthesis,discardedQuotes:discarded,normalizedQuotes,model:payload.model,responseId:payload.responseId,usage:payload.usage};
+ const claimLedger=buildClaimLedger({synthesis,records:input.evidence});
+ const ledgerValidation=validateClaimLedger(claimLedger,input.evidence);if(!ledgerValidation.ok){const error=new Error("Claim ledger failed truth validation: "+ledgerValidation.errors.join("; "));error.draftJudgment=synthesis;error.claimLedger=claimLedger;throw error}
+ return {synthesis,claimLedger,discardedQuotes:discarded,normalizedQuotes,model:payload.model,responseId:payload.responseId,usage:payload.usage};
 }
 
 export function normalizeSynthesisBuckets(value){

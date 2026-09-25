@@ -668,7 +668,7 @@ function openMissionWorkspace(mode) {
   };
 
   localStorage.setItem("growthOperatorActiveMission", JSON.stringify(missionWorkspace));
-  window.location.href = `mission.html?mode=${mode}`;
+  window.location.href = `mission.html?mode=${mode}${profile.researchBacked ? '' : '&demo=1'}`;
 }
 
 function openModal(content) {

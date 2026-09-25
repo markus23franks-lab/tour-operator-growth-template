@@ -49,54 +49,9 @@ jobs:
           node --check netlify/functions/lib/commercial-synthesis.mjs
           node --check netlify/functions/lib/follow-up-executor.mjs
           node --check netlify/functions/lib/competitor-investigation-adapter.mjs
-      - name: Run cold-start product-family regression
-        run: node scripts/cold-start-regression.mjs
-      - name: Run dedicated research-plan regression
-        run: node scripts/research-plan-regression.mjs
-      - name: Run competitive-intelligence regression
-        run: node scripts/competitive-intelligence-regression.mjs
-      - name: Run trust and pricing evidence-integrity regression
-        run: node scripts/research-integrity-regression.mjs
-      - name: Run positioning-intelligence regression
-        run: node scripts/positioning-regression.mjs
-      - name: Run offer-evidence regression
-        run: node scripts/offer-evidence-regression.mjs
-      - name: Run business-dossier regression
-        run: node scripts/business-dossier-regression.mjs
-      - name: Run comparable-offer regression
-        run: node scripts/offer-comparison-regression.mjs
-      - name: Run booking-journey regression
-        run: node scripts/booking-journey-regression.mjs
-      - name: Run product-architecture regression
-        run: node scripts/product-architecture-regression.mjs
-      - name: Run action-plan regression
-        run: node scripts/action-plan-regression.mjs
-      - name: Run runtime presentation-gate regression
-        run: node scripts/presentation-gate-regression.mjs
-      - name: Run Investigation Lab truth-contract regression
-        run: node scripts/investigation-lab-regression.mjs
-      - name: Run cross-surface reconciliation regression
-        run: node scripts/investigation-reconciliation-regression.mjs
-      - name: Run Investigation Lab research-coverage regression
-        run: node scripts/investigation-coverage-regression.mjs
-      - name: Run Investigation Lab provider-adapter regression
-        run: node scripts/serpapi-investigation-adapter-regression.mjs
-      - name: Run research-model evidence-binding regression
-        run: node scripts/research-model-adapter-regression.mjs
-      - name: Run commercial-synthesis truth regression
-        run: node scripts/commercial-synthesis-regression.mjs
-      - name: Run adaptive follow-up research regression
-        run: node scripts/follow-up-executor-regression.mjs
-      - name: Run rendered first-party acquisition regression
-        run: node scripts/first-party-investigation-regression.mjs
-      - name: Run dossier-first research pipeline regression
-        run: node scripts/research-pipeline-regression.mjs
-      - name: Run operator presentation-integrity regression
-        run: node scripts/presentation-integrity-regression.mjs
-
-      - name: Run Opportunity Brain evidence-integrity regression
-        run: node scripts/opportunity-brain-regression.mjs
-      - name: Run Analyzer portfolio-judgment regression
-        run: node scripts/analyzer-judgment-regression.mjs
-      - name: Run zero-input handoff regression
-        run: node scripts/zero-input-handoff-regression.mjs
+      - name: Run all offline regressions
+        run: |
+          set -e
+          for script in scripts/*-regression.mjs; do
+            node "$script"
+          done

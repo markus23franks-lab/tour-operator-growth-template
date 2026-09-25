@@ -37,3 +37,13 @@
   .research-mission .evidence-grid,.research-mission .progress-hero,.research-mission .outcome-fields{grid-template-columns:minmax(0,1fr)}
   .research-mission .progress-ring{margin:0 auto}
 }
+
+/* Resolve the selected investigation before exposing any Mission fixture. */
+.mission-pending .mission-shell{visibility:hidden}
+.mission-empty .mission-shell{display:none}
+body.mission-empty{min-width:0}
+.mission-entry{max-width:760px;margin:70px auto;padding:28px;color:#eaf5ff}
+.mission-entry h1{font-size:clamp(26px,4vw,40px);line-height:1.2}
+.mission-entry p{color:#b3c8d7;font-size:16px;line-height:1.65;margin:20px 0 28px}
+.mission-entry a{display:inline-block;text-decoration:none}
+.mission-demo-notice{padding:12px 16px;border:1px solid #d59b50;border-radius:8px;color:#f3ca85;background:#3a2817;font-size:13px;font-weight:700}

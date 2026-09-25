@@ -33,13 +33,25 @@ if(api.build({...research,website:'https://other.example'}).measurement!=='No me
 const dashboard=readFileSync('Pages/dashboard.html','utf8'),score=readFileSync('Pages/growth-score.html','utf8'),dashboardCSS=readFileSync('styles.css','utf8');
 if(!dashboard.includes('id="system-truth-grid"')||!dashboard.includes('js/system-truth.js')||!score.includes('js/growth-score-research.js')||score.includes('js/assessment.js'))throw new Error('System view not wired to product pages or legacy score renderer remains active');
 if(!dashboardCSS.includes('.research-mode .nav-link:not([href="dashboard.html"]):not([href="mission.html"]):not([href="growth-score.html"])'))throw new Error('Research navigation hides the Growth Score route');
-// Exercise the no-investigation render path, which used to expose fallback /100 scores.
-let ready,inserted;
-const footer={querySelector:()=>({href:'growth-snapshot.html',textContent:''})};
-const document={body:{classList:{add(){}}},addEventListener:(_,fn)=>{ready=fn},createElement:name=>({name,children:[],append(...children){this.children.push(...children)},className:'',textContent:''}),querySelector:selector=>selector==='main.score-shell'?{querySelector:()=>footer,insertBefore:node=>{inserted=node}}:{textContent:''}};
-const scoreContext={window:{GOSystemTruth:{build:()=>null},GOResearchBridge:{read:()=>null}},document,localStorage:{getItem:()=>JSON.stringify({businessName:'Older prospect',growthScore:99})},URL};vm.createContext(scoreContext);
-vm.runInContext(readFileSync('js/growth-score-research.js','utf8'),scoreContext);ready();
+// A general Score visit is neutral; a prospect-origin visit can only use matching research.
+function renderScore(search,prospect,research){
+  let ready,inserted,received;
+  const links={'growth-snapshot.html':{href:'growth-snapshot.html',textContent:''},'dashboard.html':{href:'dashboard.html',textContent:''}};
+  const footer={querySelector:selector=>links[selector.match(/href="([^"]+)"/)?.[1]]},brand={href:'dashboard.html'};
+  const document={body:{classList:{add(){}}},addEventListener:(_,fn)=>{ready=fn},createElement:name=>({name,children:[],append(...children){this.children.push(...children)},className:'',textContent:''}),querySelector:selector=>selector==='main.score-shell'?{querySelector:()=>footer,insertBefore:node=>{inserted=node}}:selector==='.topbar .brand'?brand:{textContent:''}};
+  const scoreContext={window:{location:{search},GOSystemTruth:{build:read=>{received=read;return read?{businessName:'Research Operator',primary:{headline:'Cited move'},mission:'Proposed',measurement:'None',systems:[],capturedAt:'2026-09-20',sourceType:'ARCHIVED_EVALUATION'}:null}},GOResearchBridge:{read:()=>research}},document,localStorage:{getItem:()=>JSON.stringify(prospect)},URL,URLSearchParams};vm.createContext(scoreContext);
+  vm.runInContext(readFileSync('js/growth-score-research.js','utf8'),scoreContext);ready();
+  return {inserted,received,links,brand};
+}
 const flatten=node=>[node,...(node.children||[]).flatMap(flatten)];
-if(!inserted||!flatten(inserted).some(child=>child.textContent==='NO COMPLETED RESEARCH READ')||!flatten(inserted).some(child=>child.textContent==='Not scored'))throw new Error('No-investigation Growth Score did not render an explicit unscored state');
-if(flatten(inserted).some(child=>String(child.textContent).includes('Older prospect')))throw new Error('An unrelated prospect appeared as the researched Growth Score operator');
+const oldProspect={businessName:'Older prospect',website:'https://older.example',growthScore:99};
+let scoreView=renderScore('',oldProspect,null);
+if(!scoreView.inserted||!flatten(scoreView.inserted).some(child=>child.textContent==='NO COMPLETED RESEARCH READ')||!flatten(scoreView.inserted).some(child=>child.textContent==='Not scored'))throw new Error('No-investigation Growth Score did not render an explicit unscored state');
+if(flatten(scoreView.inserted).some(child=>String(child.textContent).includes('Older prospect')))throw new Error('An unrelated prospect appeared as the researched Growth Score operator');
+const savedResearch={website:'https://operator.example',state:'PROOF_JUDGED'};
+scoreView=renderScore('?source=prospect',oldProspect,savedResearch);
+if(scoreView.received!==null||!flatten(scoreView.inserted).some(child=>String(child.textContent).includes('Older prospect: six-system read'))||scoreView.links['dashboard.html'].href!=='growth-snapshot.html'||scoreView.brand.href!=='growth-snapshot.html')throw new Error('A different operator investigation leaked into the prospect Score journey');
+scoreView=renderScore('?source=prospect',{businessName:'Current prospect',website:'https://operator.example/tours'},savedResearch);
+if(scoreView.received!==savedResearch||!flatten(scoreView.inserted).some(child=>String(child.textContent).includes('Research Operator: six-system read')))throw new Error('Matching operator research was hidden from the Score journey');
+if(!readFileSync('js/operator-opportunity-brief.js','utf8').includes('growth-score.html?source=prospect'))throw new Error('Snapshot handoff did not identify its prospect context');
 console.log('System truth regression passed');

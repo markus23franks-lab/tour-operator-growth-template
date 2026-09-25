@@ -2,10 +2,18 @@
 (() => {
   const el=(name,text) => { const node=document.createElement(name);node.textContent=String(text ?? '');return node; };
   document.addEventListener('DOMContentLoaded',() => {
-    const researchTruth=window.GOSystemTruth?.build(window.GOResearchBridge?.read());
+    const fromProspect=new URLSearchParams(window.location.search).get('source')==='prospect';
+    let prospect=null;
+    if(fromProspect)try { prospect=JSON.parse(localStorage.getItem('growthOperatorProspectProfile')); } catch { /* no prospect */ }
+    const research=window.GOResearchBridge?.read();
+    let sameOperator=false;
+    if(fromProspect && prospect?.website && research?.website)try {
+      sameOperator=new URL(prospect.website).origin===new URL(research.website).origin;
+    } catch { /* invalid website cannot establish operator identity */ }
+    const researchTruth=window.GOSystemTruth?.build(fromProspect && !sameOperator ? null : research);
     const names=['Visibility','Trust','Conversion','Operations','Intelligence','Growth'];
     const truth=researchTruth || {
-      businessName:'Growth Operator',
+      businessName:fromProspect && prospect?.website ? prospect.businessName || 'This business' : 'Growth Operator',
       primary:{headline:'No verified priority loaded'},mission:'No research Mission loaded',measurement:'No measured outcome',
       systems:names.map(name=>({name,state:'UNKNOWN',label:'Needs evidence',detail:'No completed, claim-scoped investigation is loaded for this system.'}))
     };
@@ -14,7 +22,7 @@
     const main=document.querySelector('main.score-shell');
     const section=el('section','');section.className='research-score-view';
     const source=researchTruth ? (truth.sourceType==='ARCHIVED_EVALUATION'?'ARCHIVED PUBLIC RESEARCH':'SAVED PUBLIC RESEARCH') : 'NO COMPLETED RESEARCH READ';
-    section.append(el('p',researchTruth ? `${source} · ${truth.capturedAt?.slice(0,10)||'DATE UNKNOWN'}` : source),el('h1',`${truth.businessName}: six-system read`),el('p',researchTruth ? 'GO has a cited priority. It does not yet have the breadth of verified evidence or connected operating data needed for a defensible overall Growth Score.' : 'A public analysis or preview score is not enough for a calibrated Growth Score. Complete and review a cited investigation before GO assigns system states.'));
+    section.append(el('p',researchTruth ? `${source} · ${truth.capturedAt?.slice(0,10)||'DATE UNKNOWN'}` : source),el('h1',`${truth.businessName}: six-system read`),el('p',researchTruth ? 'GO has a cited priority. It does not yet have the breadth of verified evidence or connected operating data needed for a defensible overall Growth Score.' : fromProspect && prospect?.website ? 'This prospect snapshot has no matching completed investigation. Its public analysis does not establish six-system health or a calibrated Growth Score.' : 'A public analysis or preview score is not enough for a calibrated Growth Score. Complete and review a cited investigation before GO assigns system states.'));
     const summary=el('div','');summary.className='research-score-summary';
     for (const [label,value] of [['GROWTH SCORE','Not scored'],['CURRENT PRIORITY',truth.primary.headline],['MISSION',truth.mission],['MEASUREMENT',truth.measurement]]) {
       const cell=el('article','');cell.append(el('small',label),el('strong',value));summary.append(cell);
@@ -33,6 +41,11 @@
     const footer=main.querySelector('.footer-actions');main.insertBefore(section,footer);
     const snapshot=footer.querySelector('a[href="growth-snapshot.html"]');
     if(snapshot&&researchTruth){snapshot.href='dashboard.html';snapshot.textContent='← Dashboard';}
-    else if(snapshot){snapshot.href='operator-analyzer.html';snapshot.textContent='← Analyze a business';}
+    else if(snapshot){snapshot.href=fromProspect&&prospect?.website?'growth-snapshot.html':'operator-analyzer.html';snapshot.textContent=fromProspect&&prospect?.website?'← Growth Snapshot':'← Analyze a business';}
+    if(fromProspect && !researchTruth){
+      const dashboard=footer.querySelector('a[href="dashboard.html"]');
+      if(dashboard){dashboard.href='growth-snapshot.html';dashboard.textContent='Review this snapshot →';}
+      const brand=document.querySelector('.topbar .brand');if(brand)brand.href='growth-snapshot.html';
+    }
   });
 })();

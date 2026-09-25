@@ -24,10 +24,10 @@ document.addEventListener("DOMContentLoaded", () => {
   text("score-read", "Public findings are not a calibrated score.");
   text("score-copy", isProspect ? (profile.summary || "Review the cited findings below; business performance still needs connected data.") : "Analyze a business to see what GO can support with public evidence.");
   if (isProspect) {
-    text("snapshot-eyebrow", "PUBLIC + OPERATOR GROWTH SNAPSHOT");
+    text("snapshot-eyebrow", profile.sample===true ? "SAMPLE BENCHMARK · NOT A LIVE OPERATOR SCAN" : "PUBLIC + OPERATOR GROWTH SNAPSHOT");
     text("score-label", "NOT SCORED");
     text("score-read", "Public evidence is not a complete business health score.");
-    text("hero-lede", "GO carried the evidence from the business analysis into this Snapshot. These are the same findings — prioritized, actionable and separated from anything that still needs connected data.");
+    text("hero-lede", profile.sample===true ? "This Cayman benchmark is an example from prior operator context. Review the product flow, but do not treat it as a fresh investigation or a measured Growth Score." : "GO carried the evidence from the business analysis into this Snapshot. These are the same findings — prioritized, actionable and separated from anything that still needs connected data.");
     text("revenue-strip-label", "REVENUE OPPORTUNITY");
     text("revenue-strip-copy", "GO needs first-party data before putting a defensible dollar value on these findings");
     const investigationCount = opportunities.filter(item => item.kind === "investigation").length;
@@ -38,6 +38,7 @@ document.addEventListener("DOMContentLoaded", () => {
     text("opportunity-lede", investigationCount === opportunities.length
       ? "GO is not manufacturing problems from a healthy public website. These are the next questions worth proving with market or connected data."
       : "No generic audit. Each finding below comes directly from evidence GO showed in the business analysis.");
+    if(profile.sample===true)text("opportunity-lede", "Example findings from a prior operator benchmark. Verify current sources and business conditions before acting.");
   }
   if (!isProspect) {
     text("opportunity-heading", "No reviewed prospect findings loaded.");

@@ -23,11 +23,12 @@ const caymanProfile = {
   businessName: "Cayman Ocean Adventures",
   website: "https://caymanoceanadventures.com",
   secondaryWebsite: "https://stingraycitycaymantours.com",
-  growthScore: 68,
-  growthScoreLabel: "Provisional score · public + operator evidence",
+  sample: true,
+  growthScore: null,
+  growthScoreLabel: "Not scored · sample benchmark",
   revenueOpportunity: null,
   revenueLabel: "Connect booking data",
-  scores: { Visibility: 76, Trust: 72, Conversion: 66, Operations: 63, Intelligence: 58, Growth: 68 },
+  scores: null,
   analysisType: "Evidence-backed operator benchmark",
   analysisConfidence: "High",
   confidenceCopy: "Public evidence + operator context",
@@ -2104,9 +2105,7 @@ function buildUniversalProfile(url, pages, market = emptyMarket(), bookingLinkEv
   const callsToAction = countMatches(combined, /\b(book now|book online|reserve now|check availability|book your|book today|reserve your)\b/gi);
   const internalPages = Math.max(1, pages.length);
   const seo = assessSearchFoundation(home, businessName, location, offers);
-  const scores = scorePublicProfile({ offers, prices, bookingProvider, trust, contacts, callsToAction, internalPages, seo, combined });
-  const growthScore = Math.round(Object.values(scores).reduce((sum, value) => sum + value, 0) / Object.keys(scores).length);
-  const websiteFindings = buildWebsiteFindings({ businessName, url, offers, prices, bookingProvider, trust, contacts, location, callsToAction, internalPages, seo, scores, combined, businessContext });
+  const websiteFindings = buildWebsiteFindings({ businessName, url, offers, prices, bookingProvider, trust, contacts, location, callsToAction, internalPages, seo, combined, businessContext });
   const marketFindings = buildMarketFindings({ businessName, url, offers, prices, businessContext, market });
   const heuristicOpportunities = mergeAndPrioritizeFindings(marketFindings, websiteFindings);
   const opportunities = research?.brain ? mergeBrainFindings(research.brain) : heuristicOpportunities;
@@ -2121,11 +2120,11 @@ function buildUniversalProfile(url, pages, market = emptyMarket(), bookingLinkEv
   return {
     businessName,
     website: url,
-    growthScore,
-    growthScoreLabel: (market.searchPages.length || market.discoveryDocs.length) ? "Provisional score · website + public market evidence" : "Provisional score · live public website evidence",
+    growthScore: null,
+    growthScoreLabel: "Not scored · public evidence is incomplete",
     revenueOpportunity: null,
     revenueLabel: "Connect business data",
-    scores,
+    scores: null,
     analysisType: (market.searchPages.length || market.discoveryDocs.length) ? "Live public website + market scan" : "Live public website scan",
     analysisConfidence: opportunities.some(item => item.confidence === "High") ? "Medium-high" : "Medium",
     confidenceCopy: (market.searchPages.length || market.discoveryDocs.length)
@@ -2366,16 +2365,6 @@ function prioritizeFindings(items) {
         ? `GO ranked this first because it has the strongest combination of evidence, proximity to bookings/revenue and a testable next action among the ${all.length} qualified patterns it found.`
         : `GO ranked this behind #1 because its evidence, revenue proximity or certainty is weaker. GO would not work on it first unless connected data changes the picture.`
     }));
-}
-
-function scorePublicProfile(ctx) {
-  const conversion = clamp(42 + Math.min(22, ctx.callsToAction * 4) + (ctx.prices.length ? 9 : 0) + (ctx.bookingProvider.provider ? 9 : 0));
-  const trust = clamp(44 + ctx.trust.score * 10 + (ctx.contacts.hasPhone ? 5 : 0) + (ctx.contacts.hasSocial ? 4 : 0));
-  const visibility = clamp(45 + ctx.seo.score * 11 + Math.min(8, ctx.internalPages * 2));
-  const operations = clamp(48 + (ctx.bookingProvider.provider ? 15 : 0) + (ctx.contacts.hasPhone ? 7 : 0) + (ctx.contacts.hasEmail ? 6 : 0));
-  const intelligence = 50; // Public website scan cannot verify analytics discipline yet.
-  const growth = clamp(Math.round((conversion + trust + visibility + operations + intelligence) / 5));
-  return { Visibility: visibility, Trust: trust, Conversion: conversion, Operations: operations, Intelligence: intelligence, Growth: growth };
 }
 
 function summarizeBusiness(ctx) {
@@ -3129,6 +3118,7 @@ function discoverUsefulLinks(markdown, baseUrl) {
 }
 
 function showResults(profile) {
+  const isSample=profile.sample===true;
   const plan=profile.researchIntelligence?.actionPlan;
   const trusted=profile.researchIntelligence?.presentationGate?.pass!==false;
   const moves=plan?.moves||[];
@@ -3141,10 +3131,11 @@ function showResults(profile) {
       : hasInvestigation
         ? `${profile.businessName}: GO found where it would investigate next.`
         : `${profile.businessName}: GO is not forcing a growth problem.`;
-  text("result-title", resultTitle);
+  const eyebrow=document.querySelector('.results-head .eyebrow');if(eyebrow)eyebrow.textContent=isSample?'SAMPLE BENCHMARK · NOT A LIVE SCAN':"GO'S FIRST READ";
+  text("result-title", isSample?`Sample benchmark: ${resultTitle}`:resultTitle);
   text("result-summary", moves.length ? (plan.headline||profile.summary) : (profile.researchIntelligence?.brain?.headline||profile.summary));
-  text("confidence-score", String(profile.analysisConfidence || "Medium").toUpperCase());
-  text("confidence-copy", profile.confidenceCopy || "Live public evidence");
+  text("confidence-score", isSample?'SAMPLE':String(profile.analysisConfidence || "Medium").toUpperCase());
+  text("confidence-copy", isSample?'Example operator research · review as a fixture':profile.confidenceCopy || "Live public evidence");
   renderProfileStrip(profile.publicProfile || {});
   renderResearchRead(profile);
   const debugEnabled = new URLSearchParams(window.location.search).get("debug") === "1";

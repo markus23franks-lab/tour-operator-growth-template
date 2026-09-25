@@ -4,7 +4,8 @@
 (() => {
   const text = value => String(value ?? '').replace(/\s+/g, ' ').trim();
   const same = (a, b) => JSON.stringify([...new Set(a || [])].sort()) === JSON.stringify([...new Set(b || [])].sort());
-  function extract(artifact) {
+  function extract(artifact,{sourceType='ARCHIVED_EVALUATION'}={}) {
+    if(!['ARCHIVED_EVALUATION','LIVE_LAB'].includes(sourceType))throw new Error('Unknown research source.');
     const results = artifact?.results;
     if (!Array.isArray(results) || results.length !== 1) throw new Error('Choose a single-operator evaluation artifact.');
     const {summary, response} = results[0] || {};
@@ -38,7 +39,7 @@
       }
     }
     return {
-      state:'PROOF_JUDGED', sourceType:'ARCHIVED_EVALUATION', capturedAt:capturedAt.toISOString(),
+      state:'PROOF_JUDGED', sourceType, capturedAt:capturedAt.toISOString(),
       website:website.href, dossier:{businessName:text(response.dossier?.businessName),summary:text(response.dossier?.summary)},
       judgment:{executiveRead:text(response.judgment?.executiveRead)},
       actionPlan:{state:'READY',moves:moves.map(move => ({

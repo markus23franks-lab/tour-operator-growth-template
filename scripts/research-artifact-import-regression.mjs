@@ -12,6 +12,11 @@ const artifact={startedAt:'2026-09-20T12:00:00.000Z',results:[{summary:{httpStat
 const reject=(result,label)=>{try{extract(result);throw new Error(`Unexpected success: ${label}`)}catch(error){if(error.message.startsWith('Unexpected success'))throw error}};
 const read=extract(artifact);
 if(read.sourceType!=='ARCHIVED_EVALUATION'||read.capturedAt!==artifact.startedAt||read.actionPlan.moves[0].system!=='Conversion'||read.actionPlan.moves[0].supportQuotes[0].quote!==claim.supportQuotes[0].quote||JSON.stringify(read).includes('private'))throw new Error('The dated read lost provenance or retained private raw material.');
+const live=extract(artifact,{sourceType:'LIVE_LAB'});
+if(live.sourceType!=='LIVE_LAB'||live.website!==read.website||JSON.stringify(live).includes('private'))throw new Error('Live Lab handoff did not use the reduced verified read');
+const labPage=readFileSync('Pages/investigation-lab.html','utf8');
+if(!labPage.includes('response:d}]},{sourceType:"LIVE_LAB"}')||labPage.includes('JSON.stringify({...d,sourceType:'))throw new Error('Live Lab still writes an unverified raw result to the dashboard');
+if(!readFileSync('netlify/functions/investigation-lab.mjs','utf8').includes('state:"PROOF_JUDGED",website:firstParty.website,capturedAt:'))throw new Error('Live Lab response does not preserve website and completion date');
 reject({...artifact,results:[{...artifact.results[0],response:{...artifact.results[0].response,actionPlan:{state:'READY',moves:[{...move,system:'Trust'}]}}}]},'claim and move system disagree');
 reject({...artifact,results:[...artifact.results,...artifact.results]},'multiple operator results');
 reject({...artifact,results:[{...artifact.results[0],summary:{...artifact.results[0].summary,httpStatus:502}}]},'failed run');

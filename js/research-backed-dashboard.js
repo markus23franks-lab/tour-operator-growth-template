@@ -16,8 +16,16 @@
   const pillar = system => systems.has(system) ? system : 'Growth';
   window.GOResearchBridge = {
     read,
-    apply(profile) {
-      const research = read();
+    selectMission(expected) {
+      const current=read();
+      if(!current||!expected||JSON.stringify(current)!==JSON.stringify(expected))throw new Error('The saved investigation changed. Reload this page before opening its Mission.');
+      const profile=this.apply({},current);
+      const workspace={businessName:profile.businessName,ownerName:profile.ownerName,website:profile.website,bookingPlatform:profile.bookingPlatform,growthScore:null,scores:null,revenueOpportunity:null,mission:profile.mission,researchBacked:true,claim:current.actionPlan.moves[0],researchCapturedAt:current.capturedAt,researchSourceType:current.sourceType,mode:'start',startedAt:new Date().toISOString()};
+      try { localStorage.setItem('growthOperatorActiveMission',JSON.stringify(workspace)); }
+      catch { throw new Error('This browser could not save the Mission selection. Check browser storage and try again.'); }
+      return workspace;
+    },
+    apply(profile, research=read()) {
       if (!research) return profile;
       const plan = research.actionPlan;
       const primary = plan.moves[0];

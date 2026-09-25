@@ -38,7 +38,8 @@ const profile = buildProfile(intelligence.assessment, scores, mission);
 profile.growthScore = intelligence.growthScore;
 profile.findings = intelligence.findings;
 profile.intelligence = intelligence;
-const researchProfile = window.GOResearchBridge?.apply(profile);
+const researchRecord = window.GOResearchBridge?.read?.();
+const researchProfile = window.GOResearchBridge?.apply(profile,researchRecord);
 if (researchProfile) Object.assign(profile, researchProfile);
 const demoMode = new URLSearchParams(window.location.search).get('demo') === '1';
 const emptyMode = !profile.researchBacked && !demoMode;
@@ -653,6 +654,11 @@ function wireInteractions() {
 }
 
 function openMissionWorkspace(mode) {
+  if(profile.researchBacked){
+    try { window.GOResearchBridge.selectMission(researchRecord);window.location.href='mission.html?mode=start'; }
+    catch(error){showToast(error.message);}
+    return;
+  }
   const missionWorkspace = {
     businessName: profile.businessName,
     ownerName: profile.ownerName,
@@ -662,7 +668,6 @@ function openMissionWorkspace(mode) {
     scores: profile.scores,
     revenueOpportunity: profile.revenueOpportunity,
     mission: profile.mission,
-    ...(profile.researchBacked ? {researchBacked:true,claim:window.GOResearchBridge.read()?.actionPlan?.moves?.[0],researchCapturedAt:window.GOResearchBridge.read()?.capturedAt,researchSourceType:window.GOResearchBridge.read()?.sourceType} : {}),
     mode,
     startedAt: new Date().toISOString()
   };

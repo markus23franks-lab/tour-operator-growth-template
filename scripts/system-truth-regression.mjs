@@ -42,13 +42,13 @@ if(!dashboard.includes('id="system-truth-grid"')||!dashboard.includes('js/system
 if(!dashboardCSS.includes('.research-mode .nav-link:not([href="dashboard.html"]):not([href="mission.html"]):not([href="growth-score.html"])'))throw new Error('Research navigation hides the Growth Score route');
 // A general Score visit is neutral; a prospect-origin visit can only use matching research.
 function renderScore(search,prospect,research,systemRead){
-  let ready,inserted,received;
+  let ready,inserted,received,selected;
   const links={'growth-snapshot.html':{href:'growth-snapshot.html',textContent:''},'dashboard.html':{href:'dashboard.html',textContent:''}};
   const footer={querySelector:selector=>links[selector.match(/href="([^"]+)"/)?.[1]]},brand={href:'dashboard.html'};
-  const document={body:{classList:{add(){}}},addEventListener:(_,fn)=>{ready=fn},createElement:name=>({name,children:[],append(...children){this.children.push(...children)},className:'',textContent:''}),querySelector:selector=>selector==='main.score-shell'?{querySelector:()=>footer,insertBefore:node=>{inserted=node}}:selector==='.topbar .brand'?brand:{textContent:''}};
-  const scoreContext={window:{location:{search},GOSystemTruth:{build:read=>{received=read;return read?systemRead||{businessName:'Research Operator',primary:{headline:'Cited move'},mission:'Proposed',measurement:'None',systems:[],capturedAt:'2026-09-20',sourceType:'ARCHIVED_EVALUATION'}:null}},GOResearchBridge:{read:()=>research}},document,localStorage:{getItem:()=>JSON.stringify(prospect)},URL,URLSearchParams};vm.createContext(scoreContext);
+  const document={body:{classList:{add(){}}},addEventListener:(_,fn)=>{ready=fn},createElement:name=>({name,children:[],append(...children){this.children.push(...children)},setAttribute(){},addEventListener(name,handler){this[name]=handler},className:'',textContent:''}),querySelector:selector=>selector==='main.score-shell'?{querySelector:()=>footer,insertBefore:node=>{inserted=node}}:selector==='.topbar .brand'?brand:{textContent:''}};
+  const scoreContext={window:{location:{search},GOSystemTruth:{build:read=>{received=read;return read?systemRead||{businessName:'Research Operator',primary:{headline:'Cited move'},mission:'Proposed',measurement:'None',systems:[],capturedAt:'2026-09-20',sourceType:'ARCHIVED_EVALUATION'}:null}},GOResearchBridge:{read:()=>research,selectMission:read=>{selected=read}}},document,localStorage:{getItem:()=>JSON.stringify(prospect)},URL,URLSearchParams};vm.createContext(scoreContext);
   vm.runInContext(readFileSync('js/growth-score-research.js','utf8'),scoreContext);ready();
-  return {inserted,received,links,brand};
+  return {inserted,received,links,brand,context:scoreContext,selected:()=>selected};
 }
 const flatten=node=>[node,...(node.children||[]).flatMap(flatten)];
 const oldProspect={businessName:'Older prospect',website:'https://older.example',growthScore:99};
@@ -63,4 +63,12 @@ if(scoreView.received!==savedResearch||!flatten(scoreView.inserted).some(child=>
 if(!readFileSync('js/operator-opportunity-brief.js','utf8').includes('growth-score.html?source=prospect'))throw new Error('Snapshot handoff did not identify its prospect context');
 scoreView=renderScore('',null,research,api.build(research));
 if(!flatten(scoreView.inserted).some(child=>child.textContent===api.build(research).measurementDetail)||!flatten(scoreView.inserted).some(child=>child.textContent===api.build(research).missionDetail))throw new Error('Growth Score dropped the real Mission or measurement details');
+const missionButton=flatten(scoreView.inserted).find(child=>child.name==='button');
+if(!missionButton)throw new Error('Growth Score has no Mission entry');
+missionButton.click();
+if(scoreView.selected()!==research||scoreView.context.window.location.href!=='mission.html?mode=start')throw new Error('Score Mission action lost its displayed investigation');
+scoreView.context.window.location.href='';
+scoreView.context.window.GOResearchBridge.selectMission=()=>{throw new Error('Reload the changed investigation')};
+missionButton.click();
+if(scoreView.context.window.location.href||!flatten(scoreView.inserted).some(child=>child.textContent==='Reload the changed investigation'))throw new Error('Rejected Mission selection navigated or hid the recovery message');
 console.log('System truth regression passed');

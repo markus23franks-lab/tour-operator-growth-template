@@ -28,6 +28,15 @@
       const cell=el('article','');cell.append(el('small',label),el('strong',value));summary.append(cell);
       const detail=label==='MISSION'?truth.missionDetail:label==='MEASUREMENT'?truth.measurementDetail:null;
       if(detail)cell.append(el('p',detail));
+      if(label==='MISSION'&&researchTruth){
+        const open=el('button','Review Mission & measurement →');open.type='button';open.className='button';
+        const error=el('p','');error.setAttribute('role','status');
+        open.addEventListener('click',()=>{
+          try { window.GOResearchBridge.selectMission(research);window.location.href='mission.html?mode=start'; }
+          catch(problem){error.textContent=problem.message;}
+        });
+        cell.append(open,error);
+      }
     }
     section.append(summary,el('h2','What the six systems actually show'));
     const grid=el('div','');grid.className='research-score-grid';

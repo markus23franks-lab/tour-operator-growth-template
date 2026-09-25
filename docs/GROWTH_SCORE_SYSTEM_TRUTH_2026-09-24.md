@@ -38,6 +38,8 @@ This is a scoped public-investigation display. It does not establish durable cus
 
 Direct Mission entry now requires a saved selection matching the currently loaded operator, investigation date and exact cited passages. Missing or stale selections show a recovery link to the dashboard; existing saved work is preserved. Synthetic Mission fixtures require explicit `?demo=1`, propagated from dashboard demo mode. The static Mission shell stays hidden until this decision is resolved.
 
+Growth Score now provides a direct “Review Mission & measurement” action. It and the researched dashboard use one checked Mission selection path. If browser research changed after a page was rendered, the click asks for a reload without overwriting the active Mission or navigating to changed work. Selection does not approve or execute the action.
+
 ## Verification
 
 The system-truth regression covers cited concern and strength, uncited rejection, unknown systems, Mission baseline/action/follow-up, operator/run isolation and cross-operator Snapshot-to-Score navigation. The dashboard-entry regression covers default empty state, preservation of researched mode, and the explicit demo engine. All 37 local regressions pass. The GitHub PR workflow now runs every offline regression, including the newer dashboard, Snapshot, Mission and measurement cases. The cloud browser rejected the locally served page with `ERR_BLOCKED_BY_CLIENT`, and no accessible staging URL exists, so visual and interaction browser validation remain a release gate before a founder-facing operator test.

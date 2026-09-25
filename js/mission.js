@@ -8,8 +8,21 @@ Conversion:{time:"45 min",tasks:[["Move the primary Book Now action above the fo
 Operations:{time:"55 min",tasks:[["Define the ideal response-time standard","Set a clear expectation for every lead."],["Create one shared lead queue","Prevent requests from living in multiple places."],["Build three reusable response templates","Answer common questions faster without sounding robotic."],["Assign ownership for missed inquiries","Make follow-up responsibility obvious."],["Review response time weekly","Track the operating habit that protects bookings."]],evidence:[["⚙","Lead workflow","Modeled delay risk","Faster response systems protect high-intent inquiries."],["✓","Consistency","Process opportunity","Reusable standards reduce variation between staff members."],["↗","Booking protection","Connection pending","CRM and booking data will quantify response-time impact."]]},
 Intelligence:{time:"45 min",tasks:[["Choose five true local competitors","Create a useful and stable benchmark set."],["Record pricing, review count, and ranking position","Capture the signals that influence traveler choice."],["Compare website and booking experience","Identify where competitors make decisions easier."],["Create alerts for meaningful changes","Focus only on moves worth acting on."],["Schedule a monthly benchmark review","Turn competitor data into a repeatable habit."]],evidence:[["✦","Market benchmark","Primary need","A clearer competitor set will improve decision speed."],["⚑","Competitor movement","Untracked signal","Pricing, promotions, and positioning changes need context."],["↗","Decision quality","56/100 preview","This is the weakest modeled pillar and the best place to begin."]]},
 Growth:{time:"35 min",tasks:[["Choose the booking result GO is trying to improve","Start with the customer or booking problem that matters most."],["Fix the highest-impact opportunity first","Do not waste time on lower-impact work while a bigger booking problem is still open."],["Set the action and deadline","Make the next move clear and trackable."],["Define what better looks like","Know which booking, conversion, review, or visibility metric should move."],["Measure the result before the next move","Use the result to decide what GO should fix next."]],evidence:[["↗","Booking growth","Highest-impact opportunity","One high-impact booking improvement is more valuable than a list of disconnected tasks."],["✓","Measurement","Baseline needed","Every mission needs a clear before-and-after signal."],["✦","Growth Operator prioritization","Modeled workflow","Connected data will continuously reorder the mission queue."]]}};
-const pillar=state.mission?.pillar||"Conversion";const config=configs[pillar]||configs.Conversion;let completed=loadCompleted();
-document.addEventListener("DOMContentLoaded",()=>{if(state.researchBacked){renderResearchMission();return}render();wire();});
+const pillar=state?.mission?.pillar||"Conversion";const config=configs[pillar]||configs.Conversion;let completed=loadCompleted();
+document.addEventListener("DOMContentLoaded",()=>{
+ if(!state){renderEmptyMission();}
+ else if(state.researchBacked){renderResearchMission();}
+ else {render();wire();const notice=document.createElement('p');notice.className='mission-demo-notice';notice.textContent='SAMPLE PREVIEW · Tasks, scores and revenue below are example data.';document.querySelector('.mission-main').prepend(notice);}
+ document.body.classList.remove('mission-pending');
+});
+function renderEmptyMission(){
+ document.body.classList.add('mission-empty');
+ const panel=document.createElement('main');panel.className='mission-entry';
+ const title=document.createElement('h1');title.textContent='Open a Mission from your investigation.';
+ const copy=document.createElement('p');copy.textContent='No Mission matching the currently loaded investigation is selected. Return to the dashboard to review its evidence and proposed work. Any saved progress stays attached to its original investigation.';
+ const link=document.createElement('a');link.href='dashboard.html';link.className='primary-button';link.textContent='Return to dashboard →';
+ panel.append(title,copy,link);document.body.append(panel);
+}
 function renderResearchMission(){
  document.body.classList.add('research-mission');
  const claim=state.claim||{},tasks=[
@@ -52,4 +65,18 @@ function activate(tab){document.querySelectorAll("[data-tab]").forEach(b=>b.clas
 function toggle(i,node){completed=completed.includes(i)?completed.filter(x=>x!==i):[...completed,i];node.classList.toggle("done",completed.includes(i));localStorage.setItem("growthOperatorMissionProgress",JSON.stringify(completed));updateProgress();}
 function updateProgress(){const pct=Math.round(completed.length/config.tasks.length*100);set("checklist-progress",`${completed.length} of ${config.tasks.length} complete`);set("progress-percent",`${pct}%`);set("progress-number",`${pct}%`);document.getElementById("progress-ring").style.setProperty("--progress",pct);set("progress-message",pct===100?"Every action is complete. Mark the mission finished.":pct>=60?"You are building real momentum.":pct>0?"The mission is underway.":"Your mission is ready to begin.");}
 function completeMission(){if(completed.length<config.tasks.length){activate("plan");document.getElementById("advisor-guidance-title").textContent="Finish the checklist before completing the mission.";document.getElementById("advisor-guidance-copy").textContent=`${config.tasks.length-completed.length} action${config.tasks.length-completed.length===1?" remains":"s remain"}. Each step protects the quality of the outcome.`;return;}localStorage.setItem("growthOperatorLastCompletedMission",JSON.stringify({title:state.mission.title,pillar,completedAt:new Date().toISOString()}));document.getElementById("completion-copy").textContent=`${state.businessName}'s progress is saved. Your next analysis can measure what changed.`;document.getElementById("completion-overlay").classList.add("open");}
-function readState(){try{return {...fallback,...(JSON.parse(localStorage.getItem("growthOperatorActiveMission"))||{})};}catch{return fallback}}function loadCompleted(){try{return JSON.parse(localStorage.getItem("growthOperatorMissionProgress"))||[]}catch{return []}}function set(id,val){const n=document.getElementById(id);if(n)n.textContent=val}
+function readState(){
+ try{
+  const saved=JSON.parse(localStorage.getItem('growthOperatorActiveMission'));
+  if(saved?.researchBacked){
+   const research=window.GOResearchBridge?.read();if(!research)return null;
+   const current=window.GOResearchScope.identity({website:research.website,claim:research.actionPlan.moves[0],capturedAt:research.capturedAt});
+   const prior=window.GOResearchScope.identity({website:saved.website,claim:saved.claim,capturedAt:saved.researchCapturedAt});
+   if(prior.fingerprint!==current.fingerprint)return null;
+   return {...window.GOResearchBridge.apply({}),claim:research.actionPlan.moves[0],researchCapturedAt:research.capturedAt,researchSourceType:research.sourceType,mode:saved.mode,startedAt:saved.startedAt};
+  }
+  if(new URLSearchParams(location.search).get('demo')==='1')return {...fallback,...saved};
+ }catch{ /* incomplete or unrelated saved work must not become a sample Mission */ }
+ return null;
+}
+function loadCompleted(){try{return JSON.parse(localStorage.getItem("growthOperatorMissionProgress"))||[]}catch{return []}}function set(id,val){const n=document.getElementById(id);if(n)n.textContent=val}

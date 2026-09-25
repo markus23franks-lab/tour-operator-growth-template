@@ -2,19 +2,37 @@
    The dashboard remains usable without research data; when present, this is the
    source-first path from claim ledger → Snapshot language → Mission. */
 (() => {
-  const read = () => { try { return JSON.parse(localStorage.getItem("growthOperatorResearchJudgment")) || null; } catch { return null; } };
-  const pillar = type => ({QUICK_WIN:"Conversion",VALIDATED_OPPORTUNITY:"Growth",INVESTIGATE:"Intelligence",LEVERAGE:"Trust",MEASURE:"Growth"}[type] || "Growth");
+  const read = () => {
+    try {
+      const value=JSON.parse(localStorage.getItem("growthOperatorResearchJudgment"));
+      if(value?.state!=='PROOF_JUDGED'||value.actionPlan?.state!=='READY'||!Array.isArray(value.actionPlan.moves)||!value.actionPlan.moves.length||!String(value.dossier?.businessName||'').trim())return null;
+      const url=new URL(value.website),captured=new Date(value.capturedAt);
+      if(url.protocol!=='https:'||typeof value.capturedAt!=='string'||!/^\d{4}-\d{2}-\d{2}T/.test(value.capturedAt)||!Number.isFinite(captured.getTime())||captured>new Date()||!['LIVE_LAB','ARCHIVED_EVALUATION'].includes(value.sourceType))return null;
+      if(!value.actionPlan.moves.every(move=>String(move.headline||'').trim()&&move.evidenceIds?.length&&Array.isArray(move.scope?.pages)&&move.scope.pages.length&&Array.isArray(move.supportQuotes)))return null;
+      return value;
+    } catch { return null; }
+  };
+  const systems = new Set(['Visibility','Trust','Conversion','Operations','Intelligence','Growth']);
+  const pillar = system => systems.has(system) ? system : 'Growth';
   window.GOResearchBridge = {
     read,
-    apply(profile) {
-      const research = read();
-      const plan = research?.actionPlan;
-      if (!research || research.state !== "PROOF_JUDGED" || !plan?.moves?.length) return profile;
+    selectMission(expected) {
+      const current=read();
+      if(!current||!expected||JSON.stringify(current)!==JSON.stringify(expected))throw new Error('The saved investigation changed. Reload this page before opening its Mission.');
+      const profile=this.apply({},current);
+      const workspace={businessName:profile.businessName,ownerName:profile.ownerName,website:profile.website,bookingPlatform:profile.bookingPlatform,growthScore:null,scores:null,revenueOpportunity:null,mission:profile.mission,researchBacked:true,claim:current.actionPlan.moves[0],researchCapturedAt:current.capturedAt,researchSourceType:current.sourceType,mode:'start',startedAt:new Date().toISOString()};
+      try { localStorage.setItem('growthOperatorActiveMission',JSON.stringify(workspace)); }
+      catch { throw new Error('This browser could not save the Mission selection. Check browser storage and try again.'); }
+      return workspace;
+    },
+    apply(profile, research=read()) {
+      if (!research) return profile;
+      const plan = research.actionPlan;
       const primary = plan.moves[0];
       const dossier = research.dossier || {};
       const findings = plan.moves.map((move, index) => ({
         id: move.claimId || `research-${index}`,
-        pillar: pillar(move.state || move.type),
+        pillar: pillar(move.system),
         icon: move.state === "VALIDATED_OPPORTUNITY" ? "→" : move.state === "LEVERAGE" ? "✓" : "?",
         title: move.headline,
         summary: `${move.why || "GO found a supported signal."} ${move.proof ? `Before acting: ${move.proof}` : ""}`.trim(),
@@ -30,7 +48,7 @@
         scope: move.scope,
         provenance: move.provenance
       }));
-      const primaryPillar = pillar(primary.state || primary.type);
+      const primaryPillar = pillar(primary.system);
       return {
         ...profile,
         // Public research does not identify the owner or measure a Growth Score.

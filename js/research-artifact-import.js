@@ -4,7 +4,8 @@
 (() => {
   const text = value => String(value ?? '').replace(/\s+/g, ' ').trim();
   const same = (a, b) => JSON.stringify([...new Set(a || [])].sort()) === JSON.stringify([...new Set(b || [])].sort());
-  function extract(artifact) {
+  function extract(artifact,{sourceType='ARCHIVED_EVALUATION'}={}) {
+    if(!['ARCHIVED_EVALUATION','LIVE_LAB'].includes(sourceType))throw new Error('Unknown research source.');
     const results = artifact?.results;
     if (!Array.isArray(results) || results.length !== 1) throw new Error('Choose a single-operator evaluation artifact.');
     const {summary, response} = results[0] || {};
@@ -19,6 +20,7 @@
     const claims = new Map(response.claimLedger.map(claim => [claim.claimId, claim]));
     for (const move of moves) {
       const claim = claims.get(move.claimId);
+      if (move.system && claim?.system && move.system !== claim.system) throw new Error('A decision no longer matches its claim system.');
       const quoteKeys = quotes => (quotes || []).map(q => `${q.evidenceId}\u0000${text(q.quote)}`);
       if (!claim || !same(move.evidenceIds, claim.evidenceIds) || !same(quoteKeys(move.supportQuotes), quoteKeys(claim.supportQuotes)) || !same(move.scope?.pages, claim.scope?.pages) || !move.evidenceIds?.length || text(move.headline) !== text(claim.headline) || !text(response.dossier?.businessName)) throw new Error('A decision no longer matches its cited claim.');
       if (!move.evidenceIds.every(id => byId.has(id))) throw new Error('A cited evidence record is missing.');
@@ -37,11 +39,11 @@
       }
     }
     return {
-      state:'PROOF_JUDGED', sourceType:'ARCHIVED_EVALUATION', capturedAt:capturedAt.toISOString(),
+      state:'PROOF_JUDGED', sourceType, capturedAt:capturedAt.toISOString(),
       website:website.href, dossier:{businessName:text(response.dossier?.businessName),summary:text(response.dossier?.summary)},
       judgment:{executiveRead:text(response.judgment?.executiveRead)},
       actionPlan:{state:'READY',moves:moves.map(move => ({
-        claimId:move.claimId,state:move.state,headline:text(move.headline),why:text(move.why),action:text(move.action),proof:text(move.proof),confidence:move.confidence,
+        claimId:move.claimId,state:move.state,system:move.system && move.system === claims.get(move.claimId)?.system ? move.system : 'Unknown',headline:text(move.headline),why:text(move.why),action:text(move.action),proof:text(move.proof),confidence:move.confidence,
         evidenceIds:[...move.evidenceIds],supportQuotes:(move.supportQuotes || []).map(q => ({evidenceId:q.evidenceId,quote:text(q.quote)})),
         scope:{pages:[...(move.scope?.pages || [])]},provenance:move.provenance
       }))}

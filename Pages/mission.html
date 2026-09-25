@@ -7,7 +7,8 @@
   <link rel="icon" href="../Assets/favicon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="../styles/mission.css">
 </head>
-<body>
+<body class="mission-pending">
+  <noscript><p>This Mission workspace needs JavaScript. <a href="dashboard.html">Return to dashboard</a>.</p></noscript>
   <div class="mission-shell">
     <aside class="mission-sidebar">
       <a class="mission-brand" href="dashboard.html"><img src="../Assets/growth-operator-logo.png" alt="Growth Operator"></a>
@@ -91,6 +92,7 @@
             <label>Unit <select name="unit"><option value="bookings">Bookings</option><option value="inquiries">Inquiries</option><option value="website_visits">Website visits</option><option value="revenue_usd">Revenue in USD</option><option value="custom">Other count</option></select></label>
             <label>Measured value <input name="value" type="number" min="0" step="any" required placeholder="From your records"></label>
             <label>Period length <input name="period" required maxlength="100" placeholder="e.g. 7-day window"></label>
+            <label>Period start date <input name="startedAt" type="date" required></label>
             <label>Period end date <input name="observedAt" type="date" required></label>
             <label>Data source <input name="source" required maxlength="100" placeholder="e.g. Booking platform report"></label>
           </div>
@@ -109,10 +111,11 @@
         </form>
         <form id="outcome-followup" class="outcome-form" hidden>
           <h3>3. Compare a later period</h3>
-          <p>Use the same metric and period length. GO records the difference without assigning cause or revenue credit.</p>
+          <p>Use the same metric and number of days, beginning after the action. GO records the difference without assigning cause or revenue credit.</p>
           <div class="outcome-fields">
             <label>Measured value <input name="value" type="number" min="0" step="any" required></label>
             <label>Period length <input name="period" required maxlength="100" placeholder="Same as baseline"></label>
+            <label>Period start date <input name="startedAt" type="date" required></label>
             <label>Period end date <input name="observedAt" type="date" required></label>
             <label>Data source <input name="source" required maxlength="100" placeholder="Same system if possible"></label>
           </div>
@@ -126,6 +129,7 @@
     <div class="completion-card"><span>✓</span><p>MISSION COMPLETE</p><h2>Growth happens when insight becomes action.</h2><p id="completion-copy">Your progress has been saved.</p><button id="return-dashboard">Return to dashboard →</button></div>
   </div>
 
+  <script src="../js/research-backed-dashboard.js"></script>
   <script src="../js/research-scope.js"></script>
   <script src="../js/mission-outcomes.js"></script>
   <script src="../js/mission-outcome-ui.js"></script>

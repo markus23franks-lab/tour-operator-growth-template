@@ -22,9 +22,9 @@
       history.replaceChildren();
       if (!record) return;
       const base=record.baseline;
-      line('Baseline recorded',`${base.value.toLocaleString()} ${base.unit.replaceAll('_',' ')} · ${base.metric} · ${base.period} ending ${base.observedAt} · Source: ${base.source}`);
+      line('Baseline recorded',`${base.value.toLocaleString()} ${base.unit.replaceAll('_',' ')} · ${base.metric} · ${base.period} ${base.startedAt ? `from ${base.startedAt} to ` : 'ending '}${base.observedAt} · Source: ${base.source}`);
       if (record.action) line('Operator-reported action',`${record.action.description} · ${record.action.performedAt} · Reported by ${record.action.reportedBy}. GO execution has not been verified.`);
-      for (const later of record.followUps) line('Later observation',`${later.value.toLocaleString()} ${base.unit.replaceAll('_',' ')} · ${later.period} ending ${later.observedAt} · Change from baseline: ${later.difference>=0?'+':''}${later.difference.toLocaleString()} · Source: ${later.source}. Cause not established.`);
+      for (const later of record.followUps) line('Later observation',`${later.value.toLocaleString()} ${base.unit.replaceAll('_',' ')} · ${later.period} ${later.startedAt ? `from ${later.startedAt} to ` : 'ending '}${later.observedAt} · Change from baseline: ${later.difference>=0?'+':''}${later.difference.toLocaleString()} · Source: ${later.source}. Cause not established.`);
       if (record.action) followUpForm.elements.period.value=base.period;
     };
     const submit=(form,method)=>form.addEventListener('submit',event=>{

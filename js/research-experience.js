@@ -29,6 +29,7 @@
         grid.append(card);
       }
       set('truth-priority',first.headline);set('truth-mission',truth.mission);set('truth-measurement',truth.measurement);
+      set('truth-mission-detail',truth.missionDetail);set('truth-measurement-detail',truth.measurementDetail);
     }
     set("scan-time", `${dated} · verify current facts before acting`);
     set("brief-business-name", profile.businessName);

@@ -56,5 +56,6 @@ body{margin:0;background:radial-gradient(circle at 50% -12%,#0a3150 0,transparen
 .research-score-summary small,.research-score-system small{display:block;color:#78bbdd;font-size:11px;letter-spacing:.1em;font-weight:800}
 .research-score-summary strong,.research-score-system strong{display:block;margin:11px 0;font-size:17px;line-height:1.4;overflow-wrap:anywhere}
 .research-score-system p{font-size:13px;line-height:1.55;color:#b6c6d0;overflow-wrap:anywhere}
+.research-score-summary p{font-size:13px;line-height:1.6;color:#b6c6d0;overflow-wrap:anywhere}
 .research-score-system a{display:block;color:#6fc8f3;margin-top:8px;overflow-wrap:anywhere}
 @media(max-width:760px){.research-score-summary,.research-score-grid{grid-template-columns:1fr}.research-score-view{padding:20px 0}}

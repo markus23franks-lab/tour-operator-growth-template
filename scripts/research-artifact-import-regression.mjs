@@ -33,7 +33,7 @@ const nodes=new Map(),element=()=>({textContent:'',classList:{add(){}},append(){
 const document={body:element(),getElementById(id){if(!nodes.has(id))nodes.set(id,element());return nodes.get(id)},querySelector(){return element()},createElement:element};
 const product={window:{},URL,Date,document,localStorage:{getItem:key=>storage.get(key)||null,setItem:(key,value)=>storage.set(key,value)}};
 vm.createContext(product);
-for(const path of ['js/research-backed-dashboard.js','js/research-scope.js','js/mission-outcomes.js','js/research-experience.js'])vm.runInContext(readFileSync(path,'utf8'),product);
+for(const path of ['js/research-backed-dashboard.js','js/research-scope.js','js/mission-outcomes.js','js/system-truth.js','js/research-experience.js'])vm.runInContext(readFileSync(path,'utf8'),product);
 const profile=product.window.GOResearchBridge.apply({businessName:'Preview',ownerName:'Preview person',website:'https://preview.example/',findings:[{title:'Invented finding'}]});
 product.window.GOResearchExperience.render(profile);
 if(profile.businessName!=='Canine Cruise Co'||profile.findings.some(f=>f.title==='Invented finding')||!nodes.get('today-label').textContent.includes('ARCHIVED EVALUATION · 2026-09-20')||nodes.get('opportunity-title').textContent!==move.headline)throw new Error('Imported research did not reach the real dated dashboard.');
@@ -43,4 +43,5 @@ product.window.GOMissionOutcomes.reportAction(scoped,{description:'Operator chan
 product.window.GOMissionOutcomes.followUp(scoped,{value:19,period:'3-day window',startedAt:'2026-09-22',observedAt:'2026-09-24',source:'Booking system'});
 product.window.GOResearchExperience.render(profile);
 if(!nodes.get('brief-summary-line').textContent.includes('Cause is not established.'))throw new Error('The measured result was lost or attributed to GO.');
+if(nodes.get('truth-mission').textContent!=='Reported action · outcome under review'||!nodes.get('truth-measurement-detail').textContent.includes('19 bookings')||!nodes.get('truth-measurement-detail').textContent.includes('2026-09-22 to 2026-09-24'))throw new Error('The dashboard six-system summary lost the action or dated measurement');
 console.log('Research artifact handoff regression passed');

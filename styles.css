@@ -238,6 +238,7 @@
 .system-truth-flow{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-top:12px}
 .system-truth-flow>div{padding:13px;border:1px solid #21465c;border-radius:9px;min-width:0}
 .system-truth-flow strong{display:block;margin-top:8px;font-size:12px;line-height:1.5;overflow-wrap:anywhere}
+.system-truth-flow p{margin:8px 0 0;color:#b4c8d6;font-size:12px;line-height:1.6;overflow-wrap:anywhere}
 .research-mode .nav-link[href="growth-score.html"]{display:flex!important}
 @media(max-width:900px){.system-truth-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:760px){.system-truth-heading{display:block}.system-truth-grid,.system-truth-flow{grid-template-columns:1fr}}

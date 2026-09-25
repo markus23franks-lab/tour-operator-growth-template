@@ -44,7 +44,27 @@
       : outcome?.state === 'ACTION_REPORTED' ? 'Operator-reported action · follow-up needed'
       : outcome?.state === 'BASELINE_RECORDED' ? 'Operator baseline recorded'
       : 'No measured outcome';
-    return {systems,primary:first,mission:mission || 'Proposed Mission · no approved execution',measurement,
+    let missionDetail='Review the evidence and approve scoped work before execution.';
+    let measurementDetail='Connect or record a real baseline before reporting a change.';
+    if(outcome?.baseline){
+      const base=outcome.baseline;
+      const unit=String(base.unit||'').replaceAll('_',' ');
+      const observation=entry=>`${Number(entry.value).toLocaleString('en-US')} ${unit} (${entry.startedAt||'start unknown'} to ${entry.observedAt||'end unknown'}; source: ${entry.source||'not recorded'})`;
+      measurementDetail=`${base.metric}: baseline ${observation(base)}.`;
+      mission=mission || 'Baseline recorded · action pending';
+      missionDetail='A baseline is recorded. No performed action has been reported.';
+      if(outcome.action?.approvalAttested===true){
+        mission='Operator reports approved action';
+        missionDetail=`${outcome.action.description} Reported by ${outcome.action.reportedBy} for ${outcome.action.performedAt}. Execution has not been independently verified.`;
+        growth.detail='An operator-reported action is recorded. Its effect on business growth has not been established.';
+      }
+      const latest=outcome.followUps?.at(-1);
+      if(latest){
+        mission='Reported action · outcome under review';
+        measurementDetail+=` Follow-up ${observation(latest)}. Cause is not established.`;
+      }
+    }
+    return {systems,primary:first,mission:mission || 'Proposed Mission · no approved execution',missionDetail,measurement,measurementDetail,
       capturedAt:research.capturedAt,sourceType:research.sourceType,businessName:research.dossier?.businessName || 'This operator'};
   }
   window.GOSystemTruth={build};

@@ -26,6 +26,8 @@
     const summary=el('div','');summary.className='research-score-summary';
     for (const [label,value] of [['GROWTH SCORE','Not scored'],['CURRENT PRIORITY',truth.primary.headline],['MISSION',truth.mission],['MEASUREMENT',truth.measurement]]) {
       const cell=el('article','');cell.append(el('small',label),el('strong',value));summary.append(cell);
+      const detail=label==='MISSION'?truth.missionDetail:label==='MEASUREMENT'?truth.measurementDetail:null;
+      if(detail)cell.append(el('p',detail));
     }
     section.append(summary,el('h2','What the six systems actually show'));
     const grid=el('div','');grid.className='research-score-grid';

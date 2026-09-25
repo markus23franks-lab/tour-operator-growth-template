@@ -25,21 +25,28 @@ const scope={website:research.website,capturedAt:research.capturedAt,...move};
 const baseline={metric:'Bookings',unit:'bookings',value:12,period:'3 days',startedAt:'2026-09-17',observedAt:'2026-09-19',source:'Booking report'};
 context.window.GOMissionOutcomes.baseline(scope,baseline);
 if(api.build(research).measurement!=='Operator baseline recorded')throw new Error('Baseline state was lost');
+truth=api.build(research);
+if(!truth.measurementDetail.includes('12 bookings')||!truth.measurementDetail.includes('2026-09-17 to 2026-09-19')||!truth.measurementDetail.includes('Booking report'))throw new Error('Dashboard baseline lost its measured value, period or source');
+memory.set('growthOperatorLastCompletedMission',JSON.stringify({state:'RESEARCH_PREPARED',fingerprint:context.window.GOResearchScope.identity({website:research.website,capturedAt:research.capturedAt,claim:move}).fingerprint}));
 context.window.GOMissionOutcomes.reportAction(scope,{description:'Operator changed page',performedAt:'2026-09-20',reportedBy:'Owner',approved:true});
 if(api.build(research).measurement!=='Operator-reported action · follow-up needed')throw new Error('Action state was lost');
-context.window.GOMissionOutcomes.followUp(scope,{value:19,period:'3 days',startedAt:'2026-09-21',observedAt:'2026-09-23',source:'Booking report'});
+truth=api.build(research);
+if(truth.mission!=='Operator reports approved action'||!truth.missionDetail.includes('Owner')||!truth.missionDetail.includes('2026-09-20')||!truth.missionDetail.includes('not been independently verified'))throw new Error('A reported action was mislabeled as awaiting approval or verified execution');
+context.window.GOMissionOutcomes.followUp(scope,{value:19,period:'3 days',startedAt:'2026-09-21',observedAt:'2026-09-23',source:'Follow-up export'});
 if(!api.build(research).measurement.includes('impact unverified'))throw new Error('Outcome was attributed');
+truth=api.build(research);
+if(truth.mission!=='Reported action · outcome under review'||!truth.measurementDetail.includes('19 bookings')||!truth.measurementDetail.includes('2026-09-21 to 2026-09-23')||!truth.measurementDetail.includes('Follow-up export')||!truth.measurementDetail.includes('Cause is not established'))throw new Error('Outcome details were lost or attributed to GO');
 if(api.build({...research,website:'https://other.example'}).measurement!=='No measured outcome'||api.build({...research,capturedAt:'2026-09-21T12:00:00Z'}).measurement!=='No measured outcome')throw new Error('Outcome leaked across operator or investigation');
 const dashboard=readFileSync('Pages/dashboard.html','utf8'),score=readFileSync('Pages/growth-score.html','utf8'),dashboardCSS=readFileSync('styles.css','utf8');
 if(!dashboard.includes('id="system-truth-grid"')||!dashboard.includes('js/system-truth.js')||!score.includes('js/growth-score-research.js')||score.includes('js/assessment.js'))throw new Error('System view not wired to product pages or legacy score renderer remains active');
 if(!dashboardCSS.includes('.research-mode .nav-link:not([href="dashboard.html"]):not([href="mission.html"]):not([href="growth-score.html"])'))throw new Error('Research navigation hides the Growth Score route');
 // A general Score visit is neutral; a prospect-origin visit can only use matching research.
-function renderScore(search,prospect,research){
+function renderScore(search,prospect,research,systemRead){
   let ready,inserted,received;
   const links={'growth-snapshot.html':{href:'growth-snapshot.html',textContent:''},'dashboard.html':{href:'dashboard.html',textContent:''}};
   const footer={querySelector:selector=>links[selector.match(/href="([^"]+)"/)?.[1]]},brand={href:'dashboard.html'};
   const document={body:{classList:{add(){}}},addEventListener:(_,fn)=>{ready=fn},createElement:name=>({name,children:[],append(...children){this.children.push(...children)},className:'',textContent:''}),querySelector:selector=>selector==='main.score-shell'?{querySelector:()=>footer,insertBefore:node=>{inserted=node}}:selector==='.topbar .brand'?brand:{textContent:''}};
-  const scoreContext={window:{location:{search},GOSystemTruth:{build:read=>{received=read;return read?{businessName:'Research Operator',primary:{headline:'Cited move'},mission:'Proposed',measurement:'None',systems:[],capturedAt:'2026-09-20',sourceType:'ARCHIVED_EVALUATION'}:null}},GOResearchBridge:{read:()=>research}},document,localStorage:{getItem:()=>JSON.stringify(prospect)},URL,URLSearchParams};vm.createContext(scoreContext);
+  const scoreContext={window:{location:{search},GOSystemTruth:{build:read=>{received=read;return read?systemRead||{businessName:'Research Operator',primary:{headline:'Cited move'},mission:'Proposed',measurement:'None',systems:[],capturedAt:'2026-09-20',sourceType:'ARCHIVED_EVALUATION'}:null}},GOResearchBridge:{read:()=>research}},document,localStorage:{getItem:()=>JSON.stringify(prospect)},URL,URLSearchParams};vm.createContext(scoreContext);
   vm.runInContext(readFileSync('js/growth-score-research.js','utf8'),scoreContext);ready();
   return {inserted,received,links,brand};
 }
@@ -54,4 +61,6 @@ if(scoreView.received!==null||!flatten(scoreView.inserted).some(child=>String(ch
 scoreView=renderScore('?source=prospect',{businessName:'Current prospect',website:'https://operator.example/tours'},savedResearch);
 if(scoreView.received!==savedResearch||!flatten(scoreView.inserted).some(child=>String(child.textContent).includes('Research Operator: six-system read')))throw new Error('Matching operator research was hidden from the Score journey');
 if(!readFileSync('js/operator-opportunity-brief.js','utf8').includes('growth-score.html?source=prospect'))throw new Error('Snapshot handoff did not identify its prospect context');
+scoreView=renderScore('',null,research,api.build(research));
+if(!flatten(scoreView.inserted).some(child=>child.textContent===api.build(research).measurementDetail)||!flatten(scoreView.inserted).some(child=>child.textContent===api.build(research).missionDetail))throw new Error('Growth Score dropped the real Mission or measurement details');
 console.log('System truth regression passed');
